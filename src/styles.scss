@@ -1,0 +1,98 @@
+@import "primeicons/primeicons.css";
+
+:root {
+  --kakebo-indigo: #1E3A5F;
+  --kakebo-rojo: #D9381E;
+  --kakebo-crema: #F9F6F0;
+  --kakebo-dorado: #C5A059;
+  --kakebo-texto-principal: #2C3E50;
+  --kakebo-texto-secundario: #7F8C8D;
+  --kakebo-borde: #E0E6ED;
+  --kakebo-verde: #27AE60;
+  --kakebo-rojo-soft: #E74C3C;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: var(--kakebo-crema);
+  color: var(--kakebo-texto-principal);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--kakebo-indigo);
+  text-decoration: none;
+}
+
+/* PrimeNG overrides */
+.p-button-primary {
+  background: var(--kakebo-indigo) !important;
+  border-color: var(--kakebo-indigo) !important;
+}
+
+.p-button-primary:hover {
+  background: #152c4a !important;
+  border-color: #152c4a !important;
+}
+
+/* Amount colors */
+.amount-positive {
+  color: var(--kakebo-verde);
+  font-weight: 600;
+}
+
+.amount-negative {
+  color: var(--kakebo-rojo-soft);
+  font-weight: 600;
+}
+
+.amount-neutral {
+  color: var(--kakebo-texto-secundario);
+}
+
+/* Card base */
+.kakebo-card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--kakebo-borde);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+/* Section header */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+
+  h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--kakebo-indigo);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+}
+
+/* Scrollbar slim */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--kakebo-borde);
+  border-radius: 4px;
+}
+
