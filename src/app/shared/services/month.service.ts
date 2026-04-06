@@ -16,7 +16,6 @@ export class MonthService {
       .single();
 
     if (existing) {
-      // Sync settings-driven data into already-existing months
       await Promise.all([
         this.syncAhorroTemplates(userId, existing as Month),
         this.syncParejaFromProfile(userId, existing as Month)
@@ -67,7 +66,8 @@ export class MonthService {
     const copies = recurring.map(({ id: _id, month_id: _mid, real: _r, ...f }) => ({
       ...f,
       month_id: newMonth.id,
-      real: 0
+      real: 0,
+      is_recurring: false
     }));
 
     await this.supabase.client.from('facturas').insert(copies);

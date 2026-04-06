@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { SupabaseService } from '../../core/supabase/supabase.service';
 import { UserProfileService } from '../../core/auth/user-profile.service';
 import { IngresoTemplatesService, IngresoTemplate } from '../../shared/services/ingreso-templates.service';
@@ -11,7 +11,7 @@ import { Deuda, AhorroTemplate, UserProfile } from '../../shared/models';
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DatePipe],
+  imports: [FormsModule, CurrencyPipe],
   template: `
     <div class="settings-page">
       <h1 class="page-title">Configuración</h1>
@@ -30,7 +30,6 @@ import { Deuda, AhorroTemplate, UserProfile } from '../../shared/models';
                 <div class="edit-row">
                   <input class="inp" [(ngModel)]="editTplFuente" placeholder="Fuente" />
                   <input class="inp w-sm" type="number" [(ngModel)]="editTplEsperado" placeholder="Importe €" min="0" />
-                  <input class="inp w-sm" type="date" [(ngModel)]="editTplDiaPago" />
                   <button class="btn-save" (click)="saveTemplate(t.id)">Guardar</button>
                   <button class="btn-cancel" (click)="cancelEditTemplate()">✕</button>
                 </div>
@@ -39,7 +38,6 @@ import { Deuda, AhorroTemplate, UserProfile } from '../../shared/models';
                   <span class="item-name">{{ t.fuente }}</span>
                   <span class="item-meta">
                     {{ t.esperado | currency:'EUR':'symbol':'1.0-0':'es' }}
-                    @if (t.dia_de_paga) { · cobro {{ t.dia_de_paga | date:'dd MMM':'':'es' }} }
                   </span>
                 </div>
                 <div class="item-actions">
@@ -63,7 +61,6 @@ import { Deuda, AhorroTemplate, UserProfile } from '../../shared/models';
           <div class="form-row">
             <input class="inp" [(ngModel)]="newTplFuente" placeholder="Fuente (ej: Nómina)" />
             <input class="inp w-sm" type="number" [(ngModel)]="newTplEsperado" placeholder="Importe esperado €" min="0" />
-            <input class="inp w-sm" type="date" [(ngModel)]="newTplDiaPago" />
             <button class="btn-add" (click)="addTemplate()" [disabled]="!newTplFuente.trim()">
               <i class="pi pi-plus"></i> Añadir
             </button>
@@ -98,7 +95,7 @@ import { Deuda, AhorroTemplate, UserProfile } from '../../shared/models';
                       {{ d.type === 'bank' ? 'Banco' : 'Ahorros' }}
                     </span>
                     @if (d.interest_rate > 0) {
-                      <span class="badge badge-interest">{{ d.interest_rate }}% interés</span>
+                      <span class="badge badge-interest">{{ d.interest_rate }}% TIN</span>
                     }
                   </div>
                   <span class="item-meta">
@@ -165,35 +162,42 @@ import { Deuda, AhorroTemplate, UserProfile } from '../../shared/models';
             </div>
             <div class="form-field">
               <label>Tipo</label>
-              <select class="inp" [(ngModel)]="newDeudaTipo">
+              <select class="inp" [ngModel]="newDeudaTipo" (ngModelChange)="newDeudaTipo=$event; recalcCuota()">
                 <option value="bank">Préstamo banco</option>
                 <option value="savings">De mis ahorros</option>
               </select>
             </div>
             <div class="form-field">
               <label>Capital prestado (€)</label>
-              <input class="inp" type="number" [(ngModel)]="newDeudaCapital" placeholder="0.00" min="0" step="0.01" />
+              <input class="inp" type="number"
+                [ngModel]="newDeudaCapital" (ngModelChange)="newDeudaCapital=$event; recalcCuota()"
+                placeholder="0.00" min="0" step="0.01" />
             </div>
             <div class="form-field">
-              <label>Interés total (%)</label>
+              <label>TIN anual (%)</label>
               @if (newDeudaTipo === 'savings') {
                 <div class="penalty-box">
                   <span class="penalty-rate">5%</span>
                   <span class="penalty-label">⚠️ Castigo por usar ahorros (fijo)</span>
                 </div>
               } @else {
-                <input class="inp" type="number" [(ngModel)]="newDeudaInteres" placeholder="Ej: 5.5" min="0" step="0.01" />
+                <input class="inp" type="number"
+                  [ngModel]="newDeudaInteres" (ngModelChange)="newDeudaInteres=$event; recalcCuota()"
+                  placeholder="Ej: 5.5" min="0" step="0.01" />
               }
             </div>
             <div class="form-field">
               <label>Nº de meses <span class="field-hint">(vacío = indefinida)</span></label>
-              <input class="inp" type="number" [(ngModel)]="newDeudaMeses" placeholder="Ej: 60" min="1" step="1" />
+              <input class="inp" type="number"
+                [ngModel]="newDeudaMeses" (ngModelChange)="newDeudaMeses=$event; recalcCuota()"
+                placeholder="Ej: 60" min="1" step="1" />
             </div>
             <div class="form-field">
-              @if (!newDeudaMeses) {
-                <label>Cuota mensual (€)</label>
-                <input class="inp" type="number" [(ngModel)]="newDeudaCuotaManual" placeholder="0.00" min="0" step="0.01" />
-              } @else {
+              <label>Cuota mensual (€) <span class="field-hint">edita si no coincide</span></label>
+              <input class="inp" type="number" [(ngModel)]="newDeudaCuotaFinal" placeholder="0.00" min="0" step="0.01" />
+            </div>
+            @if (newDeudaMeses) {
+              <div class="form-field" style="grid-column:1/-1">
                 <label>Mes de inicio</label>
                 <div style="display:flex;gap:.4rem">
                   <select class="inp" [(ngModel)]="newDeudaStartMonth" style="flex:1">
@@ -203,16 +207,14 @@ import { Deuda, AhorroTemplate, UserProfile } from '../../shared/models';
                   </select>
                   <input class="inp" type="number" [(ngModel)]="newDeudaStartYear" style="flex:0 0 80px;min-width:70px" placeholder="Año" />
                 </div>
-              }
-            </div>
+              </div>
+            }
           </div>
           <!-- Calculated preview -->
-          @if (newDeudaCapital > 0) {
+          @if (newDeudaCapital > 0 && newDeudaCuotaFinal > 0) {
             <div class="calc-preview">
-              <span>Total con intereses: <strong>{{ newDeudaTotalConInteres | currency:'EUR':'symbol':'1.2-2':'es' }}</strong></span>
-              @if (newDeudaMeses) {
-                <span>Cuota mensual: <strong>{{ newDeudaCuotaCalculada | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
-              }
+              <span>Total estimado: <strong>{{ (newDeudaMeses ? newDeudaCuotaFinal * newDeudaMeses : newDeudaCapital) | currency:'EUR':'symbol':'1.2-2':'es' }}</strong></span>
+              <span>Cuota registrada: <strong>{{ newDeudaCuotaFinal | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
             </div>
           }
           <div style="margin-top:.75rem">
@@ -277,16 +279,29 @@ import { Deuda, AhorroTemplate, UserProfile } from '../../shared/models';
       @if (profile()?.has_partner) {
         <section class="settings-section">
           <div class="section-header">
-            <h2 class="section-title">Ingreso Oficial &amp; Pareja</h2>
-            <p class="section-desc">Configura tu nómina oficial. Se calcularán automáticamente las aportaciones de pareja al abrir cada mes nuevo.</p>
+            <h2 class="section-title">Pareja</h2>
+            <p class="section-desc">Las aportaciones se calculan automáticamente a partir de tus Ingresos Fijos configurados arriba.</p>
+          </div>
+
+          <!-- Read-only list of ingresos fijos -->
+          <div class="items-list">
+            @for (t of templates(); track t.id) {
+              <div class="list-item pareja-ingreso-item">
+                <span class="item-name">{{ t.fuente }}</span>
+                <span class="item-meta pareja-ingreso-amount">{{ t.esperado | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+              </div>
+            }
+            @if (templates().length === 0) {
+              <p class="empty-hint">Sin ingresos fijos configurados. Añádelos en la sección de arriba.</p>
+            }
+            <div class="list-item pareja-total-row">
+              <span class="pareja-total-label">Total base</span>
+              <span class="pareja-total-amount">{{ totalIngresosFijos() | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+            </div>
           </div>
 
           <div class="add-form">
             <div class="form-grid">
-              <div class="form-field">
-                <label>Ingreso oficial neto (€/mes)</label>
-                <input class="inp" type="number" [(ngModel)]="profileIngresoOficial" placeholder="Ej: 2000" min="0" step="0.01" />
-              </div>
               <div class="form-field">
                 <label>% Ahorro pareja</label>
                 <input class="inp" type="number" [(ngModel)]="profileAhorroPct" placeholder="10" min="0" max="100" step="0.5" />
@@ -301,10 +316,10 @@ import { Deuda, AhorroTemplate, UserProfile } from '../../shared/models';
                 </button>
               </div>
             </div>
-            @if (profileIngresoOficial > 0) {
+            @if (totalIngresosFijos() > 0) {
               <div class="calc-preview">
-                <span>Ahorro pareja: <strong>{{ (profileIngresoOficial * profileAhorroPct / 100) | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
-                <span>Gastos pareja: <strong>{{ (profileIngresoOficial * profileGastosPct / 100) | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
+                <span>Ahorro pareja: <strong>{{ (totalIngresosFijos() * profileAhorroPct / 100) | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
+                <span>Gastos pareja: <strong>{{ (totalIngresosFijos() * profileGastosPct / 100) | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
               </div>
             }
           </div>
@@ -453,6 +468,38 @@ import { Deuda, AhorroTemplate, UserProfile } from '../../shared/models';
     }
 
     .w-sm { flex: 0 0 130px; min-width: 100px; }
+
+    /* ── Pareja section styles ── */
+    .pareja-ingreso-item {
+      justify-content: space-between;
+      padding: .6rem 1.5rem;
+    }
+
+    .pareja-ingreso-amount {
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--kakebo-texto-principal);
+    }
+
+    .pareja-total-row {
+      display: flex;
+      justify-content: space-between;
+      padding: .6rem 1.5rem;
+      background: rgba(30,58,95,.04);
+      border-top: 2px solid var(--kakebo-borde);
+    }
+
+    .pareja-total-label {
+      font-size: .85rem;
+      font-weight: 700;
+      color: var(--kakebo-indigo);
+    }
+
+    .pareja-total-amount {
+      font-size: .85rem;
+      font-weight: 700;
+      color: var(--kakebo-indigo);
+    }
 
     .btn-add {
       background: var(--kakebo-indigo);
@@ -610,16 +657,18 @@ export class SettingsComponent implements OnInit {
   ahorroTemplates = signal<AhorroTemplate[]>([]);
   profile = signal<UserProfile | null>(null);
 
+  totalIngresosFijos = computed(() =>
+    this.templates().reduce((sum, t) => sum + (t.esperado ?? 0), 0)
+  );
+
   // Template add form
   newTplFuente = '';
   newTplEsperado = 0;
-  newTplDiaPago = '';
 
   // Template edit
   editingTemplateId = signal<string | null>(null);
   editTplFuente = '';
   editTplEsperado = 0;
-  editTplDiaPago = '';
 
   // Deuda add form
   newDeudaNombre = '';
@@ -627,7 +676,7 @@ export class SettingsComponent implements OnInit {
   newDeudaCapital = 0;
   newDeudaInteres = 0;
   newDeudaMeses = 0;
-  newDeudaCuotaManual = 0;
+  newDeudaCuotaFinal = 0;
   newDeudaStartYear = new Date().getFullYear();
   newDeudaStartMonth = new Date().getMonth() + 1;
 
@@ -648,7 +697,6 @@ export class SettingsComponent implements OnInit {
   editAhorroPresupuestado = 0;
 
   // Perfil / Pareja
-  profileIngresoOficial = 0;
   profileAhorroPct = 10;
   profileGastosPct = 5;
   savingProfile = signal(false);
@@ -680,13 +728,29 @@ export class SettingsComponent implements OnInit {
   // ── Computed helpers ─────────────────────────────────────────
 
   get newDeudaTotalConInteres(): number {
-    const rate = this.newDeudaTipo === 'savings' ? 5 : this.newDeudaInteres;
-    return this.newDeudaCapital * (1 + rate / 100);
+    if (this.newDeudaTipo === 'savings') return this.newDeudaCapital * 1.05;
+    if (this.newDeudaMeses > 0) return this.newDeudaCuotaCalculada * this.newDeudaMeses;
+    return this.newDeudaCapital;
   }
 
   get newDeudaCuotaCalculada(): number {
-    if (this.newDeudaMeses > 0) return this.newDeudaTotalConInteres / this.newDeudaMeses;
-    return this.newDeudaCuotaManual;
+    if (this.newDeudaTipo === 'savings') {
+      const total = this.newDeudaCapital * 1.05;
+      return this.newDeudaMeses > 0 ? total / this.newDeudaMeses : 0;
+    }
+    // Amortización francesa (cuota constante)
+    if (this.newDeudaMeses > 0 && this.newDeudaCapital > 0) {
+      const r = this.newDeudaInteres / 12 / 100;
+      if (r === 0) return this.newDeudaCapital / this.newDeudaMeses;
+      const factor = Math.pow(1 + r, this.newDeudaMeses);
+      return this.newDeudaCapital * r * factor / (factor - 1);
+    }
+    return this.newDeudaCuotaFinal;
+  }
+
+  recalcCuota() {
+    const calc = this.newDeudaCuotaCalculada;
+    if (calc > 0) this.newDeudaCuotaFinal = Math.round(calc * 100) / 100;
   }
 
   deudaProgress(d: Deuda): number {
@@ -706,12 +770,11 @@ export class SettingsComponent implements OnInit {
       user_id: this.userId,
       fuente: this.newTplFuente.trim(),
       esperado: this.newTplEsperado,
-      dia_de_paga: this.newTplDiaPago || null,
+      dia_de_paga: null,
       order_index: this.templates().length
     });
     this.newTplFuente = '';
     this.newTplEsperado = 0;
-    this.newTplDiaPago = '';
     await this.loadTemplates();
   }
 
@@ -719,14 +782,12 @@ export class SettingsComponent implements OnInit {
     this.editingTemplateId.set(t.id);
     this.editTplFuente = t.fuente;
     this.editTplEsperado = t.esperado;
-    this.editTplDiaPago = t.dia_de_paga ?? '';
   }
 
   async saveTemplate(id: string) {
     await this.templatesService.update(id, {
       fuente: this.editTplFuente,
-      esperado: this.editTplEsperado,
-      dia_de_paga: this.editTplDiaPago || null
+      esperado: this.editTplEsperado
     });
     this.editingTemplateId.set(null);
     await this.loadTemplates();
@@ -752,15 +813,18 @@ export class SettingsComponent implements OnInit {
 
   async addDeuda() {
     if (!this.newDeudaNombre.trim() || this.newDeudaCapital <= 0) return;
-    const total = this.newDeudaTotalConInteres;
-    const cuota = this.newDeudaMeses > 0 ? total / this.newDeudaMeses : this.newDeudaCuotaManual;
+    const cuota = this.newDeudaCuotaFinal;
+    const interestRate = this.newDeudaTipo === 'savings' ? 5 : this.newDeudaInteres;
+    const total = this.newDeudaTipo === 'savings'
+      ? this.newDeudaCapital * 1.05
+      : (this.newDeudaMeses > 0 ? cuota * this.newDeudaMeses : this.newDeudaCapital);
     await this.deudasService.create({
       user_id: this.userId,
       name: this.newDeudaNombre.trim(),
       type: this.newDeudaTipo,
       principal_amount: this.newDeudaCapital,
       total_amount: total,
-      interest_rate: this.newDeudaTipo === 'savings' ? 5 : this.newDeudaInteres,
+      interest_rate: interestRate,
       monthly_payment: cuota,
       amount_remaining: total,
       is_active: true,
@@ -773,7 +837,7 @@ export class SettingsComponent implements OnInit {
     this.newDeudaCapital = 0;
     this.newDeudaInteres = 0;
     this.newDeudaMeses = 0;
-    this.newDeudaCuotaManual = 0;
+    this.newDeudaCuotaFinal = 0;
     this.newDeudaStartYear = new Date().getFullYear();
     this.newDeudaStartMonth = new Date().getMonth() + 1;
     await this.loadDeudas();
@@ -854,7 +918,6 @@ export class SettingsComponent implements OnInit {
     const p = await this.profileService.getProfile(this.userId);
     this.profile.set(p);
     if (p) {
-      this.profileIngresoOficial = p.ingreso_oficial ?? 0;
       this.profileAhorroPct = p.pareja_ahorro_pct ?? 10;
       this.profileGastosPct = p.pareja_gastos_pct ?? 5;
     }
@@ -865,7 +928,7 @@ export class SettingsComponent implements OnInit {
     try {
       await this.profileService.upsertProfile({
         id: this.userId,
-        ingreso_oficial: this.profileIngresoOficial,
+        ingreso_oficial: this.totalIngresosFijos(),
         pareja_ahorro_pct: this.profileAhorroPct,
         pareja_gastos_pct: this.profileGastosPct
       });

@@ -39,7 +39,7 @@ import { Gasto } from '../../../../shared/models';
             </tr>
           </thead>
           <tbody>
-            @for (row of items; track row.id) {
+            @for (row of sortedItems; track row.id) {
               @if (editingId() === row.id) {
                 <tr class="editing-row">
                   <td><input pInputText [(ngModel)]="eData.name" class="edit-input" /></td>
@@ -156,6 +156,10 @@ export class GastosTableComponent {
 
   eData = { name: '', presupuestado: 0, real: 0, tipo: 'variables' as 'fijos' | 'variables' };
   nData = { name: '', presupuestado: 0, tipo: 'variables' as 'fijos' | 'variables' };
+
+  get sortedItems(): Gasto[] {
+    return [...this.items].sort((a, b) => b.presupuestado - a.presupuestado);
+  }
 
   totalP() { return this.items.reduce((s, g) => s + g.presupuestado, 0); }
   totalR() { return this.items.reduce((s, g) => s + g.real, 0); }

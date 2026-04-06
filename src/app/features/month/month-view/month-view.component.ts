@@ -1,6 +1,8 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, effect, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CurrencyPipe } from '@angular/common';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 import { AuthService } from '../../../core/auth/auth.service';
 import { SupabaseService } from '../../../core/supabase/supabase.service';
 import { MonthService } from '../../../shared/services/month.service';
@@ -26,6 +28,7 @@ const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','A
   standalone: true,
   imports: [
     CurrencyPipe,
+    ToastModule,
     BudgetTableComponent,
     IngresosTableComponent,
     FacturasTableComponent,
@@ -34,7 +37,9 @@ const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','A
     DeudasComponent,
     ResumenComponent
   ],
+  providers: [MessageService],
   template: `
+    <p-toast position="top-center" [life]="6000" />
     @if (loading()) {
       <div class="loading-state">
         <i class="pi pi-spin pi-spinner" style="font-size:2rem;color:var(--kakebo-indigo)"></i>
@@ -321,8 +326,33 @@ export class MonthViewComponent implements OnInit {
     private sectionService: SectionService,
     private fondosService: FondosAhorroService,
     private deudasService: DeudasService,
-    private profileService: UserProfileService
-  ) {}
+    private profileService: UserProfileService,
+    private messageService: MessageService
+  ) {
+    effect(() => {
+      const restante = this.quedaParaPresupuestar();
+      if (restante < 0 && !this.loading()) {
+        this.messageService.add({
+          severity: 'warn',
+          summary: '⚠️ Presupuesto excedido',
+          detail: `Tus gastos presupuestados superan tus ingresos esperados en ${Math.abs(restante).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}.`,
+          life: 6000
+        });
+      }
+    });
+
+    effect(() => {
+      const restante = this.quedaPorGastar();
+      if (restante < 0 && !this.loading()) {
+        this.messageService.add({
+          severity: 'error',
+          summary: '🚨 Gastos por encima de ingresos',
+          detail: `Has gastado ${Math.abs(restante).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })} más de lo que has ingresado este mes.`,
+          life: 6000
+        });
+      }
+    });
+  }
 
   async ngOnInit() {
     this.route.params.subscribe(async params => {

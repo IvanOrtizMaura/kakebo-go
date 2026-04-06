@@ -33,7 +33,7 @@ export class IngresoTemplatesService {
     return data as IngresoTemplate;
   }
 
-  async update(id: string, changes: Partial<Pick<IngresoTemplate, 'fuente' | 'esperado' | 'dia_de_paga'>>): Promise<void> {
+  async update(id: string, changes: Partial<Pick<IngresoTemplate, 'fuente' | 'esperado'>>): Promise<void> {
     const { error } = await this.supabase.client
       .from('ingreso_templates')
       .update(changes)
