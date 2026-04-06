@@ -73,26 +73,21 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
       top: 0;
       bottom: 0;
       z-index: 100;
-      transform: translateX(0);
+      transform: translateX(-100%);
       transition: transform 0.25s ease;
+      &.open { transform: translateX(0); }
     }
 
-    @media (max-width: 767px) {
-      .sidebar {
-        transform: translateX(-100%);
-        &.open { transform: translateX(0); }
-      }
-      .sidebar-overlay {
-        display: block;
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.4);
-        z-index: 99;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.25s ease;
-        &.visible { opacity: 1; pointer-events: all; }
-      }
+    .sidebar-overlay {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 99;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      &.visible { opacity: 1; pointer-events: all; }
     }
 
     @media (min-width: 768px) {
@@ -108,7 +103,7 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
       width: 90px;
       display: block;
       margin: 0 auto 0.5rem;
-      filter: brightness(0) invert(1);
+      border-radius: 8px;
     }
 
     .sidebar-user {
@@ -219,7 +214,7 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
   `]
 })
 export class SidebarComponent {
-  open = signal(false);
+  open = signal(typeof window !== 'undefined' && window.innerWidth >= 768);
   year = signal(new Date().getFullYear());
   readonly currentYear = new Date().getFullYear();
   readonly currentMonth = new Date().getMonth() + 1;
