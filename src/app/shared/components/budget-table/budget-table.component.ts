@@ -36,13 +36,11 @@ export interface BudgetRow {
         </div>
       </div>
 
-      <!-- Table -->
       <div class="table-wrapper">
         <table class="budget-tbl">
           <thead>
             <tr>
               <th class="col-name">Concepto</th>
-              <ng-content select="[extraHeaders]"></ng-content>
               <th class="col-amt col-amt-presupuesto">Presupuesto</th>
               <th class="col-amt">Real</th>
               <th class="col-diff">Dif.</th>
@@ -51,53 +49,54 @@ export interface BudgetRow {
           </thead>
           <tbody>
             @for (row of sortedItems; track row.id) {
-              @if (editingId() === row.id) {
-                <tr class="editing-row">
-                  <td>
-                    <input pInputText [(ngModel)]="editName" class="edit-input" />
-                  </td>
-                  <ng-content select="[extraEditCells]"></ng-content>
-                  <td class="cell-presupuesto">
-                    <p-inputNumber [(ngModel)]="editPresupuestado" mode="currency"
-                      currency="EUR" locale="es-ES" styleClass="edit-number" [inputStyle]="{width:'100%'}" />
-                  </td>
-                  <td>
-                    <p-inputNumber [(ngModel)]="editReal" mode="currency"
-                      currency="EUR" locale="es-ES" styleClass="edit-number" [inputStyle]="{width:'100%'}" />
-                  </td>
-                  <td [class]="diffClass(editPresupuestado - editReal)">
-                    {{ (editPresupuestado - editReal) | currency:'EUR':'symbol':'1.2-2':'es' }}
-                  </td>
-                  <td class="action-cell">
-                    <button class="icon-btn save" (click)="saveEdit(row)"><i class="pi pi-check"></i></button>
-                    <button class="icon-btn cancel" (click)="cancelEdit()"><i class="pi pi-times"></i></button>
-                  </td>
-                </tr>
-              } @else {
-                <tr class="data-row">
-                  <td class="name-cell">{{ row.name }}</td>
-                  <ng-content select="[extraDataCells]"></ng-content>
-                  <td class="amt-cell cell-presupuesto">{{ row.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-                  <td class="amt-cell">{{ row.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-                  <td [class]="'diff-cell ' + diffClass(row.presupuestado - row.real)">
-                    {{ (row.presupuestado - row.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
-                  </td>
-                  <td class="action-cell">
-                    <button class="icon-btn edit" (click)="startEdit(row)"><i class="pi pi-pencil"></i></button>
-                    <button class="icon-btn delete" (click)="onDelete(row.id)"><i class="pi pi-trash"></i></button>
-                  </td>
-                </tr>
-              }
+              <tr class="data-row" [class.row-editing]="editingCell()?.rowId === row.id">
+                <td class="name-cell" (click)="startCellEdit(row.id, 'name', row.name)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'name') {
+                    <input pInputText [(ngModel)]="editStrValue" class="cell-input"
+                      (blur)="saveCellEdit(row)"
+                      (keydown.enter)="saveCellEdit(row)"
+                      (keydown.escape)="cancelCellEdit()" />
+                  } @else {
+                    {{ row.name }}
+                  }
+                </td>
+                <td class="amt-cell cell-presupuesto" (click)="startCellEdit(row.id, 'presupuestado', row.presupuestado)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'presupuestado') {
+                    <p-inputNumber [(ngModel)]="editNumValue" mode="currency" currency="EUR" locale="es-ES"
+                      styleClass="cell-number" [inputStyle]="{width:'100%'}"
+                      (onBlur)="saveCellEdit(row)"
+                      (keydown.enter)="saveCellEdit(row)"
+                      (keydown.escape)="cancelCellEdit()" />
+                  } @else {
+                    {{ row.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}
+                  }
+                </td>
+                <td class="amt-cell" (click)="startCellEdit(row.id, 'real', row.real)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'real') {
+                    <p-inputNumber [(ngModel)]="editNumValue" mode="currency" currency="EUR" locale="es-ES"
+                      styleClass="cell-number" [inputStyle]="{width:'100%'}"
+                      (onBlur)="saveCellEdit(row)"
+                      (keydown.enter)="saveCellEdit(row)"
+                      (keydown.escape)="cancelCellEdit()" />
+                  } @else {
+                    {{ row.real | currency:'EUR':'symbol':'1.2-2':'es' }}
+                  }
+                </td>
+                <td [class]="'diff-cell ' + diffClass(row.presupuestado - row.real)">
+                  {{ (row.presupuestado - row.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
+                </td>
+                <td class="action-cell">
+                  <button class="icon-btn delete" (click)="onDelete(row.id)"><i class="pi pi-trash"></i></button>
+                </td>
+              </tr>
             }
-
             @if (items.length === 0) {
-              <tr><td colspan="6" class="empty-row">Sin registros. Añade uno abajo.</td></tr>
+              <tr><td colspan="5" class="empty-row">Sin registros. Añade uno abajo.</td></tr>
             }
           </tbody>
           <tfoot>
             <tr class="totals-row">
               <td class="total-label-cell">TOTAL</td>
-              <td></td>
               <td class="amt-cell cell-presupuesto">{{ totalPresupuestado() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="amt-cell">{{ totalReal() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td [class]="'diff-cell ' + diffClass(totalPresupuestado() - totalReal())">
@@ -109,7 +108,6 @@ export interface BudgetRow {
         </table>
       </div>
 
-      <!-- Add row form -->
       @if (addingRow()) {
         <div class="add-row-form">
           <input pInputText [(ngModel)]="newName" placeholder="Concepto" class="add-input-name" />
@@ -128,29 +126,12 @@ export interface BudgetRow {
   styles: [`
     .budget-table {
       .section-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 0.75rem;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;
       }
-      .header-left {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-      .tooltip-icon {
-        color: var(--kakebo-texto-secundario);
-        font-size: 0.85rem;
-        cursor: help;
-      }
-      .header-totals {
-        display: flex;
-        align-items: center;
-        gap: 0.375rem;
-        font-size: 0.8rem;
-      }
+      .header-left { display: flex; align-items: center; gap: 0.5rem; }
+      .tooltip-icon { color: var(--kakebo-texto-secundario); font-size: 0.85rem; cursor: help; }
+      .header-totals { display: flex; align-items: center; gap: 0.375rem; font-size: 0.8rem; }
       .total-label { color: var(--kakebo-texto-secundario); }
       .total-value { font-weight: 600; }
       .total-value.presupuestado { color: var(--kakebo-indigo); }
@@ -164,33 +145,32 @@ export interface BudgetRow {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.85rem;
+      table-layout: fixed;
 
       th {
         text-align: left;
-        padding: 0.5rem 0.5rem;
+        padding: 0.5rem 0.4rem;
         border-bottom: 2px solid var(--kakebo-borde);
         color: var(--kakebo-texto-secundario);
-        font-weight: 600;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        white-space: nowrap;
+        font-weight: 600; font-size: 0.75rem;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        white-space: nowrap; overflow: hidden;
       }
 
       td {
-        padding: 0.5rem;
+        padding: 0.45rem 0.4rem;
         border-bottom: 1px solid var(--kakebo-borde);
-        vertical-align: middle;
+        vertical-align: middle; overflow: hidden;
       }
 
-      .col-name { min-width: 120px; }
-      .col-amt { min-width: 90px; text-align: right; }
-      .col-diff { min-width: 80px; text-align: right; }
-      .col-actions { width: 64px; text-align: right; }
+      .col-name { width: auto; }
+      .col-amt { width: 84px; text-align: right; }
+      .col-diff { width: 72px; text-align: right; }
+      .col-actions { width: 34px; }
 
-      .amt-cell { text-align: right; }
+      .amt-cell { text-align: right; cursor: pointer; }
       .diff-cell { text-align: right; font-weight: 600; }
-      .name-cell { color: var(--kakebo-texto-principal); }
+      .name-cell { cursor: pointer; color: var(--kakebo-texto-principal); }
 
       .totals-row {
         font-weight: 700;
@@ -198,42 +178,29 @@ export interface BudgetRow {
         td { border-top: 2px solid var(--kakebo-borde); border-bottom: none; }
       }
 
-      .empty-row {
-        text-align: center;
-        color: var(--kakebo-texto-secundario);
-        font-size: 0.85rem;
-        padding: 1.5rem;
-      }
-
+      .empty-row { text-align: center; color: var(--kakebo-texto-secundario); font-size: 0.85rem; padding: 1.5rem; }
       .data-row:hover { background: rgba(30,58,95,0.025); }
+      .row-editing { background: rgba(30,58,95,0.03); }
     }
 
-    /* Mobile: hide Presupuesto column, keep Concepto + Real + Dif + Actions */
     @media (max-width: 767px) {
       .budget-tbl {
-        font-size: 0.8rem;
-        th, td { padding: 0.35rem 0.3rem; }
-        .col-name { min-width: 0; }
-        .col-amt { min-width: 0; }
-        .col-diff { min-width: 0; }
-        .col-actions { width: 52px; }
+        font-size: 0.78rem;
+        th, td { padding: 0.35rem 0.25rem; }
+        .col-amt { width: 68px; }
+        .col-diff { width: 58px; }
+        .col-actions { width: 28px; }
         .col-amt-presupuesto { display: none; }
         .cell-presupuesto { display: none; }
       }
     }
 
-    .action-cell { text-align: right; white-space: nowrap; }
+    .action-cell { text-align: right; }
 
     .icon-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 0.25rem 0.3rem;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      transition: background 0.15s;
-
-      &.edit { color: var(--kakebo-indigo); &:hover { background: rgba(30,58,95,0.1); } }
+      background: none; border: none; cursor: pointer;
+      padding: 0.25rem 0.3rem; border-radius: 4px;
+      font-size: 0.8rem; transition: background 0.15s;
       &.delete { color: var(--kakebo-rojo-soft); &:hover { background: rgba(231,76,60,0.1); } }
       &.save { color: var(--kakebo-verde); &:hover { background: rgba(39,174,96,0.1); } }
       &.cancel { color: var(--kakebo-texto-secundario); &:hover { background: rgba(0,0,0,0.05); } }
@@ -243,41 +210,21 @@ export interface BudgetRow {
     .negative { color: var(--kakebo-rojo-soft); }
     .neutral { color: var(--kakebo-texto-secundario); }
 
-    .editing-row td { background: rgba(30,58,95,0.03); }
-    .edit-input { width: 100%; font-size: 0.85rem; }
-    :host ::ng-deep .edit-number input { width: 90px !important; font-size: 0.85rem; }
+    .cell-input { width: 100%; font-size: 0.85rem; padding: 0.1rem 0.2rem; }
+    :host ::ng-deep .cell-number input { width: 100% !important; font-size: 0.82rem; text-align: right; padding: 0.1rem 0.2rem !important; }
 
-    .add-row-form {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 0 0;
-      flex-wrap: wrap;
-    }
-
+    .add-row-form { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 0 0; flex-wrap: wrap; }
     .add-input-name { flex: 1; min-width: 120px; font-size: 0.85rem; }
     :host ::ng-deep .add-number input { width: 120px !important; font-size: 0.85rem; }
 
     .add-btn {
-      display: flex;
-      align-items: center;
-      gap: 0.375rem;
-      margin-top: 0.75rem;
-      background: none;
-      border: 1px dashed var(--kakebo-borde);
-      border-radius: 8px;
-      padding: 0.5rem 1rem;
-      color: var(--kakebo-texto-secundario);
-      font-size: 0.8rem;
-      cursor: pointer;
-      width: 100%;
-      justify-content: center;
+      display: flex; align-items: center; gap: 0.375rem;
+      margin-top: 0.75rem; background: none;
+      border: 1px dashed var(--kakebo-borde); border-radius: 8px;
+      padding: 0.5rem 1rem; color: var(--kakebo-texto-secundario);
+      font-size: 0.8rem; cursor: pointer; width: 100%; justify-content: center;
       transition: border-color 0.15s, color 0.15s;
-
-      &:hover {
-        border-color: var(--kakebo-indigo);
-        color: var(--kakebo-indigo);
-      }
+      &:hover { border-color: var(--kakebo-indigo); color: var(--kakebo-indigo); }
     }
   `]
 })
@@ -289,10 +236,9 @@ export class BudgetTableComponent {
   @Output() itemUpdated = new EventEmitter<{ id: string; name: string; presupuestado: number; real: number }>();
   @Output() itemDeleted = new EventEmitter<string>();
 
-  editingId = signal<string | null>(null);
-  editName = '';
-  editPresupuestado = 0;
-  editReal = 0;
+  editingCell = signal<{ rowId: string; field: 'name' | 'presupuestado' | 'real' } | null>(null);
+  editStrValue = '';
+  editNumValue = 0;
 
   addingRow = signal(false);
   newName = '';
@@ -302,13 +248,8 @@ export class BudgetTableComponent {
     return [...this.items].sort((a, b) => b.presupuestado - a.presupuestado);
   }
 
-  totalPresupuestado() {
-    return this.items.reduce((s, r) => s + (r.presupuestado ?? 0), 0);
-  }
-
-  totalReal() {
-    return this.items.reduce((s, r) => s + (r.real ?? 0), 0);
-  }
+  totalPresupuestado() { return this.items.reduce((s, r) => s + (r.presupuestado ?? 0), 0); }
+  totalReal() { return this.items.reduce((s, r) => s + (r.real ?? 0), 0); }
 
   diffClass(diff: number): string {
     if (diff > 0) return 'positive';
@@ -316,24 +257,28 @@ export class BudgetTableComponent {
     return 'neutral';
   }
 
-  startEdit(row: BudgetRow) {
-    this.editingId.set(row.id);
-    this.editName = row.name;
-    this.editPresupuestado = row.presupuestado;
-    this.editReal = row.real;
+  startCellEdit(rowId: string, field: 'name' | 'presupuestado' | 'real', value: string | number) {
+    this.editingCell.set({ rowId, field });
+    if (field === 'name') {
+      this.editStrValue = value as string;
+    } else {
+      this.editNumValue = value as number;
+    }
   }
 
-  saveEdit(row: BudgetRow) {
+  saveCellEdit(row: BudgetRow) {
+    const cell = this.editingCell();
+    if (!cell || cell.rowId !== row.id) return;
     this.itemUpdated.emit({
       id: row.id,
-      name: this.editName,
-      presupuestado: this.editPresupuestado,
-      real: this.editReal
+      name: cell.field === 'name' ? this.editStrValue : row.name,
+      presupuestado: cell.field === 'presupuestado' ? this.editNumValue : row.presupuestado,
+      real: cell.field === 'real' ? this.editNumValue : row.real,
     });
-    this.editingId.set(null);
+    this.editingCell.set(null);
   }
 
-  cancelEdit() { this.editingId.set(null); }
+  cancelCellEdit() { this.editingCell.set(null); }
 
   confirmAdd() {
     if (!this.newName.trim()) return;
@@ -344,4 +289,4 @@ export class BudgetTableComponent {
   }
 
   onDelete(id: string) { this.itemDeleted.emit(id); }
-}
+}

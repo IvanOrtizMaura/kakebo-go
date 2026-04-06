@@ -8,6 +8,8 @@ import { SelectButtonModule } from 'primeng/selectbutton';
 import { SectionService } from '../../../../shared/services/section.service';
 import { Gasto } from '../../../../shared/models';
 
+type GastoField = 'name' | 'presupuestado' | 'real';
+
 @Component({
   selector: 'app-gastos-table',
   standalone: true,
@@ -31,48 +33,48 @@ import { Gasto } from '../../../../shared/models';
           <thead>
             <tr>
               <th>Descripción</th>
-              <th class="right">Presupuesto</th>
+              <th class="right col-amt-presupuesto">Presupuesto</th>
               <th class="right">Real</th>
-              <th class="right">Dif.</th>
+              <th class="right col-diff">Dif.</th>
               <th class="col-tipo">Tipo</th>
-              <th></th>
+              <th class="col-actions"></th>
             </tr>
           </thead>
           <tbody>
-            @for (row of sortedItems; track row.id) {
-              @if (editingId() === row.id) {
-                <tr class="editing-row">
-                  <td><input pInputText [(ngModel)]="eData.name" class="edit-input" /></td>
-                  <td><p-inputNumber [(ngModel)]="eData.presupuestado" mode="currency" currency="EUR" locale="es-ES" [inputStyle]="{width:'90px'}" /></td>
-                  <td><p-inputNumber [(ngModel)]="eData.real" mode="currency" currency="EUR" locale="es-ES" [inputStyle]="{width:'90px'}" /></td>
-                  <td [class]="'right ' + diffClass(eData.presupuestado - eData.real)">
-                    {{ (eData.presupuestado - eData.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
-                  </td>
-                  <td class="cell-tipo">
-                    <p-selectButton [(ngModel)]="eData.tipo" [options]="tipoOptions" optionLabel="label" optionValue="value" styleClass="tipo-toggle" />
-                  </td>
-                  <td class="action-cell">
-                    <button class="icon-btn save" (click)="saveEdit(row.id)"><i class="pi pi-check"></i></button>
-                    <button class="icon-btn cancel" (click)="cancelEdit()"><i class="pi pi-times"></i></button>
-                  </td>
-                </tr>
-              } @else {
-                <tr class="data-row">
-                  <td>{{ row.name }}</td>
-                  <td class="right">{{ row.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-                  <td class="right">{{ row.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-                  <td [class]="'right diff ' + diffClass(row.presupuestado - row.real)">
-                    {{ (row.presupuestado - row.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
-                  </td>
-                  <td class="cell-tipo">
-                    <span [class]="'tipo-badge ' + row.tipo">{{ row.tipo === 'fijos' ? 'FIJO' : 'VARIABLE' }}</span>
-                  </td>
-                  <td class="action-cell">
-                    <button class="icon-btn edit" (click)="startEdit(row)"><i class="pi pi-pencil"></i></button>
-                    <button class="icon-btn delete" (click)="onDelete(row.id)"><i class="pi pi-trash"></i></button>
-                  </td>
-                </tr>
-              }
+            @for (row of items; track row.id) {
+              <tr class="data-row" [class.row-editing]="editingCell()?.rowId === row.id">
+                <td (click)="startEdit(row.id, 'name', row.name)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'name') {
+                    <input pInputText [(ngModel)]="editStr" class="cell-input"
+                      (blur)="saveEdit(row)" (keydown.enter)="saveEdit(row)" (keydown.escape)="cancelEdit()" />
+                  } @else { {{ row.name }} }
+                </td>
+                <td class="right cell-presupuesto" (click)="startEdit(row.id, 'presupuestado', row.presupuestado)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'presupuestado') {
+                    <p-inputNumber [(ngModel)]="editNum" mode="currency" currency="EUR" locale="es-ES"
+                      styleClass="cell-number" [inputStyle]="{width:'100%'}"
+                      (onBlur)="saveEdit(row)" (keydown.enter)="saveEdit(row)" (keydown.escape)="cancelEdit()" />
+                  } @else { {{ row.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }} }
+                </td>
+                <td class="right" (click)="startEdit(row.id, 'real', row.real)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'real') {
+                    <p-inputNumber [(ngModel)]="editNum" mode="currency" currency="EUR" locale="es-ES"
+                      styleClass="cell-number" [inputStyle]="{width:'100%'}"
+                      (onBlur)="saveEdit(row)" (keydown.enter)="saveEdit(row)" (keydown.escape)="cancelEdit()" />
+                  } @else { {{ row.real | currency:'EUR':'symbol':'1.2-2':'es' }} }
+                </td>
+                <td [class]="'right diff col-diff ' + diffClass(row.presupuestado - row.real)">
+                  {{ (row.presupuestado - row.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
+                </td>
+                <td class="cell-tipo">
+                  <span [class]="'tipo-badge ' + row.tipo" (click)="toggleTipo(row)" style="cursor:pointer">
+                    {{ row.tipo === 'fijos' ? 'F' : 'V' }}
+                  </span>
+                </td>
+                <td class="action-cell">
+                  <button class="icon-btn delete" (click)="onDelete(row.id)"><i class="pi pi-trash"></i></button>
+                </td>
+              </tr>
             }
             @if (items.length === 0) {
               <tr><td colspan="6" class="empty-row">Sin gastos registrados.</td></tr>
@@ -81,9 +83,9 @@ import { Gasto } from '../../../../shared/models';
           <tfoot>
             <tr class="totals-row">
               <td>TOTAL</td>
-              <td class="right">{{ totalP() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+              <td class="right cell-presupuesto">{{ totalP() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="right">{{ totalR() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-              <td [class]="'right diff ' + diffClass(totalP() - totalR())">{{ (totalP() - totalR()) | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+              <td [class]="'right diff col-diff ' + diffClass(totalP() - totalR())">{{ (totalP() - totalR()) | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="cell-tipo"></td><td></td>
             </tr>
           </tfoot>
@@ -105,26 +107,30 @@ import { Gasto } from '../../../../shared/models';
   `,
   styles: [`
     .table-wrapper { overflow-x:auto; }
-    .budget-tbl { width:100%; border-collapse:collapse; font-size:.85rem;
-      th { padding:.5rem; border-bottom:2px solid var(--kakebo-borde); color:var(--kakebo-texto-secundario); font-size:.73rem; text-transform:uppercase; letter-spacing:.04em; font-weight:600; white-space:nowrap; }
-      td { padding:.5rem; border-bottom:1px solid var(--kakebo-borde); vertical-align:middle; }
+    .budget-tbl { width:100%; border-collapse:collapse; font-size:.85rem; table-layout:fixed;
+      th { padding:.5rem .4rem; border-bottom:2px solid var(--kakebo-borde); color:var(--kakebo-texto-secundario); font-size:.73rem; text-transform:uppercase; letter-spacing:.04em; font-weight:600; white-space:nowrap; overflow:hidden; }
+      td { padding:.45rem .4rem; border-bottom:1px solid var(--kakebo-borde); vertical-align:middle; overflow:hidden; cursor:pointer; }
       .right { text-align:right; }
+      .col-amt-presupuesto { width:84px; }
+      .col-diff { width:72px; }
+      .col-tipo { width:40px; text-align:center; }
+      .col-actions { width:34px; cursor:default; }
       .data-row:hover { background:rgba(30,58,95,.025); }
+      .row-editing { background:rgba(30,58,95,.03); }
       .totals-row { font-weight:700; td { border-top:2px solid var(--kakebo-borde); border-bottom:none; } }
     }
     .diff { font-weight:600; }
     .positive { color:var(--kakebo-verde); } .negative { color:var(--kakebo-rojo-soft); } .neutral { color:var(--kakebo-texto-secundario); }
-    .empty-row { text-align:center; color:var(--kakebo-texto-secundario); padding:1.5rem; }
-    .editing-row td { background:rgba(30,58,95,.03); }
-    .edit-input { width:100%; font-size:.85rem; }
-    .action-cell { text-align:right; white-space:nowrap; }
+    .empty-row { text-align:center; color:var(--kakebo-texto-secundario); padding:1.5rem; cursor:default; }
+    .action-cell { text-align:right; cursor:default; }
+    .cell-input { width:100%; font-size:.85rem; padding:.1rem .2rem; }
+    :host ::ng-deep .cell-number input { width:100% !important; font-size:.82rem; text-align:right; padding:.1rem .2rem !important; }
     .icon-btn { background:none; border:none; cursor:pointer; padding:.25rem .3rem; border-radius:4px; font-size:.8rem; transition:background .15s;
-      &.edit{color:var(--kakebo-indigo);&:hover{background:rgba(30,58,95,.1);}}
       &.delete{color:var(--kakebo-rojo-soft);&:hover{background:rgba(231,76,60,.1);}}
       &.save{color:var(--kakebo-verde);&:hover{background:rgba(39,174,96,.1);}}
       &.cancel{color:var(--kakebo-texto-secundario);&:hover{background:rgba(0,0,0,.05);}}
     }
-    .tipo-badge { font-size:.65rem; font-weight:700; padding:2px 7px; border-radius:999px; letter-spacing:.05em;
+    .tipo-badge { font-size:.65rem; font-weight:700; padding:2px 6px; border-radius:999px; letter-spacing:.05em;
       &.fijos { background:rgba(30,58,95,.1); color:var(--kakebo-indigo); }
       &.variables { background:rgba(197,160,89,.15); color:#8a6d2e; }
     }
@@ -137,8 +143,11 @@ import { Gasto } from '../../../../shared/models';
     @media (max-width: 767px) {
       .budget-tbl {
         font-size: .78rem;
-        th, td { padding: .35rem .3rem; }
+        th, td { padding: .35rem .25rem; }
         .col-tipo, .cell-tipo { display: none; }
+        .col-amt-presupuesto, .cell-presupuesto { display: none; }
+        .col-actions { width: 28px; }
+        .col-diff { width: 58px; }
       }
     }
   `]
@@ -149,17 +158,14 @@ export class GastosTableComponent {
   @Input() userId = '';
   @Output() changed = new EventEmitter<void>();
 
-  editingId = signal<string | null>(null);
+  editingCell = signal<{ rowId: string; field: GastoField } | null>(null);
   addingRow = signal(false);
 
   tipoOptions = [{ label: 'Fijo', value: 'fijos' }, { label: 'Variable', value: 'variables' }];
 
-  eData = { name: '', presupuestado: 0, real: 0, tipo: 'variables' as 'fijos' | 'variables' };
+  editStr = '';
+  editNum = 0;
   nData = { name: '', presupuestado: 0, tipo: 'variables' as 'fijos' | 'variables' };
-
-  get sortedItems(): Gasto[] {
-    return [...this.items].sort((a, b) => b.presupuestado - a.presupuestado);
-  }
 
   totalP() { return this.items.reduce((s, g) => s + g.presupuestado, 0); }
   totalR() { return this.items.reduce((s, g) => s + g.real, 0); }
@@ -167,18 +173,30 @@ export class GastosTableComponent {
 
   constructor(private service: SectionService) {}
 
-  startEdit(row: Gasto) {
-    this.editingId.set(row.id);
-    this.eData = { name: row.name, presupuestado: row.presupuestado, real: row.real, tipo: row.tipo };
+  startEdit(rowId: string, field: GastoField, value: string | number) {
+    this.editingCell.set({ rowId, field });
+    if (field === 'name') this.editStr = value as string;
+    else this.editNum = value as number;
   }
 
-  async saveEdit(id: string) {
-    await this.service.gastos.update(id, this.eData);
-    this.editingId.set(null);
+  async saveEdit(row: Gasto) {
+    const cell = this.editingCell();
+    if (!cell || cell.rowId !== row.id) return;
+    const update: Partial<Gasto> = {};
+    if (cell.field === 'name') update.name = this.editStr;
+    else if (cell.field === 'presupuestado') update.presupuestado = this.editNum;
+    else if (cell.field === 'real') update.real = this.editNum;
+    this.editingCell.set(null);
+    await this.service.gastos.update(row.id, update);
     this.changed.emit();
   }
 
-  cancelEdit() { this.editingId.set(null); }
+  cancelEdit() { this.editingCell.set(null); }
+
+  async toggleTipo(row: Gasto) {
+    await this.service.gastos.update(row.id, { tipo: row.tipo === 'fijos' ? 'variables' : 'fijos' });
+    this.changed.emit();
+  }
 
   async confirmAdd() {
     if (!this.nData.name.trim()) return;

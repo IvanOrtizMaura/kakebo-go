@@ -9,6 +9,8 @@ import { CalendarModule } from 'primeng/calendar';
 import { IngresosService } from '../../../../shared/services/ingresos.service';
 import { Ingreso } from '../../../../shared/models';
 
+type IngresoField = 'fuente' | 'esperado' | 'real' | 'dia_de_paga' | 'depositado';
+
 @Component({
   selector: 'app-ingresos-table',
   standalone: true,
@@ -34,51 +36,56 @@ import { Ingreso } from '../../../../shared/models';
               <th class="col-dia-paga">Día de Paga</th>
               <th class="right">Esperado</th>
               <th class="right">Real</th>
-              <th class="center col-depositado">Depositado</th>
-              <th></th>
+              <th class="center col-depositado">✓</th>
+              <th class="col-actions"></th>
             </tr>
           </thead>
           <tbody>
             @for (row of sortedItems; track row.id) {
-              @if (editingId() === row.id) {
-                <tr class="editing-row">
-                  <td><input pInputText [(ngModel)]="eData.fuente" class="edit-input" /></td>
-                  <td class="cell-dia-paga">
-                    <p-calendar [(ngModel)]="eData.dia_de_paga" dateFormat="dd/mm/yy"
-                      [showIcon]="false" [defaultDate]="defaultDate" styleClass="edit-cal" appendTo="body" />
-                  </td>
-                  <td>
-                    <p-inputNumber [(ngModel)]="eData.esperado" mode="currency" currency="EUR"
-                      locale="es-ES" [inputStyle]="{width:'90px'}" />
-                  </td>
-                  <td>
-                    <p-inputNumber [(ngModel)]="eData.real" mode="currency" currency="EUR"
-                      locale="es-ES" [inputStyle]="{width:'90px'}" />
-                  </td>
-                  <td class="center cell-depositado">
-                    <p-checkbox [(ngModel)]="eData.depositado" [binary]="true" />
-                  </td>
-                  <td class="action-cell">
-                    <button class="icon-btn save" (click)="saveEdit(row.id)"><i class="pi pi-check"></i></button>
-                    <button class="icon-btn cancel" (click)="cancelEdit()"><i class="pi pi-times"></i></button>
-                  </td>
-                </tr>
-              } @else {
-                <tr class="data-row">
-                  <td>{{ row.fuente }}</td>
-                  <td class="cell-dia-paga">{{ row.dia_de_paga ? (row.dia_de_paga | date:'dd/MM') : '—' }}</td>
-                  <td class="right">{{ row.esperado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-                  <td class="right">{{ row.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-                  <td class="center cell-depositado">
-                    <i [class]="row.depositado ? 'pi pi-check-circle' : 'pi pi-circle'"
-                       [style.color]="row.depositado ? 'var(--kakebo-verde)' : 'var(--kakebo-borde)'"></i>
-                  </td>
-                  <td class="action-cell">
-                    <button class="icon-btn edit" (click)="startEdit(row)"><i class="pi pi-pencil"></i></button>
-                    <button class="icon-btn delete" (click)="onDelete(row.id)"><i class="pi pi-trash"></i></button>
-                  </td>
-                </tr>
-              }
+              <tr class="data-row" [class.row-editing]="editingCell()?.rowId === row.id">
+                <!-- Fuente -->
+                <td (click)="startEdit(row.id, 'fuente', row.fuente)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'fuente') {
+                    <input pInputText [(ngModel)]="editStr" class="cell-input"
+                      (blur)="saveEdit(row)" (keydown.enter)="saveEdit(row)" (keydown.escape)="cancelEdit()" />
+                  } @else { {{ row.fuente }} }
+                </td>
+                <!-- Día de paga -->
+                <td class="cell-dia-paga" (click)="startEdit(row.id, 'dia_de_paga', row.dia_de_paga)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'dia_de_paga') {
+                    <p-calendar [(ngModel)]="editDate" dateFormat="dd/mm/yy"
+                      [showIcon]="false" [defaultDate]="defaultDate" styleClass="cell-cal"
+                      (onClose)="saveEdit(row)" />
+                  } @else { {{ row.dia_de_paga ? (row.dia_de_paga | date:'dd/MM') : '—' }} }
+                </td>
+                <!-- Esperado -->
+                <td class="right" (click)="startEdit(row.id, 'esperado', row.esperado)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'esperado') {
+                    <p-inputNumber [(ngModel)]="editNum" mode="currency" currency="EUR" locale="es-ES"
+                      styleClass="cell-number" [inputStyle]="{width:'100%'}"
+                      (onBlur)="saveEdit(row)" (keydown.enter)="saveEdit(row)" (keydown.escape)="cancelEdit()" />
+                  } @else { {{ row.esperado | currency:'EUR':'symbol':'1.2-2':'es' }} }
+                </td>
+                <!-- Real -->
+                <td class="right" (click)="startEdit(row.id, 'real', row.real)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'real') {
+                    <p-inputNumber [(ngModel)]="editNum" mode="currency" currency="EUR" locale="es-ES"
+                      styleClass="cell-number" [inputStyle]="{width:'100%'}"
+                      (onBlur)="saveEdit(row)" (keydown.enter)="saveEdit(row)" (keydown.escape)="cancelEdit()" />
+                  } @else { {{ row.real | currency:'EUR':'symbol':'1.2-2':'es' }} }
+                </td>
+                <!-- Depositado toggle -->
+                <td class="center cell-depositado">
+                  <i [class]="row.depositado ? 'pi pi-check-circle' : 'pi pi-circle'"
+                     [style.color]="row.depositado ? 'var(--kakebo-verde)' : 'var(--kakebo-borde)'"
+                     style="cursor:pointer;font-size:1rem"
+                     (click)="toggleDepositado(row)"></i>
+                </td>
+                <!-- Delete -->
+                <td class="action-cell">
+                  <button class="icon-btn delete" (click)="onDelete(row.id)"><i class="pi pi-trash"></i></button>
+                </td>
+              </tr>
             }
             @if (items.length === 0) {
               <tr><td colspan="6" class="empty-row">Sin ingresos registrados.</td></tr>
@@ -90,7 +97,7 @@ import { Ingreso } from '../../../../shared/models';
       @if (addingRow()) {
         <div class="add-row-form">
           <input pInputText [(ngModel)]="nData.fuente" placeholder="Fuente" class="add-input" />
-          <p-calendar [(ngModel)]="nData.dia_de_paga" dateFormat="dd/mm/yy" placeholder="Día de paga" [defaultDate]="defaultDate" styleClass="add-cal" appendTo="body" />
+          <p-calendar [(ngModel)]="nData.dia_de_paga" dateFormat="dd/mm/yy" placeholder="Día de paga" [defaultDate]="defaultDate" styleClass="add-cal" />
           <p-inputNumber [(ngModel)]="nData.esperado" mode="currency" currency="EUR" locale="es-ES"
             placeholder="Esperado" [inputStyle]="{width:'110px'}" />
           <button class="icon-btn save" (click)="confirmAdd()"><i class="pi pi-check"></i></button>
@@ -103,19 +110,23 @@ import { Ingreso } from '../../../../shared/models';
   `,
   styles: [`
     .table-wrapper { overflow-x: auto; }
-    .budget-tbl { width: 100%; border-collapse: collapse; font-size: .85rem;
-      th { padding: .5rem; border-bottom: 2px solid var(--kakebo-borde); color: var(--kakebo-texto-secundario); font-size: .73rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; white-space: nowrap; }
-      td { padding: .5rem; border-bottom: 1px solid var(--kakebo-borde); vertical-align: middle; }
+    .budget-tbl { width: 100%; border-collapse: collapse; font-size: .85rem; table-layout: fixed;
+      th { padding: .5rem .4rem; border-bottom: 2px solid var(--kakebo-borde); color: var(--kakebo-texto-secundario); font-size: .73rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; white-space: nowrap; overflow: hidden; }
+      td { padding: .45rem .4rem; border-bottom: 1px solid var(--kakebo-borde); vertical-align: middle; overflow: hidden; cursor: pointer; }
       .right { text-align: right; }
       .center { text-align: center; }
+      .col-dia-paga { width: 68px; }
+      .col-actions { width: 34px; }
+      .col-depositado { width: 32px; }
       .data-row:hover { background: rgba(30,58,95,.025); }
+      .row-editing { background: rgba(30,58,95,.03); }
     }
-    .empty-row { text-align:center; color:var(--kakebo-texto-secundario); padding:1.5rem; }
-    .editing-row td { background: rgba(30,58,95,.03); }
-    .edit-input { width: 100%; font-size:.85rem; }
-    .action-cell { text-align:right; white-space:nowrap; }
+    .empty-row { text-align:center; color:var(--kakebo-texto-secundario); padding:1.5rem; cursor:default; }
+    .action-cell { text-align:right; cursor:default; }
+    .cell-input { width: 100%; font-size:.85rem; padding:.1rem .2rem; }
+    :host ::ng-deep .cell-number input { width:100% !important; font-size:.82rem; text-align:right; padding:.1rem .2rem !important; }
+    :host ::ng-deep .cell-cal input { width:80px !important; font-size:.8rem; padding:.1rem .2rem !important; }
     .icon-btn { background:none; border:none; cursor:pointer; padding:.25rem .3rem; border-radius:4px; font-size:.8rem; transition:background .15s;
-      &.edit { color:var(--kakebo-indigo); &:hover{background:rgba(30,58,95,.1);} }
       &.delete { color:var(--kakebo-rojo-soft); &:hover{background:rgba(231,76,60,.1);} }
       &.save { color:var(--kakebo-verde); &:hover{background:rgba(39,174,96,.1);} }
       &.cancel { color:var(--kakebo-texto-secundario); &:hover{background:rgba(0,0,0,.05);} }
@@ -127,9 +138,10 @@ import { Ingreso } from '../../../../shared/models';
     @media (max-width: 767px) {
       .budget-tbl {
         font-size: .78rem;
-        th, td { padding: .35rem .3rem; }
+        th, td { padding: .35rem .25rem; }
         .col-dia-paga, .cell-dia-paga { display: none; }
         .col-depositado, .cell-depositado { display: none; }
+        .col-actions { width: 28px; }
       }
     }
   `]
@@ -157,10 +169,13 @@ export class IngresosTableComponent implements OnChanges {
     });
   }
 
-  editingId = signal<string | null>(null);
+  editingCell = signal<{ rowId: string; field: IngresoField } | null>(null);
   addingRow = signal(false);
 
-  eData = { fuente: '', dia_de_paga: null as Date | null, esperado: 0, real: 0, depositado: false };
+  editStr = '';
+  editNum = 0;
+  editDate: Date | null = null;
+
   nData = { fuente: '', dia_de_paga: null as Date | null, esperado: 0 };
 
   total() { return this.items.reduce((s, i) => s + i.esperado, 0); }
@@ -179,30 +194,32 @@ export class IngresosTableComponent implements OnChanges {
     return `${y}-${m}-${d}`;
   }
 
-  startEdit(row: Ingreso) {
-    this.editingId.set(row.id);
-    this.eData = {
-      fuente: row.fuente,
-      dia_de_paga: row.dia_de_paga ? this.parseLocalDate(row.dia_de_paga) : null,
-      esperado: row.esperado,
-      real: row.real,
-      depositado: row.depositado
-    };
+  startEdit(rowId: string, field: IngresoField, value: unknown) {
+    this.editingCell.set({ rowId, field });
+    if (field === 'fuente') this.editStr = value as string;
+    else if (field === 'esperado' || field === 'real') this.editNum = value as number;
+    else if (field === 'dia_de_paga') this.editDate = value ? this.parseLocalDate(value as string) : null;
   }
 
-  async saveEdit(id: string) {
-    await this.service.update(id, {
-      fuente: this.eData.fuente,
-      dia_de_paga: this.eData.dia_de_paga ? this.formatLocalDate(this.eData.dia_de_paga) : null,
-      esperado: this.eData.esperado,
-      real: this.eData.real,
-      depositado: this.eData.depositado
-    });
-    this.editingId.set(null);
+  async saveEdit(row: Ingreso) {
+    const cell = this.editingCell();
+    if (!cell || cell.rowId !== row.id) return;
+    const update: Partial<Ingreso> = {};
+    if (cell.field === 'fuente') update.fuente = this.editStr;
+    else if (cell.field === 'esperado') update.esperado = this.editNum;
+    else if (cell.field === 'real') update.real = this.editNum;
+    else if (cell.field === 'dia_de_paga') update.dia_de_paga = this.editDate ? this.formatLocalDate(this.editDate) : null;
+    this.editingCell.set(null);
+    await this.service.update(row.id, update);
     this.changed.emit();
   }
 
-  cancelEdit() { this.editingId.set(null); }
+  cancelEdit() { this.editingCell.set(null); }
+
+  async toggleDepositado(row: Ingreso) {
+    await this.service.update(row.id, { depositado: !row.depositado });
+    this.changed.emit();
+  }
 
   async confirmAdd() {
     if (!this.nData.fuente.trim()) return;
