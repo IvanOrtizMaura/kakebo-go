@@ -156,11 +156,16 @@ const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','A
       display: flex; align-items: center; justify-content: center; min-height: 60vh;
     }
     .month-view { display: flex; flex-direction: column; gap: 0; }
-    .month-header { margin-bottom: 1rem; }
+    .month-header { margin-bottom: 0.75rem; }
     .month-title {
       font-size: 1.5rem;
       font-weight: 700;
       color: var(--kakebo-indigo);
+    }
+
+    @media (max-width: 767px) {
+      .month-header { margin-bottom: 0.5rem; }
+      .month-title { font-size: 1.25rem; }
     }
 
     /* ── Sections Grid ──────────────────────────── */
@@ -180,16 +185,21 @@ const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','A
     }
 
     .hero-strip {
-      display: flex;
-      gap: 0.75rem;
-      overflow-x: auto;
-      padding-bottom: 0.25rem;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
       margin-bottom: 1.25rem;
-      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (min-width: 768px) {
+      .hero-strip {
+        display: flex;
+        gap: 0.75rem;
+        padding-bottom: 0.25rem;
+      }
     }
 
     .hero-card {
-      flex: 0 0 auto;
       background: #fff;
       border: 1px solid var(--kakebo-borde);
       border-radius: 12px;
@@ -197,13 +207,20 @@ const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','A
       display: flex;
       flex-direction: column;
       gap: 0.25rem;
-      min-width: 130px;
 
       &.highlight {
         background: var(--kakebo-indigo);
         border-color: var(--kakebo-indigo);
         .hero-label { color: rgba(255,255,255,0.7); }
         .hero-value { color: #fff; }
+      }
+    }
+
+    @media (max-width: 767px) {
+      .hero-card {
+        padding: 0.625rem 0.75rem;
+        border-radius: 8px;
+        min-width: 0;
       }
     }
 

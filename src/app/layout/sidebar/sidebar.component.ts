@@ -47,10 +47,10 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
       </nav>
 
       <div class="sidebar-footer">
-        <a routerLink="/settings" routerLinkActive="active" class="nav-item settings-item" (click)="close()">
+        <span class="nav-item settings-item disabled">
           <i class="pi pi-cog"></i>
           <span>Configuración</span>
-        </a>
+        </span>
         <button class="signout-btn" (click)="onSignOut()">
           <i class="pi pi-sign-out"></i>
           <span>Cerrar sesión</span>
@@ -105,10 +105,10 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
     }
 
     .sidebar-logo {
-      width: 100px;
+      width: 90px;
       display: block;
-      margin: 0 auto 0.75rem;
-      border-radius: 10px;
+      margin: 0 auto 0.5rem;
+      filter: brightness(0) invert(1);
     }
 
     .sidebar-user {
@@ -200,6 +200,7 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
     .settings-item {
       padding: 0.625rem 1rem;
       .pi { font-size: 0.875rem; }
+      &.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
     }
 
     .signout-btn {

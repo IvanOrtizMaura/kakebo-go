@@ -18,7 +18,7 @@ interface SectionTotals { presupuestado: number; real: number; }
           <thead>
             <tr>
               <th>Categoría</th>
-              <th class="right">Presupuestado</th>
+              <th class="right col-presupuestado">Presupuestado</th>
               <th class="right">Real</th>
               <th class="right">Diferencia</th>
             </tr>
@@ -26,13 +26,13 @@ interface SectionTotals { presupuestado: number; real: number; }
           <tbody>
             <tr class="row-ingresos">
               <td><i class="pi pi-arrow-up-right"></i> Ingresos</td>
-              <td class="right">{{ ingresosTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+              <td class="right cell-presupuestado">{{ ingresosTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="right">{{ ingresosTotals.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="right">—</td>
             </tr>
             <tr>
               <td><i class="pi pi-file"></i> Facturas</td>
-              <td class="right">{{ facturasTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+              <td class="right cell-presupuestado">{{ facturasTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="right">{{ facturasTotals.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td [class]="'right diff ' + diffClass(facturasTotals.presupuestado - facturasTotals.real)">
                 {{ (facturasTotals.presupuestado - facturasTotals.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
@@ -40,7 +40,7 @@ interface SectionTotals { presupuestado: number; real: number; }
             </tr>
             <tr>
               <td><i class="pi pi-shopping-cart"></i> Gastos</td>
-              <td class="right">{{ gastosTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+              <td class="right cell-presupuestado">{{ gastosTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="right">{{ gastosTotals.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td [class]="'right diff ' + diffClass(gastosTotals.presupuestado - gastosTotals.real)">
                 {{ (gastosTotals.presupuestado - gastosTotals.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
@@ -48,7 +48,7 @@ interface SectionTotals { presupuestado: number; real: number; }
             </tr>
             <tr>
               <td><i class="pi pi-wallet"></i> Ahorros</td>
-              <td class="right">{{ ahorrosTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+              <td class="right cell-presupuestado">{{ ahorrosTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="right">{{ ahorrosTotals.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td [class]="'right diff ' + diffClass(ahorrosTotals.presupuestado - ahorrosTotals.real)">
                 {{ (ahorrosTotals.presupuestado - ahorrosTotals.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
@@ -56,7 +56,7 @@ interface SectionTotals { presupuestado: number; real: number; }
             </tr>
             <tr>
               <td><i class="pi pi-box"></i> Fondos Ahorro</td>
-              <td class="right">{{ fondosTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+              <td class="right cell-presupuestado">{{ fondosTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="right">{{ fondosTotals.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td [class]="'right diff ' + diffClass(fondosTotals.presupuestado - fondosTotals.real)">
                 {{ (fondosTotals.presupuestado - fondosTotals.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
@@ -65,7 +65,7 @@ interface SectionTotals { presupuestado: number; real: number; }
             @if (parejaTotals) {
               <tr>
                 <td><i class="pi pi-users"></i> Pareja</td>
-                <td class="right">{{ parejaTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                <td class="right cell-presupuestado">{{ parejaTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
                 <td class="right">{{ parejaTotals.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
                 <td [class]="'right diff ' + diffClass(parejaTotals.presupuestado - parejaTotals.real)">
                   {{ (parejaTotals.presupuestado - parejaTotals.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
@@ -74,7 +74,7 @@ interface SectionTotals { presupuestado: number; real: number; }
             }
             <tr>
               <td><i class="pi pi-credit-card"></i> Deudas</td>
-              <td class="right">{{ deudasTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+              <td class="right cell-presupuestado">{{ deudasTotals.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="right">{{ deudasTotals.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td [class]="'right diff ' + diffClass(deudasTotals.presupuestado - deudasTotals.real)">
                 {{ (deudasTotals.presupuestado - deudasTotals.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
@@ -84,13 +84,13 @@ interface SectionTotals { presupuestado: number; real: number; }
           <tfoot>
             <tr class="totals-row">
               <td>TOTAL GASTOS</td>
-              <td class="right">{{ totalGastosP() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+              <td class="right cell-presupuestado">{{ totalGastosP() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="right">{{ totalGastosR() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td></td>
             </tr>
             <tr class="restante-row">
               <td>CANTIDAD RESTANTE</td>
-              <td [class]="'right bold ' + diffClass(ingresosTotals.presupuestado - totalGastosP())">
+              <td [class]="'right bold cell-presupuestado ' + diffClass(ingresosTotals.presupuestado - totalGastosP())">
                 {{ (ingresosTotals.presupuestado - totalGastosP()) | currency:'EUR':'symbol':'1.2-2':'es' }}
               </td>
               <td [class]="'right bold ' + diffClass(ingresosTotals.real - totalGastosR())">
@@ -121,6 +121,15 @@ interface SectionTotals { presupuestado: number; real: number; }
     .totals-row td { font-weight: 700; border-top: 2px solid var(--kakebo-borde); border-bottom: none; color: var(--kakebo-indigo); }
     .restante-row td { font-weight: 700; font-size: .9rem; border-bottom: none; background: rgba(30,58,95,.03); }
     .bold { font-weight: 700; font-size: .9rem; }
+
+    @media (max-width: 767px) {
+      .resumen-tbl {
+        font-size: .78rem;
+        th, td { padding: .35rem .3rem; }
+        .col-presupuestado { display: none; }
+        .cell-presupuestado { display: none; }
+      }
+    }
   `]
 })
 export class ResumenComponent {

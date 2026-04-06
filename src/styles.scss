@@ -25,6 +25,7 @@ html, body {
   color: var(--kakebo-texto-principal);
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 a {
@@ -65,6 +66,13 @@ a {
   border: 1px solid var(--kakebo-borde);
   padding: 1.25rem;
   margin-bottom: 1rem;
+}
+
+@media (max-width: 767px) {
+  .kakebo-card {
+    padding: 0.75rem;
+    border-radius: 8px;
+  }
 }
 
 /* Section header */

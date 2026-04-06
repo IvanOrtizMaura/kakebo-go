@@ -36,6 +36,8 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
       flex-direction: column;
       margin-left: 240px;
       transition: margin-left 0.25s ease;
+      min-width: 0;
+      overflow-x: hidden;
     }
 
     @media (max-width: 767px) {
@@ -72,6 +74,8 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
       max-width: 900px;
       width: 100%;
       margin: 0 auto;
+      min-width: 0;
+      overflow-x: hidden;
     }
 
     @media (min-width: 768px) {

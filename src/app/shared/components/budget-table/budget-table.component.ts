@@ -43,7 +43,7 @@ export interface BudgetRow {
             <tr>
               <th class="col-name">Concepto</th>
               <ng-content select="[extraHeaders]"></ng-content>
-              <th class="col-amt">Presupuesto</th>
+              <th class="col-amt col-amt-presupuesto">Presupuesto</th>
               <th class="col-amt">Real</th>
               <th class="col-diff">Dif.</th>
               <th class="col-actions"></th>
@@ -57,7 +57,7 @@ export interface BudgetRow {
                     <input pInputText [(ngModel)]="editName" class="edit-input" />
                   </td>
                   <ng-content select="[extraEditCells]"></ng-content>
-                  <td>
+                  <td class="cell-presupuesto">
                     <p-inputNumber [(ngModel)]="editPresupuestado" mode="currency"
                       currency="EUR" locale="es-ES" styleClass="edit-number" [inputStyle]="{width:'100%'}" />
                   </td>
@@ -77,7 +77,7 @@ export interface BudgetRow {
                 <tr class="data-row">
                   <td class="name-cell">{{ row.name }}</td>
                   <ng-content select="[extraDataCells]"></ng-content>
-                  <td class="amt-cell">{{ row.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                  <td class="amt-cell cell-presupuesto">{{ row.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
                   <td class="amt-cell">{{ row.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
                   <td [class]="'diff-cell ' + diffClass(row.presupuestado - row.real)">
                     {{ (row.presupuestado - row.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
@@ -98,7 +98,7 @@ export interface BudgetRow {
             <tr class="totals-row">
               <td class="total-label-cell">TOTAL</td>
               <td></td>
-              <td class="amt-cell">{{ totalPresupuestado() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+              <td class="amt-cell cell-presupuesto">{{ totalPresupuestado() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="amt-cell">{{ totalReal() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td [class]="'diff-cell ' + diffClass(totalPresupuestado() - totalReal())">
                 {{ (totalPresupuestado() - totalReal()) | currency:'EUR':'symbol':'1.2-2':'es' }}
@@ -206,6 +206,20 @@ export interface BudgetRow {
       }
 
       .data-row:hover { background: rgba(30,58,95,0.025); }
+    }
+
+    /* Mobile: hide Presupuesto column, keep Concepto + Real + Dif + Actions */
+    @media (max-width: 767px) {
+      .budget-tbl {
+        font-size: 0.8rem;
+        th, td { padding: 0.35rem 0.3rem; }
+        .col-name { min-width: 0; }
+        .col-amt { min-width: 0; }
+        .col-diff { min-width: 0; }
+        .col-actions { width: 52px; }
+        .col-amt-presupuesto { display: none; }
+        .cell-presupuesto { display: none; }
+      }
     }
 
     .action-cell { text-align: right; white-space: nowrap; }

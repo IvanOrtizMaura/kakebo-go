@@ -34,7 +34,7 @@ import { Gasto } from '../../../../shared/models';
               <th class="right">Presupuesto</th>
               <th class="right">Real</th>
               <th class="right">Dif.</th>
-              <th>Tipo</th>
+              <th class="col-tipo">Tipo</th>
               <th></th>
             </tr>
           </thead>
@@ -48,7 +48,7 @@ import { Gasto } from '../../../../shared/models';
                   <td [class]="'right ' + diffClass(eData.presupuestado - eData.real)">
                     {{ (eData.presupuestado - eData.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
                   </td>
-                  <td>
+                  <td class="cell-tipo">
                     <p-selectButton [(ngModel)]="eData.tipo" [options]="tipoOptions" optionLabel="label" optionValue="value" styleClass="tipo-toggle" />
                   </td>
                   <td class="action-cell">
@@ -64,7 +64,7 @@ import { Gasto } from '../../../../shared/models';
                   <td [class]="'right diff ' + diffClass(row.presupuestado - row.real)">
                     {{ (row.presupuestado - row.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
                   </td>
-                  <td>
+                  <td class="cell-tipo">
                     <span [class]="'tipo-badge ' + row.tipo">{{ row.tipo === 'fijos' ? 'FIJO' : 'VARIABLE' }}</span>
                   </td>
                   <td class="action-cell">
@@ -84,7 +84,7 @@ import { Gasto } from '../../../../shared/models';
               <td class="right">{{ totalP() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="right">{{ totalR() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td [class]="'right diff ' + diffClass(totalP() - totalR())">{{ (totalP() - totalR()) | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-              <td></td><td></td>
+              <td class="cell-tipo"></td><td></td>
             </tr>
           </tfoot>
         </table>
@@ -133,6 +133,14 @@ import { Gasto } from '../../../../shared/models';
     .add-btn { display:flex; align-items:center; gap:.375rem; margin-top:.75rem; background:none; border:1px dashed var(--kakebo-borde); border-radius:8px; padding:.5rem 1rem; color:var(--kakebo-texto-secundario); font-size:.8rem; cursor:pointer; width:100%; justify-content:center; transition:border-color .15s,color .15s; &:hover{border-color:var(--kakebo-indigo);color:var(--kakebo-indigo);} }
     :host ::ng-deep .tipo-toggle .p-selectbutton .p-button { font-size:.7rem; padding:.2rem .5rem; }
     :host ::ng-deep .tipo-toggle .p-selectbutton .p-button.p-highlight { background:var(--kakebo-indigo); border-color:var(--kakebo-indigo); }
+
+    @media (max-width: 767px) {
+      .budget-tbl {
+        font-size: .78rem;
+        th, td { padding: .35rem .3rem; }
+        .col-tipo, .cell-tipo { display: none; }
+      }
+    }
   `]
 })
 export class GastosTableComponent {

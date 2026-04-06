@@ -34,7 +34,7 @@ import { Factura } from '../../../../shared/models';
               <th class="right">Presupuesto</th>
               <th class="right">Real</th>
               <th class="right">Dif.</th>
-              <th class="center">Recurrente</th>
+              <th class="center col-recurrente">Recurrente</th>
               <th></th>
             </tr>
           </thead>
@@ -48,7 +48,7 @@ import { Factura } from '../../../../shared/models';
                   <td [class]="'right ' + diffClass(eData.presupuestado - eData.real)">
                     {{ (eData.presupuestado - eData.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
                   </td>
-                  <td class="center"><p-checkbox [(ngModel)]="eData.is_recurring" [binary]="true" /></td>
+                  <td class="center cell-recurrente"><p-checkbox [(ngModel)]="eData.is_recurring" [binary]="true" /></td>
                   <td class="action-cell">
                     <button class="icon-btn save" (click)="saveEdit(row.id)"><i class="pi pi-check"></i></button>
                     <button class="icon-btn cancel" (click)="cancelEdit()"><i class="pi pi-times"></i></button>
@@ -62,7 +62,7 @@ import { Factura } from '../../../../shared/models';
                   <td [class]="'right diff ' + diffClass(row.presupuestado - row.real)">
                     {{ (row.presupuestado - row.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
                   </td>
-                  <td class="center">
+                  <td class="center cell-recurrente">
                     <i [class]="row.is_recurring ? 'pi pi-refresh' : 'pi pi-circle'"
                        [style.color]="row.is_recurring ? 'var(--kakebo-dorado)' : 'var(--kakebo-borde)'"></i>
                   </td>
@@ -125,6 +125,14 @@ import { Factura } from '../../../../shared/models';
     .add-row-form { display:flex; align-items:center; gap:.5rem; padding:.75rem 0 0; flex-wrap:wrap; }
     .add-input { flex:1; min-width:100px; font-size:.85rem; }
     .add-btn { display:flex; align-items:center; gap:.375rem; margin-top:.75rem; background:none; border:1px dashed var(--kakebo-borde); border-radius:8px; padding:.5rem 1rem; color:var(--kakebo-texto-secundario); font-size:.8rem; cursor:pointer; width:100%; justify-content:center; transition:border-color .15s,color .15s; &:hover{border-color:var(--kakebo-indigo);color:var(--kakebo-indigo);} }
+
+    @media (max-width: 767px) {
+      .budget-tbl {
+        font-size: .78rem;
+        th, td { padding: .35rem .3rem; }
+        .col-recurrente, .cell-recurrente { display: none; }
+      }
+    }
   `]
 })
 export class FacturasTableComponent {

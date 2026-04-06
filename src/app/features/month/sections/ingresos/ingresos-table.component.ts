@@ -31,10 +31,10 @@ import { Ingreso } from '../../../../shared/models';
           <thead>
             <tr>
               <th>Fuente</th>
-              <th>Día de Paga</th>
+              <th class="col-dia-paga">Día de Paga</th>
               <th class="right">Esperado</th>
               <th class="right">Real</th>
-              <th class="center">Depositado</th>
+              <th class="center col-depositado">Depositado</th>
               <th></th>
             </tr>
           </thead>
@@ -43,7 +43,7 @@ import { Ingreso } from '../../../../shared/models';
               @if (editingId() === row.id) {
                 <tr class="editing-row">
                   <td><input pInputText [(ngModel)]="eData.fuente" class="edit-input" /></td>
-                  <td>
+                  <td class="cell-dia-paga">
                     <p-calendar [(ngModel)]="eData.dia_de_paga" dateFormat="dd/mm/yy"
                       [showIcon]="false" [defaultDate]="defaultDate" styleClass="edit-cal" />
                   </td>
@@ -55,7 +55,7 @@ import { Ingreso } from '../../../../shared/models';
                     <p-inputNumber [(ngModel)]="eData.real" mode="currency" currency="EUR"
                       locale="es-ES" [inputStyle]="{width:'90px'}" />
                   </td>
-                  <td class="center">
+                  <td class="center cell-depositado">
                     <p-checkbox [(ngModel)]="eData.depositado" [binary]="true" />
                   </td>
                   <td class="action-cell">
@@ -66,10 +66,10 @@ import { Ingreso } from '../../../../shared/models';
               } @else {
                 <tr class="data-row">
                   <td>{{ row.fuente }}</td>
-                  <td>{{ row.dia_de_paga ? (row.dia_de_paga | date:'dd/MM') : '—' }}</td>
+                  <td class="cell-dia-paga">{{ row.dia_de_paga ? (row.dia_de_paga | date:'dd/MM') : '—' }}</td>
                   <td class="right">{{ row.esperado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
                   <td class="right">{{ row.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-                  <td class="center">
+                  <td class="center cell-depositado">
                     <i [class]="row.depositado ? 'pi pi-check-circle' : 'pi pi-circle'"
                        [style.color]="row.depositado ? 'var(--kakebo-verde)' : 'var(--kakebo-borde)'"></i>
                   </td>
@@ -123,6 +123,15 @@ import { Ingreso } from '../../../../shared/models';
     .add-row-form { display:flex; align-items:center; gap:.5rem; padding:.75rem 0 0; flex-wrap:wrap; }
     .add-input { flex:1; min-width:100px; font-size:.85rem; }
     .add-btn { display:flex; align-items:center; gap:.375rem; margin-top:.75rem; background:none; border:1px dashed var(--kakebo-borde); border-radius:8px; padding:.5rem 1rem; color:var(--kakebo-texto-secundario); font-size:.8rem; cursor:pointer; width:100%; justify-content:center; transition:border-color .15s, color .15s; &:hover{border-color:var(--kakebo-indigo);color:var(--kakebo-indigo);} }
+
+    @media (max-width: 767px) {
+      .budget-tbl {
+        font-size: .78rem;
+        th, td { padding: .35rem .3rem; }
+        .col-dia-paga, .cell-dia-paga { display: none; }
+        .col-depositado, .cell-depositado { display: none; }
+      }
+    }
   `]
 })
 export class IngresosTableComponent implements OnChanges {
