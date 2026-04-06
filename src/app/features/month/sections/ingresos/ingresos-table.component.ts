@@ -45,7 +45,7 @@ import { Ingreso } from '../../../../shared/models';
                   <td><input pInputText [(ngModel)]="eData.fuente" class="edit-input" /></td>
                   <td>
                     <p-calendar [(ngModel)]="eData.dia_de_paga" dateFormat="dd/mm/yy"
-                      [showIcon]="false" [defaultDate]="defaultDate" styleClass="edit-cal" />
+                      [showIcon]="false" [defaultDate]="defaultDate" styleClass="edit-cal" appendTo="body" />
                   </td>
                   <td>
                     <p-inputNumber [(ngModel)]="eData.esperado" mode="currency" currency="EUR"
@@ -90,7 +90,7 @@ import { Ingreso } from '../../../../shared/models';
       @if (addingRow()) {
         <div class="add-row-form">
           <input pInputText [(ngModel)]="nData.fuente" placeholder="Fuente" class="add-input" />
-          <p-calendar [(ngModel)]="nData.dia_de_paga" dateFormat="dd/mm/yy" placeholder="Día de paga" [defaultDate]="defaultDate" styleClass="add-cal" />
+          <p-calendar [(ngModel)]="nData.dia_de_paga" dateFormat="dd/mm/yy" placeholder="Día de paga" [defaultDate]="defaultDate" styleClass="add-cal" appendTo="body" />
           <p-inputNumber [(ngModel)]="nData.esperado" mode="currency" currency="EUR" locale="es-ES"
             placeholder="Esperado" [inputStyle]="{width:'110px'}" />
           <button class="icon-btn save" (click)="confirmAdd()"><i class="pi pi-check"></i></button>
