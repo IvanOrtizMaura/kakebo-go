@@ -50,7 +50,7 @@ export interface BudgetRow {
             </tr>
           </thead>
           <tbody>
-            @for (row of items; track row.id) {
+            @for (row of sortedItems; track row.id) {
               @if (editingId() === row.id) {
                 <tr class="editing-row">
                   <td>
@@ -283,6 +283,10 @@ export class BudgetTableComponent {
   addingRow = signal(false);
   newName = '';
   newPresupuestado = 0;
+
+  get sortedItems(): BudgetRow[] {
+    return [...this.items].sort((a, b) => b.presupuestado - a.presupuestado);
+  }
 
   totalPresupuestado() {
     return this.items.reduce((s, r) => s + (r.presupuestado ?? 0), 0);
