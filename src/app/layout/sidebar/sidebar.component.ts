@@ -47,10 +47,10 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
       </nav>
 
       <div class="sidebar-footer">
-        <a routerLink="/settings" routerLinkActive="active" class="nav-item settings-item" (click)="close()">
+        <span class="nav-item settings-item disabled">
           <i class="pi pi-cog"></i>
           <span>Configuración</span>
-        </a>
+        </span>
         <button class="signout-btn" (click)="onSignOut()">
           <i class="pi pi-sign-out"></i>
           <span>Cerrar sesión</span>
@@ -73,26 +73,21 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
       top: 0;
       bottom: 0;
       z-index: 100;
-      transform: translateX(0);
+      transform: translateX(-100%);
       transition: transform 0.25s ease;
+      &.open { transform: translateX(0); }
     }
 
-    @media (max-width: 767px) {
-      .sidebar {
-        transform: translateX(-100%);
-        &.open { transform: translateX(0); }
-      }
-      .sidebar-overlay {
-        display: block;
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.4);
-        z-index: 99;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.25s ease;
-        &.visible { opacity: 1; pointer-events: all; }
-      }
+    .sidebar-overlay {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 99;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      &.visible { opacity: 1; pointer-events: all; }
     }
 
     @media (min-width: 768px) {
@@ -105,10 +100,10 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
     }
 
     .sidebar-logo {
-      width: 100px;
+      width: 90px;
       display: block;
-      margin: 0 auto 0.75rem;
-      border-radius: 10px;
+      margin: 0 auto 0.5rem;
+      border-radius: 8px;
     }
 
     .sidebar-user {
@@ -200,6 +195,7 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
     .settings-item {
       padding: 0.625rem 1rem;
       .pi { font-size: 0.875rem; }
+      &.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
     }
 
     .signout-btn {
@@ -218,7 +214,7 @@ const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov
   `]
 })
 export class SidebarComponent {
-  open = signal(false);
+  open = signal(typeof window !== 'undefined' && window.innerWidth >= 768);
   year = signal(new Date().getFullYear());
   readonly currentYear = new Date().getFullYear();
   readonly currentMonth = new Date().getMonth() + 1;

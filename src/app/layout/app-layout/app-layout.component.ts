@@ -8,7 +8,7 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
   standalone: true,
   imports: [RouterOutlet, ButtonModule, SidebarComponent],
   template: `
-    <div class="app-shell">
+    <div class="app-shell" [class.sidebar-open]="sidebar.open()">
       <app-sidebar #sidebar />
 
       <div class="main-area">
@@ -34,16 +34,17 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
       flex: 1;
       display: flex;
       flex-direction: column;
-      margin-left: 240px;
+      margin-left: 0;
       transition: margin-left 0.25s ease;
+      min-width: 0;
     }
 
-    @media (max-width: 767px) {
-      .main-area { margin-left: 0; }
+    .app-shell.sidebar-open .main-area {
+      margin-left: 240px;
     }
 
     .topbar {
-      display: none;
+      display: flex;
       align-items: center;
       padding: 0.75rem 1rem;
       background: #fff;
@@ -51,10 +52,6 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
       position: sticky;
       top: 0;
       z-index: 50;
-    }
-
-    @media (max-width: 767px) {
-      .topbar { display: flex; }
     }
 
     .hamburger {
@@ -68,10 +65,11 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 
     .main-content {
       flex: 1;
-      padding: 1.5rem 1rem;
+      padding: 1.5rem 1.25rem;
       max-width: 900px;
       width: 100%;
       margin: 0 auto;
+      min-width: 0;
     }
 
     @media (min-width: 768px) {

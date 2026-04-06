@@ -8,6 +8,8 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { FacturasService } from '../../../../shared/services/facturas.service';
 import { Factura } from '../../../../shared/models';
 
+type FacturaField = 'name' | 'presupuestado' | 'real';
+
 @Component({
   selector: 'app-facturas-table',
   standalone: true,
@@ -31,47 +33,49 @@ import { Factura } from '../../../../shared/models';
           <thead>
             <tr>
               <th>Descripción</th>
-              <th class="right">Presupuesto</th>
+              <th class="right col-amt-presupuesto">Presupuesto</th>
               <th class="right">Real</th>
-              <th class="right">Dif.</th>
-              <th class="center">Recurrente</th>
-              <th></th>
+              <th class="right col-diff">Dif.</th>
+              <th class="center col-recurrente">↻</th>
+              <th class="col-actions"></th>
             </tr>
           </thead>
           <tbody>
             @for (row of sortedItems; track row.id) {
-              @if (editingId() === row.id) {
-                <tr class="editing-row">
-                  <td><input pInputText [(ngModel)]="eData.name" class="edit-input" /></td>
-                  <td><p-inputNumber [(ngModel)]="eData.presupuestado" mode="currency" currency="EUR" locale="es-ES" [inputStyle]="{width:'90px'}" /></td>
-                  <td><p-inputNumber [(ngModel)]="eData.real" mode="currency" currency="EUR" locale="es-ES" [inputStyle]="{width:'90px'}" /></td>
-                  <td [class]="'right ' + diffClass(eData.presupuestado - eData.real)">
-                    {{ (eData.presupuestado - eData.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
-                  </td>
-                  <td class="center"><p-checkbox [(ngModel)]="eData.is_recurring" [binary]="true" /></td>
-                  <td class="action-cell">
-                    <button class="icon-btn save" (click)="saveEdit(row.id)"><i class="pi pi-check"></i></button>
-                    <button class="icon-btn cancel" (click)="cancelEdit()"><i class="pi pi-times"></i></button>
-                  </td>
-                </tr>
-              } @else {
-                <tr class="data-row">
-                  <td>{{ row.name }}</td>
-                  <td class="right">{{ row.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-                  <td class="right">{{ row.real | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-                  <td [class]="'right diff ' + diffClass(row.presupuestado - row.real)">
-                    {{ (row.presupuestado - row.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
-                  </td>
-                  <td class="center">
-                    <i [class]="row.is_recurring ? 'pi pi-refresh' : 'pi pi-circle'"
-                       [style.color]="row.is_recurring ? 'var(--kakebo-dorado)' : 'var(--kakebo-borde)'"></i>
-                  </td>
-                  <td class="action-cell">
-                    <button class="icon-btn edit" (click)="startEdit(row)"><i class="pi pi-pencil"></i></button>
-                    <button class="icon-btn delete" (click)="onDelete(row.id)"><i class="pi pi-trash"></i></button>
-                  </td>
-                </tr>
-              }
+              <tr class="data-row" [class.row-editing]="editingCell()?.rowId === row.id">
+                <td (click)="startEdit(row.id, 'name', row.name)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'name') {
+                    <input pInputText [(ngModel)]="editStr" class="cell-input"
+                      (blur)="saveEdit(row)" (keydown.enter)="saveEdit(row)" (keydown.escape)="cancelEdit()" />
+                  } @else { {{ row.name }} }
+                </td>
+                <td class="right cell-presupuesto" (click)="startEdit(row.id, 'presupuestado', row.presupuestado)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'presupuestado') {
+                    <p-inputNumber [(ngModel)]="editNum" mode="currency" currency="EUR" locale="es-ES"
+                      styleClass="cell-number" [inputStyle]="{width:'100%'}"
+                      (onBlur)="saveEdit(row)" (keydown.enter)="saveEdit(row)" (keydown.escape)="cancelEdit()" />
+                  } @else { {{ row.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }} }
+                </td>
+                <td class="right" (click)="startEdit(row.id, 'real', row.real)">
+                  @if (editingCell()?.rowId === row.id && editingCell()?.field === 'real') {
+                    <p-inputNumber [(ngModel)]="editNum" mode="currency" currency="EUR" locale="es-ES"
+                      styleClass="cell-number" [inputStyle]="{width:'100%'}"
+                      (onBlur)="saveEdit(row)" (keydown.enter)="saveEdit(row)" (keydown.escape)="cancelEdit()" />
+                  } @else { {{ row.real | currency:'EUR':'symbol':'1.2-2':'es' }} }
+                </td>
+                <td [class]="'right diff col-diff ' + diffClass(row.presupuestado - row.real)">
+                  {{ (row.presupuestado - row.real) | currency:'EUR':'symbol':'1.2-2':'es' }}
+                </td>
+                <td class="center cell-recurrente">
+                  <i [class]="row.is_recurring ? 'pi pi-refresh' : 'pi pi-circle'"
+                     [style.color]="row.is_recurring ? 'var(--kakebo-dorado)' : 'var(--kakebo-borde)'"
+                     style="cursor:pointer;font-size:1rem"
+                     (click)="toggleRecurrente(row)"></i>
+                </td>
+                <td class="action-cell">
+                  <button class="icon-btn delete" (click)="onDelete(row.id)"><i class="pi pi-trash"></i></button>
+                </td>
+              </tr>
             }
             @if (items.length === 0) {
               <tr><td colspan="6" class="empty-row">Sin facturas. Las facturas recurrentes se copian del mes anterior.</td></tr>
@@ -80,10 +84,10 @@ import { Factura } from '../../../../shared/models';
           <tfoot>
             <tr class="totals-row">
               <td>TOTAL</td>
-              <td class="right">{{ totalP() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+              <td class="right cell-presupuesto">{{ totalP() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
               <td class="right">{{ totalR() | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-              <td [class]="'right diff ' + diffClass(totalP() - totalR())">{{ (totalP() - totalR()) | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-              <td></td><td></td>
+              <td [class]="'right diff col-diff ' + diffClass(totalP() - totalR())">{{ (totalP() - totalR()) | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+              <td class="cell-recurrente"></td><td></td>
             </tr>
           </tfoot>
         </table>
@@ -103,21 +107,25 @@ import { Factura } from '../../../../shared/models';
   `,
   styles: [`
     .table-wrapper { overflow-x: auto; }
-    .budget-tbl { width:100%; border-collapse:collapse; font-size:.85rem;
-      th { padding:.5rem; border-bottom:2px solid var(--kakebo-borde); color:var(--kakebo-texto-secundario); font-size:.73rem; text-transform:uppercase; letter-spacing:.04em; font-weight:600; white-space:nowrap; }
-      td { padding:.5rem; border-bottom:1px solid var(--kakebo-borde); vertical-align:middle; }
+    .budget-tbl { width:100%; border-collapse:collapse; font-size:.85rem; table-layout:fixed;
+      th { padding:.5rem .4rem; border-bottom:2px solid var(--kakebo-borde); color:var(--kakebo-texto-secundario); font-size:.73rem; text-transform:uppercase; letter-spacing:.04em; font-weight:600; white-space:nowrap; overflow:hidden; }
+      td { padding:.45rem .4rem; border-bottom:1px solid var(--kakebo-borde); vertical-align:middle; overflow:hidden; cursor:pointer; }
       .right { text-align:right; } .center { text-align:center; }
+      .col-amt-presupuesto { width:84px; }
+      .col-diff { width:72px; }
+      .col-recurrente { width:32px; }
+      .col-actions { width:34px; cursor:default; }
       .data-row:hover { background:rgba(30,58,95,.025); }
+      .row-editing { background:rgba(30,58,95,.03); }
       .totals-row { font-weight:700; td { border-top:2px solid var(--kakebo-borde); border-bottom:none; } }
     }
     .diff { font-weight:600; }
     .positive { color:var(--kakebo-verde); } .negative { color:var(--kakebo-rojo-soft); } .neutral { color:var(--kakebo-texto-secundario); }
-    .empty-row { text-align:center; color:var(--kakebo-texto-secundario); padding:1.5rem; }
-    .editing-row td { background:rgba(30,58,95,.03); }
-    .edit-input { width:100%; font-size:.85rem; }
-    .action-cell { text-align:right; white-space:nowrap; }
+    .empty-row { text-align:center; color:var(--kakebo-texto-secundario); padding:1.5rem; cursor:default; }
+    .action-cell { text-align:right; cursor:default; }
+    .cell-input { width:100%; font-size:.85rem; padding:.1rem .2rem; }
+    :host ::ng-deep .cell-number input { width:100% !important; font-size:.82rem; text-align:right; padding:.1rem .2rem !important; }
     .icon-btn { background:none; border:none; cursor:pointer; padding:.25rem .3rem; border-radius:4px; font-size:.8rem; transition:background .15s;
-      &.edit{color:var(--kakebo-indigo);&:hover{background:rgba(30,58,95,.1);}}
       &.delete{color:var(--kakebo-rojo-soft);&:hover{background:rgba(231,76,60,.1);}}
       &.save{color:var(--kakebo-verde);&:hover{background:rgba(39,174,96,.1);}}
       &.cancel{color:var(--kakebo-texto-secundario);&:hover{background:rgba(0,0,0,.05);}}
@@ -125,6 +133,17 @@ import { Factura } from '../../../../shared/models';
     .add-row-form { display:flex; align-items:center; gap:.5rem; padding:.75rem 0 0; flex-wrap:wrap; }
     .add-input { flex:1; min-width:100px; font-size:.85rem; }
     .add-btn { display:flex; align-items:center; gap:.375rem; margin-top:.75rem; background:none; border:1px dashed var(--kakebo-borde); border-radius:8px; padding:.5rem 1rem; color:var(--kakebo-texto-secundario); font-size:.8rem; cursor:pointer; width:100%; justify-content:center; transition:border-color .15s,color .15s; &:hover{border-color:var(--kakebo-indigo);color:var(--kakebo-indigo);} }
+
+    @media (max-width: 767px) {
+      .budget-tbl {
+        font-size: .78rem;
+        th, td { padding: .35rem .25rem; }
+        .col-recurrente, .cell-recurrente { display: none; }
+        .col-amt-presupuesto, .cell-presupuesto { display: none; }
+        .col-actions { width: 28px; }
+        .col-diff { width: 58px; }
+      }
+    }
   `]
 })
 export class FacturasTableComponent {
@@ -133,10 +152,12 @@ export class FacturasTableComponent {
   @Input() userId = '';
   @Output() changed = new EventEmitter<void>();
 
-  editingId = signal<string | null>(null);
+  editingCell = signal<{ rowId: string; field: FacturaField } | null>(null);
   addingRow = signal(false);
 
-  eData = { name: '', presupuestado: 0, real: 0, is_recurring: true };
+  editStr = '';
+  editNum = 0;
+
   nData = { name: '', presupuestado: 0 };
 
   totalP() { return this.items.reduce((s, f) => s + f.presupuestado, 0); }
@@ -149,26 +170,41 @@ export class FacturasTableComponent {
 
   constructor(private service: FacturasService) {}
 
-  startEdit(row: Factura) {
-    this.editingId.set(row.id);
-    this.eData = { name: row.name, presupuestado: row.presupuestado, real: row.real, is_recurring: row.is_recurring };
+  startEdit(rowId: string, field: FacturaField, value: string | number) {
+    this.editingCell.set({ rowId, field });
+    if (field === 'name') this.editStr = value as string;
+    else this.editNum = value as number;
   }
 
-  async saveEdit(id: string) {
-    await this.service.update(id, { name: this.eData.name, presupuestado: this.eData.presupuestado, real: this.eData.real, is_recurring: this.eData.is_recurring });
-    this.editingId.set(null);
+  async saveEdit(row: Factura) {
+    const cell = this.editingCell();
+    if (!cell || cell.rowId !== row.id) return;
+    const update: Partial<Factura> = {};
+    if (cell.field === 'name') update.name = this.editStr;
+    else if (cell.field === 'presupuestado') update.presupuestado = this.editNum;
+    else if (cell.field === 'real') update.real = this.editNum;
+    this.editingCell.set(null);
+    await this.service.update(row.id, update);
     this.changed.emit();
   }
 
-  cancelEdit() { this.editingId.set(null); }
+  cancelEdit() { this.editingCell.set(null); }
+
+  async toggleRecurrente(row: Factura) {
+    await this.service.update(row.id, { is_recurring: !row.is_recurring });
+    this.changed.emit();
+  }
 
   async confirmAdd() {
     if (!this.nData.name.trim()) return;
-    await this.service.add({ month_id: this.monthId, user_id: this.userId, name: this.nData.name.trim(), fecha: null, presupuestado: this.nData.presupuestado, real: 0, is_recurring: true, order_index: this.items.length });
+    await this.service.add({ month_id: this.monthId, user_id: this.userId, name: this.nData.name.trim(), presupuestado: this.nData.presupuestado, real: 0, is_recurring: true, fecha: null, order_index: this.items.length });
     this.nData = { name: '', presupuestado: 0 };
     this.addingRow.set(false);
     this.changed.emit();
   }
 
-  async onDelete(id: string) { await this.service.remove(id); this.changed.emit(); }
+  async onDelete(id: string) {
+    await this.service.remove(id);
+    this.changed.emit();
+  }
 }
