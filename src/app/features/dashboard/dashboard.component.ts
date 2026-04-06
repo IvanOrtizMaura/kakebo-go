@@ -17,6 +17,7 @@ interface MonthCard {
   hasData: boolean;
   isCurrent: boolean;
   isFuture: boolean;
+  isPast: boolean;
 }
 
 @Component({
@@ -63,12 +64,17 @@ interface MonthCard {
             class="month-card"
             [class.current]="card.isCurrent"
             [class.future]="card.isFuture"
+            [class.past]="card.isPast"
             [class.has-data]="card.hasData"
             (click)="goToMonth(card.monthNum)">
             <div class="mc-header">
               <span class="mc-name">{{ card.name }}</span>
               @if (card.isCurrent) {
-                <span class="current-pill">Mes actual</span>
+                <span class="state-pill current-pill">Actual</span>
+              } @else if (card.isPast) {
+                <span class="state-pill past-pill">Pasado</span>
+              } @else if (card.isFuture) {
+                <span class="state-pill future-pill">Próximo</span>
               }
             </div>
             @if (card.hasData) {
@@ -206,6 +212,10 @@ interface MonthCard {
         border-color: var(--kakebo-indigo);
       }
 
+      &.past {
+        background: rgba(0,0,0,.01);
+      }
+
       &.current {
         border-color: var(--kakebo-indigo);
         border-width: 2px;
@@ -220,6 +230,29 @@ interface MonthCard {
       &:hover .mc-cta { opacity: 1; }
     }
 
+    .state-pill {
+      font-size: .6rem;
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .current-pill {
+      background: var(--kakebo-dorado);
+      color: var(--kakebo-indigo);
+    }
+
+    .past-pill {
+      background: rgba(0,0,0,.07);
+      color: var(--kakebo-texto-secundario);
+    }
+
+    .future-pill {
+      background: rgba(30,58,95,.1);
+      color: var(--kakebo-indigo);
+    }
+
     .mc-header {
       display: flex;
       align-items: center;
@@ -231,15 +264,6 @@ interface MonthCard {
       font-weight: 700;
       font-size: .9rem;
       color: var(--kakebo-indigo);
-    }
-
-    .current-pill {
-      font-size: .6rem;
-      background: var(--kakebo-dorado);
-      color: var(--kakebo-indigo);
-      border-radius: 999px;
-      padding: 1px 6px;
-      font-weight: 700;
     }
 
     .mc-amounts { display: flex; flex-direction: column; gap: .25rem; }
@@ -300,10 +324,11 @@ export class DashboardComponent implements OnInit {
         const monthNum = i + 1;
         const isCurrent = monthNum === this.currentMonth && this.year() === this.currentYear;
         const isFuture = this.year() === this.currentYear ? monthNum > this.currentMonth : this.year() > this.currentYear;
+        const isPast = !isCurrent && !isFuture;
         const rec = months?.find(m => m.month === monthNum);
 
         if (!rec) {
-          return { monthNum, name: MONTH_NAMES[i], ingresos: 0, gastos: 0, ahorros: 0, balance: 0, hasData: false, isCurrent, isFuture };
+          return { monthNum, name: MONTH_NAMES[i], ingresos: 0, gastos: 0, ahorros: 0, balance: 0, hasData: false, isCurrent, isFuture, isPast };
         }
 
         const [{ data: ingresos }, { data: facturas }, { data: gastos }, { data: ahorros }, { data: pareja }, { data: fondos_monthly }, { data: deudas_monthly }] = await Promise.all([
@@ -322,7 +347,7 @@ export class DashboardComponent implements OnInit {
         const totalGastos = sum(facturas) + sum(gastos) + totalAhorros + sum(pareja) + sum(deudas_monthly);
         const hasData = totalIngresos > 0 || totalGastos > 0;
 
-        return { monthNum, name: MONTH_NAMES[i], ingresos: totalIngresos, gastos: totalGastos, ahorros: totalAhorros, balance: totalIngresos - totalGastos, hasData, isCurrent, isFuture };
+        return { monthNum, name: MONTH_NAMES[i], ingresos: totalIngresos, gastos: totalGastos, ahorros: totalAhorros, balance: totalIngresos - totalGastos, hasData, isCurrent, isFuture, isPast };
       })
     );
 
