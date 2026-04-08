@@ -217,7 +217,11 @@ export class IngresosTableComponent implements OnChanges {
   cancelEdit() { this.editingCell.set(null); }
 
   async toggleDepositado(row: Ingreso) {
-    await this.service.update(row.id, { depositado: !row.depositado });
+    const newDepositado = !row.depositado;
+    await this.service.update(row.id, {
+      depositado: newDepositado,
+      real: newDepositado ? row.esperado : 0
+    });
     this.changed.emit();
   }
 
