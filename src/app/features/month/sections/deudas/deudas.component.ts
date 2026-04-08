@@ -1,6 +1,6 @@
 import { Component, Input, OnChanges, Output, EventEmitter, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ProgressBarModule } from 'primeng/progressbar';
@@ -15,7 +15,7 @@ interface DeudaWithMonthly extends Deuda {
 @Component({
   selector: 'app-deudas',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, ButtonModule, InputNumberModule, ProgressBarModule],
+  imports: [FormsModule, CurrencyPipe, DecimalPipe, ButtonModule, InputNumberModule, ProgressBarModule],
   template: `
     <div class="kakebo-card">
       <div class="section-header">
@@ -35,8 +35,9 @@ interface DeudaWithMonthly extends Deuda {
         </p>
       }
 
-      @for (d of deudas(); track d.id) {
-        <div class="deuda-item">
+      <div class="deudas-grid">
+        @for (d of deudas(); track d.id) {
+          <div class="deuda-item">
           <div class="deuda-header">
             <div class="deuda-info">
               <span class="deuda-name">{{ d.name }}</span>
@@ -49,7 +50,10 @@ interface DeudaWithMonthly extends Deuda {
               <span class="deuda-total">/ {{ d.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
             </div>
           </div>
-          <p-progressBar [value]="d.progress" [showValue]="false" styleClass="deuda-progress" />
+          <div class="deuda-progress-row">
+            <p-progressBar [value]="d.progress" [showValue]="false" styleClass="deuda-progress" />
+            <span class="deuda-pct">{{ d.progress | number:'1.0-0' }}%</span>
+          </div>
           <div class="deuda-monthly-row">
             <div class="mo-info">
               <span class="mo-label">Cuota:</span>
@@ -69,6 +73,7 @@ interface DeudaWithMonthly extends Deuda {
           </div>
         </div>
       }
+      </div>
 
       <!-- Archived toggle -->
       <button class="archived-toggle" (click)="toggleArchived()">
@@ -95,7 +100,9 @@ interface DeudaWithMonthly extends Deuda {
   styles: [`
     .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:.75rem; }
     .empty-msg { color:var(--kakebo-texto-secundario); font-size:.875rem; text-align:center; padding:1.5rem 0; line-height:1.6; }
-    .deuda-item { border:1px solid var(--kakebo-borde); border-radius:10px; padding:.875rem; margin-bottom:.75rem; &.archived{opacity:.6;} }
+    .deudas-grid { display:grid; grid-template-columns:1fr; gap:.75rem; }
+    @media (min-width:768px) { .deudas-grid { grid-template-columns: repeat(3, 1fr); } }
+    .deuda-item { border:1px solid var(--kakebo-borde); border-radius:10px; padding:.875rem; &.archived{opacity:.6;} }
     .deuda-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:.5rem; gap:.5rem; }
     .deuda-info { display:flex; flex-direction:column; gap:.2rem; }
     .deuda-name { font-weight:700; color:var(--kakebo-indigo); font-size:.9rem; }
@@ -103,6 +110,9 @@ interface DeudaWithMonthly extends Deuda {
     .deuda-amounts { text-align:right; .deuda-remaining{font-weight:700;font-size:.95rem;color:var(--kakebo-rojo-soft);display:block;} .deuda-total{font-size:.75rem;color:var(--kakebo-texto-secundario);} }
     :host ::ng-deep .deuda-progress .p-progressbar { height:6px; border-radius:999px; background:var(--kakebo-borde); .p-progressbar-value{background:var(--kakebo-rojo);border-radius:999px;} }
     :host ::ng-deep .deuda-progress.done .p-progressbar { .p-progressbar-value{background:var(--kakebo-verde);} }
+    .deuda-progress-row { display:flex; align-items:center; gap:.5rem; margin:.4rem 0 .2rem; }
+    .deuda-progress-row p-progressBar { flex:1; }
+    .deuda-pct { font-size:.72rem; font-weight:700; color:var(--kakebo-texto-secundario); white-space:nowrap; min-width:2.5rem; text-align:right; }
     .deuda-monthly-row { display:flex; justify-content:space-between; align-items:center; margin-top:.5rem; flex-wrap:wrap; gap:.5rem; .mo-label{font-size:.75rem;color:var(--kakebo-texto-secundario);} .mo-value{font-weight:600;font-size:.85rem;margin-left:.25rem;} }
     .mo-info,.mo-real { display:flex; align-items:center; gap:.25rem; }
     .icon-btn { background:none; border:none; cursor:pointer; padding:.25rem .3rem; border-radius:4px; font-size:.8rem; transition:background .15s;

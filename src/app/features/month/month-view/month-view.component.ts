@@ -145,8 +145,8 @@ const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','A
                 (itemDeleted)="deletePareja($event)" />
             }
 
-            <!-- Deudas -->
-            <app-deudas
+            <!-- Deudas (full width) -->
+            <app-deudas class="col-full"
               [monthId]="monthRecord()!.id"
               [userId]="userId()"
               (totalsChanged)="onDeudasTotalsChanged($event)" />
