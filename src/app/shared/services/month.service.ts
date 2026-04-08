@@ -16,10 +16,16 @@ export class MonthService {
       .single();
 
     if (existing) {
-      await Promise.all([
-        this.syncAhorroTemplates(userId, existing as Month),
-        this.syncParejaFromProfile(userId, existing as Month)
-      ]);
+      const now = new Date();
+      const isCurrentOrFuture = year > now.getFullYear() ||
+        (year === now.getFullYear() && month >= now.getMonth() + 1);
+
+      if (isCurrentOrFuture) {
+        await Promise.all([
+          this.syncAhorroTemplates(userId, existing as Month),
+          this.syncParejaFromProfile(userId, existing as Month)
+        ]);
+      }
       return existing as Month;
     }
 
