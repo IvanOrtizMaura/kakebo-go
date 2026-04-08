@@ -127,6 +127,12 @@ import { Deuda, AhorroTemplate, UserProfile } from '../../shared/models';
           @if (deudas().length === 0) {
             <p class="empty-hint">Sin deudas activas. Añade una abajo.</p>
           }
+          @if (deudas().length > 0) {
+            <div class="list-item deuda-total-row">
+              <span class="deuda-total-label">Total pendiente</span>
+              <span class="deuda-total-amount">{{ totalDeudaPendiente() | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+            </div>
+          }
         </div>
 
         <!-- Archived debts toggle -->
@@ -562,6 +568,21 @@ import { Deuda, AhorroTemplate, UserProfile } from '../../shared/models';
     .badge-savings { background: rgba(197,160,89,.15); color: #8a6d2e; }
     .badge-interest { background: rgba(220,38,38,.08); color: var(--kakebo-rojo-soft); }
 
+    .deuda-total-row {
+      background: rgba(220,38,38,.05);
+      border-top: 2px solid var(--kakebo-borde);
+      padding: .75rem 1.5rem;
+      font-weight: 700;
+    }
+    .deuda-total-label {
+      font-size: .85rem;
+      color: var(--kakebo-texto-principal);
+    }
+    .deuda-total-amount {
+      font-size: 1rem;
+      color: var(--kakebo-rojo);
+    }
+
     .deuda-remaining-bar {
       height: 4px;
       background: var(--kakebo-borde);
@@ -659,6 +680,10 @@ export class SettingsComponent implements OnInit {
 
   totalIngresosFijos = computed(() =>
     this.templates().reduce((sum, t) => sum + (t.esperado ?? 0), 0)
+  );
+
+  totalDeudaPendiente = computed(() =>
+    this.deudas().reduce((sum, d) => sum + (d.amount_remaining ?? 0), 0)
   );
 
   // Template add form
