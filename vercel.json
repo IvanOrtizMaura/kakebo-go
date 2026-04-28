@@ -1,0 +1,37 @@
+{
+  "buildCommand": "pnpm install && pnpm build",
+  "devCommand": "ng serve",
+  "installCommand": "pnpm install",
+  "framework": "angular",
+  "outputDirectory": "dist/kakebo-go/browser",
+  "env": {
+    "NODE_ENV": "production",
+    "NG_APP_ENVIRONMENT": "production"
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
