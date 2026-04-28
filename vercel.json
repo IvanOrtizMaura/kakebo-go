@@ -1,12 +1,11 @@
 {
-  "buildCommand": "pnpm install && pnpm build",
+  "buildCommand": "pnpm install && NG_APP_SUPABASE_URL=$NG_APP_SUPABASE_URL NG_APP_SUPABASE_ANON_KEY=$NG_APP_SUPABASE_ANON_KEY pnpm build",
   "devCommand": "ng serve",
   "installCommand": "pnpm install",
   "framework": "angular",
   "outputDirectory": "dist/kakebo-go/browser",
   "env": {
-    "NODE_ENV": "production",
-    "NG_APP_ENVIRONMENT": "production"
+    "NODE_ENV": "production"
   },
   "headers": [
     {
