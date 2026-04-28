@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm install && NG_APP_SUPABASE_URL=$NG_APP_SUPABASE_URL NG_APP_SUPABASE_ANON_KEY=$NG_APP_SUPABASE_ANON_KEY pnpm build",
+  "buildCommand": "pnpm install && pnpm build && sed -i \"s|NG_APP_SUPABASE_URL_PLACEHOLDER|$NG_APP_SUPABASE_URL|g\" dist/kakebo-go/browser/*.js && sed -i \"s|NG_APP_SUPABASE_ANON_KEY_PLACEHOLDER|$NG_APP_SUPABASE_ANON_KEY|g\" dist/kakebo-go/browser/*.js",
   "devCommand": "ng serve",
   "installCommand": "pnpm install",
   "framework": "angular",

@@ -4,8 +4,23 @@ import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class SupabaseService {
-  readonly client: SupabaseClient = createClient(
-    environment.supabaseUrl,
-    environment.supabaseKey
-  );
+  private _client: SupabaseClient | null = null;
+
+  get client(): SupabaseClient {
+    if (!this._client) {
+      this._client = createClient(
+        environment.supabaseUrl,
+        environment.supabaseKey,
+        {
+          auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: true,
+            storage: typeof window !== 'undefined' ? window.localStorage : undefined
+          }
+        }
+      );
+    }
+    return this._client;
+  }
 }
