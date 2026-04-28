@@ -16,8 +16,7 @@ export class SupabaseService {
             autoRefreshToken: true,
             persistSession: true,
             detectSessionInUrl: true,
-            storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-            lock: { acquireTimeout: 5000 }
+            storage: typeof window !== 'undefined' ? window.localStorage : undefined
           }
         }
       );
