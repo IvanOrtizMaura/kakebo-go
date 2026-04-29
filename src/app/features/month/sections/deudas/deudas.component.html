@@ -1,0 +1,97 @@
+<p-toast />
+<p-confirmDialog />
+
+<div class="kakebo-card">
+  <div class="section-header">
+    <div style="display:flex;align-items:center;gap:.5rem">
+      <h2>Deudas</h2>
+      <i class="pi pi-info-circle" style="color:var(--kakebo-texto-secundario);font-size:.85rem"
+         title="Registro de tus deudas. Gestiona tus deudas desde Configuración."></i>
+    </div>
+  </div>
+
+  @if (deudas().length === 0) {
+    <p class="empty-msg">
+      Sin deudas activas. ¡Eso es buena señal! 🎉<br>
+      <span style="font-size:.78rem;color:var(--kakebo-texto-secundario)">
+        Gestiona tus deudas desde <strong>Configuración</strong>.
+      </span>
+    </p>
+  }
+
+  <div class="deudas-grid">
+    @for (d of deudas(); track d.id) {
+      <div class="deuda-item">
+        <div class="deuda-header">
+          <div class="deuda-info">
+            <span class="deuda-name">{{ d.name }}</span>
+            <span class="deuda-type-badge" [class.bank]="d.type === 'bank'" [class.savings]="d.type === 'savings'">
+              {{ d.type === 'bank' ? 'Préstamo ' + d.interest_rate + '%' : 'Préstamo personal' }}
+            </span>
+          </div>
+          <div class="deuda-amounts">
+            <span class="deuda-remaining">{{ d.amount_remaining | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+            <span class="deuda-total">/ {{ d.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+          </div>
+        </div>
+        <div class="deuda-progress-row">
+          <p-progressBar [value]="d.progress" [showValue]="false" styleClass="deuda-progress" />
+          <span class="deuda-pct">{{ d.progress | number:'1.0-0' }}%</span>
+        </div>
+        <div class="deuda-monthly-row">
+          <div class="mo-info">
+            <span class="mo-label">Cuota:</span>
+            <span class="mo-value">{{ d.monthly_payment | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+          </div>
+          <div class="mo-real">
+            <span class="mo-label">Pagado este mes:</span>
+            @if (editingMonthlyId() === d.id) {
+              <p-inputNumber [(ngModel)]="editingAmount" mode="currency" currency="EUR" locale="es-ES" [inputStyle]="{width:'100px'}" />
+              <button class="icon-btn save" (click)="saveMonthly(d)"><i class="pi pi-check"></i></button>
+              <button class="icon-btn cancel" (click)="editingMonthlyId.set(null)"><i class="pi pi-times"></i></button>
+            } @else {
+              <span class="mo-value">{{ d.monthly?.real ?? 0 | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+              <button class="icon-btn edit" (click)="startMonthly(d)"><i class="pi pi-pencil"></i></button>
+            }
+          </div>
+        </div>
+        <div class="deuda-actions">
+          <button class="action-btn archive" (click)="confirmArchive(d)" title="Archivar deuda">
+            <i class="pi pi-inbox"></i>
+          </button>
+          <button class="action-btn delete" (click)="confirmDelete(d)" title="Eliminar deuda">
+            <i class="pi pi-trash"></i>
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <button class="archived-toggle" (click)="toggleArchived()">
+    <i class="pi pi-archive"></i>
+    {{ showArchived() ? 'Ocultar archivadas' : 'Ver deudas archivadas' }}
+  </button>
+
+  @if (showArchived()) {
+    @for (d of archived(); track d.id) {
+      <div class="deuda-item archived">
+        <div class="deuda-header">
+          <span class="deuda-name">{{ d.name }}</span>
+          <span class="archived-badge">Pagada ✓</span>
+        </div>
+        <p-progressBar [value]="100" [showValue]="false" styleClass="deuda-progress done" />
+        <div class="deuda-actions">
+          <button class="action-btn unarchive" (click)="confirmUnarchive(d)" title="Restaurar deuda">
+            <i class="pi pi-replay"></i>
+          </button>
+          <button class="action-btn delete" (click)="confirmDelete(d)" title="Eliminar deuda">
+            <i class="pi pi-trash"></i>
+          </button>
+        </div>
+      </div>
+    }
+    @if (archived().length === 0) {
+      <p class="empty-msg" style="padding:.5rem 0">Sin deudas archivadas.</p>
+    }
+  }
+</div>

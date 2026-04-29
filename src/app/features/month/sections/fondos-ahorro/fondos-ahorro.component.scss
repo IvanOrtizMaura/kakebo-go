@@ -1,0 +1,157 @@
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .75rem;
+}
+
+.add-btn-inline {
+  background: none;
+  border: 1px solid var(--kakebo-borde);
+  border-radius: 6px;
+  padding: .3rem .75rem;
+  font-size: .8rem;
+  color: var(--kakebo-indigo);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  transition: border-color .15s;
+
+  &:hover {
+    border-color: var(--kakebo-indigo);
+  }
+}
+
+.empty-msg {
+  color: var(--kakebo-texto-secundario);
+  font-size: .875rem;
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.fondo-item {
+  border: 1px solid var(--kakebo-borde);
+  border-radius: 10px;
+  padding: .875rem;
+  margin-bottom: .75rem;
+  cursor: pointer;
+  transition: opacity .2s;
+
+  &.pagado {
+    opacity: .65;
+  }
+}
+
+.check-icon {
+  color: var(--kakebo-verde);
+  font-size: .85rem;
+  margin-left: .35rem;
+  vertical-align: middle;
+}
+
+.fondo-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: .5rem;
+  margin-bottom: .5rem;
+}
+
+.fondo-info {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+
+.fondo-name {
+  font-weight: 700;
+  color: var(--kakebo-indigo);
+  font-size: .9rem;
+}
+
+.fondo-amounts {
+  font-size: .75rem;
+  color: var(--kakebo-texto-secundario);
+}
+
+.fondo-real {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  text-align: right;
+}
+
+.fondo-months {
+  font-size: .75rem;
+  color: var(--kakebo-texto-secundario);
+  white-space: nowrap;
+}
+
+.fondo-pct {
+  font-size: .875rem;
+  font-weight: 700;
+  color: var(--kakebo-indigo);
+  white-space: nowrap;
+
+  &.done {
+    color: var(--kakebo-verde);
+  }
+}
+
+:host ::ng-deep .fondo-progress .p-progressbar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--kakebo-borde);
+
+  .p-progressbar-value {
+    background: var(--kakebo-dorado);
+    border-radius: 999px;
+  }
+}
+
+.fondo-complete-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: .5rem;
+}
+
+.complete-badge {
+  font-size: .75rem;
+  color: var(--kakebo-verde);
+  font-weight: 600;
+}
+
+.icon-btn-sm {
+  background: var(--kakebo-indigo);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: .25rem .75rem;
+  font-size: .75rem;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--kakebo-indigo) !important;
+  border-color: var(--kakebo-indigo) !important;
+}
+
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: .875rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .375rem;
+
+  label {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--kakebo-texto-principal);
+  }
+}

@@ -39,6 +39,21 @@ export class DeudasService {
     if (error) throw error;
   }
 
+  async unarchive(id: string): Promise<void> {
+    const { error } = await this.supabase.client
+      .from('deudas').update({ is_active: true }).eq('id', id);
+    if (error) throw error;
+  }
+
+  async delete(id: string): Promise<void> {
+    // Eliminar registros mensuales primero
+    await this.supabase.client.from('deudas_monthly').delete().eq('deuda_id', id);
+    // Luego eliminar la deuda
+    const { error } = await this.supabase.client
+      .from('deudas').delete().eq('id', id);
+    if (error) throw error;
+  }
+
   async getMonthlyByMonth(monthId: string): Promise<DeudaMonthly[]> {
     const { data } = await this.supabase.client
       .from('deudas_monthly').select('*').eq('month_id', monthId);

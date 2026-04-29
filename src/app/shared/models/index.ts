@@ -79,6 +79,7 @@ export interface FondoAhorro {
   name: string;
   total_amount: number;
   monthly_amount: number;
+  num_months: number;
   start_year: number;
   start_month: number;
   is_active: boolean;

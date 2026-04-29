@@ -1,0 +1,254 @@
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .75rem;
+}
+
+.empty-msg {
+  color: var(--kakebo-texto-secundario);
+  font-size: .875rem;
+  text-align: center;
+  padding: 1.5rem 0;
+  line-height: 1.6;
+}
+
+.deudas-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .75rem;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.deuda-item {
+  border: 1px solid var(--kakebo-borde);
+  border-radius: 10px;
+  padding: .875rem;
+
+  &.archived {
+    opacity: .6;
+  }
+}
+
+.deuda-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: .5rem;
+  gap: .5rem;
+}
+
+.deuda-info {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+
+.deuda-name {
+  font-weight: 700;
+  color: var(--kakebo-indigo);
+  font-size: .9rem;
+}
+
+.deuda-type-badge {
+  font-size: .7rem;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 600;
+
+  &.bank {
+    background: rgba(30, 58, 95, .1);
+    color: var(--kakebo-indigo);
+  }
+
+  &.savings {
+    background: rgba(197, 160, 89, .15);
+    color: #8a6d2e;
+  }
+}
+
+.deuda-amounts {
+  text-align: right;
+
+  .deuda-remaining {
+    font-weight: 700;
+    font-size: .95rem;
+    color: var(--kakebo-rojo-soft);
+    display: block;
+  }
+
+  .deuda-total {
+    font-size: .75rem;
+    color: var(--kakebo-texto-secundario);
+  }
+}
+
+:host ::ng-deep .deuda-progress .p-progressbar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--kakebo-borde);
+
+  .p-progressbar-value {
+    background: var(--kakebo-rojo);
+    border-radius: 999px;
+  }
+}
+
+:host ::ng-deep .deuda-progress.done .p-progressbar {
+  .p-progressbar-value {
+    background: var(--kakebo-verde);
+  }
+}
+
+.deuda-progress-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: .4rem 0 .2rem;
+
+  p-progressBar {
+    flex: 1;
+  }
+}
+
+.deuda-pct {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--kakebo-texto-secundario);
+  white-space: nowrap;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.deuda-monthly-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: .5rem;
+  flex-wrap: wrap;
+  gap: .5rem;
+
+  .mo-label {
+    font-size: .75rem;
+    color: var(--kakebo-texto-secundario);
+  }
+
+  .mo-value {
+    font-weight: 600;
+    font-size: .85rem;
+    margin-left: .25rem;
+  }
+}
+
+.mo-info,
+.mo-real {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: .25rem .3rem;
+  border-radius: 4px;
+  font-size: .8rem;
+  transition: background .15s;
+
+  &.edit {
+    color: var(--kakebo-indigo);
+
+    &:hover {
+      background: rgba(30, 58, 95, .1);
+    }
+  }
+
+  &.save {
+    color: var(--kakebo-verde);
+
+    &:hover {
+      background: rgba(39, 174, 96, .1);
+    }
+  }
+
+  &.cancel {
+    color: var(--kakebo-texto-secundario);
+
+    &:hover {
+      background: rgba(0, 0, 0, .05);
+    }
+  }
+}
+
+.deuda-actions {
+  display: flex;
+  gap: .375rem;
+  margin-top: .5rem;
+  justify-content: flex-end;
+}
+
+.action-btn {
+  background: none;
+  border: 1px solid;
+  border-radius: 6px;
+  padding: .375rem .5rem;
+  cursor: pointer;
+  font-size: .8rem;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.archive {
+    color: var(--kakebo-texto-secundario);
+    border-color: var(--kakebo-texto-secundario);
+
+    &:hover {
+      background: rgba(0, 0, 0, .05);
+    }
+  }
+
+  &.unarchive {
+    color: var(--kakebo-verde);
+    border-color: var(--kakebo-verde);
+
+    &:hover {
+      background: rgba(39, 174, 96, .1);
+    }
+  }
+
+  &.delete {
+    color: var(--kakebo-rojo);
+    border-color: var(--kakebo-rojo);
+
+    &:hover {
+      background: rgba(220, 53, 69, .1);
+    }
+  }
+}
+
+.archived-toggle {
+  background: none;
+  border: none;
+  color: var(--kakebo-texto-secundario);
+  font-size: .8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+  padding: .5rem 0;
+
+  &:hover {
+    color: var(--kakebo-indigo);
+  }
+}
+
+.archived-badge {
+  font-size: .75rem;
+  color: var(--kakebo-verde);
+  font-weight: 600;
+}

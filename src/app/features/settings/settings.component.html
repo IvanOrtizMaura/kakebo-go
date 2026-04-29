@@ -1,0 +1,422 @@
+<div class="settings-page">
+  <h1 class="page-title">Configuración</h1>
+
+  <!-- ── Ingresos Fijos ─────────────────────────────────────── -->
+  <section class="settings-section">
+    <div class="section-header">
+      <h2 class="section-title">Ingresos Fijos</h2>
+      <p class="section-desc">Configura tus fuentes de ingreso recurrentes. Se copiarán automáticamente al abrir cada mes nuevo.</p>
+    </div>
+
+    <div class="items-list">
+      @for (t of templates(); track t.id) {
+        <div class="list-item">
+          @if (editingTemplateId() === t.id) {
+            <div class="edit-row">
+              <input class="inp" [(ngModel)]="editTplFuente" placeholder="Fuente" />
+              <input class="inp w-sm" type="number" [(ngModel)]="editTplEsperado" placeholder="Importe €" min="0" />
+              <button class="btn-save" (click)="saveTemplate(t.id)">Guardar</button>
+              <button class="btn-cancel" (click)="cancelEditTemplate()">✕</button>
+            </div>
+          } @else {
+            <div class="item-info">
+              <span class="item-name">{{ t.fuente }}</span>
+              <span class="item-meta">
+                {{ t.esperado | currency:'EUR':'symbol':'1.0-0':'es' }}
+              </span>
+            </div>
+            <div class="item-actions">
+              <button class="btn-icon" title="Editar" (click)="startEditTemplate(t)">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="btn-icon danger" title="Eliminar" (click)="removeTemplate(t.id)">
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+          }
+        </div>
+      }
+      @if (templates().length === 0) {
+        <p class="empty-hint">Sin ingresos fijos. Añade uno abajo.</p>
+      }
+    </div>
+
+    <div class="add-form">
+      <h3 class="add-title">Nuevo ingreso fijo</h3>
+      <div class="form-row">
+        <input class="inp" [(ngModel)]="newTplFuente" placeholder="Fuente (ej: Nómina)" />
+        <input class="inp w-sm" type="number" [(ngModel)]="newTplEsperado" placeholder="Importe esperado €" min="0" />
+        <button class="btn-add" (click)="addTemplate()" [disabled]="!newTplFuente.trim()">
+          <i class="pi pi-plus"></i> Añadir
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Deudas ─────────────────────────────────────────────── -->
+  <section class="settings-section">
+    <div class="section-header">
+      <h2 class="section-title">Deudas</h2>
+      <p class="section-desc">Configura todas tus deudas. Se mostrarán automáticamente en todos los meses.</p>
+    </div>
+
+    <!-- Active debts list -->
+    <div class="items-list">
+      @for (d of deudas(); track d.id) {
+        <div class="list-item deuda-list-item">
+          @if (editingDeudaId() === d.id) {
+            <div class="edit-row">
+              <input class="inp" [(ngModel)]="editDeudaNombre" placeholder="Nombre" />
+              <input class="inp w-sm" type="number" [(ngModel)]="editDeudaCuota" placeholder="Cuota mensual €" min="0" step="0.01" />
+              <input class="inp w-xs" type="number" [(ngModel)]="editDeudaMeses" placeholder="Nº meses" min="1" title="Dejar vacío = indefinida" />
+              <button class="btn-save" (click)="saveDeuda(d.id)">Guardar</button>
+              <button class="btn-cancel" (click)="cancelEditDeuda()">✕</button>
+            </div>
+          } @else {
+            <div class="item-info">
+              <div class="deuda-badges-row">
+                <span class="item-name">{{ d.name }}</span>
+                <span class="badge" [class.badge-bank]="d.type==='bank'" [class.badge-savings]="d.type==='savings'">
+                  {{ d.type === 'bank' ? 'Banco' : 'Ahorros' }}
+                </span>
+                @if (d.interest_rate > 0) {
+                  <span class="badge badge-interest">{{ d.interest_rate }}% TIN</span>
+                }
+              </div>
+              <span class="item-meta">
+                Capital: {{ d.principal_amount | currency:'EUR':'symbol':'1.2-2':'es' }}
+                · Total: {{ d.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }}
+                · Cuota: {{ d.monthly_payment | currency:'EUR':'symbol':'1.2-2':'es' }}/mes
+                @if (d.num_months) { · {{ d.num_months }} meses }
+                @else { · Indefinida }
+                @if (d.start_year && d.start_month) {
+                  · Inicio: {{ meses[d.start_month - 1] }} {{ d.start_year }}
+                }
+              </span>
+              <div class="deuda-remaining-bar">
+                <div class="remaining-fill" [style.width.%]="deudaProgress(d)"></div>
+              </div>
+              <span class="item-meta">Pendiente: {{ d.amount_remaining | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+            </div>
+            <div class="item-actions">
+              <button class="btn-icon" title="Editar" (click)="startEditDeuda(d)">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="btn-icon danger" title="Archivar" (click)="archiveDeuda(d.id)">
+                <i class="pi pi-archive"></i>
+              </button>
+            </div>
+          }
+        </div>
+      }
+      @if (deudas().length === 0) {
+        <p class="empty-hint">Sin deudas activas. Añade una abajo.</p>
+      }
+      @if (deudas().length > 0) {
+        <div class="list-item deuda-total-row">
+          <span class="deuda-total-label">Total pendiente</span>
+          <span class="deuda-total-amount">{{ totalDeudaPendiente() | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+        </div>
+      }
+    </div>
+
+    <!-- Archived debts toggle -->
+    <div class="archived-toggle-row">
+      <button class="btn-link" (click)="toggleDeudasArchivadas()">
+        <i class="pi pi-archive"></i>
+        {{ showDeudasArchivadas() ? 'Ocultar archivadas' : 'Ver deudas archivadas (' + deudasArchivadas().length + ')' }}
+      </button>
+    </div>
+    @if (showDeudasArchivadas()) {
+      <div class="items-list">
+        @for (d of deudasArchivadas(); track d.id) {
+          <div class="list-item archived-item">
+            <div class="item-info">
+              <span class="item-name">{{ d.name }} <span class="archived-badge">✓ Pagada</span></span>
+              <span class="item-meta">{{ d.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+            </div>
+          </div>
+        }
+        @if (deudasArchivadas().length === 0) {
+          <p class="empty-hint">Sin deudas archivadas.</p>
+        }
+      </div>
+    }
+
+    <!-- Add form -->
+    <div class="add-form">
+      <h3 class="add-title">Nueva deuda</h3>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Nombre</label>
+          <input class="inp" [(ngModel)]="newDeudaNombre" placeholder="Ej: Préstamo coche" />
+        </div>
+        <div class="form-field">
+          <label>Tipo</label>
+          <select class="inp" [ngModel]="newDeudaTipo" (ngModelChange)="newDeudaTipo=$event; recalcCuota()">
+            <option value="bank">Préstamo banco</option>
+            <option value="savings">De mis ahorros</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Capital prestado (€)</label>
+          <input class="inp" type="number"
+            [ngModel]="newDeudaCapital" (ngModelChange)="newDeudaCapital=$event; recalcCuota()"
+            placeholder="0.00" min="0" step="0.01" />
+        </div>
+        <div class="form-field">
+          <label>TIN anual (%)</label>
+          @if (newDeudaTipo === 'savings') {
+            <div class="penalty-box">
+              <span class="penalty-rate">5%</span>
+              <span class="penalty-label">⚠️ Castigo por usar ahorros (fijo)</span>
+            </div>
+          } @else {
+            <input class="inp" type="number"
+              [ngModel]="newDeudaInteres" (ngModelChange)="newDeudaInteres=$event; recalcCuota()"
+              placeholder="Ej: 5.5" min="0" step="0.01" />
+          }
+        </div>
+        <div class="form-field">
+          <label>Nº de meses <span class="field-hint">(vacío = indefinida)</span></label>
+          <input class="inp" type="number"
+            [ngModel]="newDeudaMeses" (ngModelChange)="newDeudaMeses=$event; recalcCuota()"
+            placeholder="Ej: 60" min="1" step="1" />
+        </div>
+        <div class="form-field">
+          <label>Cuota mensual (€) <span class="field-hint">edita si no coincide</span></label>
+          <input class="inp" type="number" [(ngModel)]="newDeudaCuotaFinal" placeholder="0.00" min="0" step="0.01" />
+        </div>
+        @if (newDeudaMeses) {
+          <div class="form-field form-field-full">
+            <label>Mes de inicio</label>
+            <div class="month-start-row">
+              <select class="inp" [(ngModel)]="newDeudaStartMonth">
+                @for (m of meses; track $index) {
+                  <option [value]="$index + 1">{{ m }}</option>
+                }
+              </select>
+              <input class="inp year-input" type="number" [(ngModel)]="newDeudaStartYear" placeholder="Año" />
+            </div>
+          </div>
+        }
+      </div>
+      @if (newDeudaCapital > 0 && newDeudaCuotaFinal > 0) {
+        <div class="calc-preview">
+          <span>Total estimado: <strong>{{ (newDeudaMeses ? newDeudaCuotaFinal * newDeudaMeses : newDeudaCapital) | currency:'EUR':'symbol':'1.2-2':'es' }}</strong></span>
+          <span>Cuota registrada: <strong>{{ newDeudaCuotaFinal | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
+        </div>
+      }
+      <div class="form-action-row">
+        <button class="btn-add" (click)="addDeuda()" [disabled]="!newDeudaNombre.trim() || newDeudaCapital <= 0">
+          <i class="pi pi-plus"></i> Añadir deuda
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Ahorros ─────────────────────────────────────────────── -->
+  <section class="settings-section">
+    <div class="section-header">
+      <h2 class="section-title">Ahorros</h2>
+      <p class="section-desc">Configura tus categorías de ahorro. Se copiarán automáticamente al abrir cada mes nuevo.</p>
+    </div>
+
+    <div class="items-list">
+      @for (a of ahorroTemplates(); track a.id) {
+        <div class="list-item">
+          @if (editingAhorroId() === a.id) {
+            <div class="edit-row">
+              <input class="inp" [(ngModel)]="editAhorroNombre" placeholder="Nombre" />
+              <input class="inp w-sm" type="number" [(ngModel)]="editAhorroPresupuestado" placeholder="Presupuesto €" min="0" step="0.01" />
+              <button class="btn-save" (click)="saveAhorroTemplate(a.id)">Guardar</button>
+              <button class="btn-cancel" (click)="cancelEditAhorro()">✕</button>
+            </div>
+          } @else {
+            <div class="item-info">
+              <span class="item-name">{{ a.name }}</span>
+              <span class="item-meta">{{ a.presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}/mes</span>
+            </div>
+            <div class="item-actions">
+              <button class="btn-icon" title="Editar" (click)="startEditAhorro(a)">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="btn-icon danger" title="Eliminar" (click)="removeAhorroTemplate(a.id)">
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+          }
+        </div>
+      }
+      @if (ahorroTemplates().length === 0) {
+        <p class="empty-hint">Sin categorías de ahorro. Añade una abajo.</p>
+      }
+    </div>
+
+    <div class="add-form">
+      <h3 class="add-title">Nueva categoría de ahorro</h3>
+      <div class="form-row">
+        <input class="inp" [(ngModel)]="newAhorroNombre" placeholder="Ej: Fondo emergencias" />
+        <input class="inp w-sm" type="number" [(ngModel)]="newAhorroPresupuestado" placeholder="Presupuesto mensual €" min="0" step="0.01" />
+        <button class="btn-add" (click)="addAhorroTemplate()" [disabled]="!newAhorroNombre.trim()">
+          <i class="pi pi-plus"></i> Añadir
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Fondos de Ahorro ───────────────────────────────────── -->
+  <section class="settings-section">
+    <div class="section-header">
+      <h2 class="section-title">Fondos de Ahorro</h2>
+      <p class="section-desc">Gastos grandes divididos en cuotas mensuales. Configúralos una vez y aparecerán automáticamente cada mes.</p>
+    </div>
+
+    <div class="items-list">
+      @for (f of fondos(); track f.id) {
+        <div class="list-item">
+          @if (editingFondoId() === f.id) {
+            <div class="edit-row">
+              <input class="inp" [(ngModel)]="editFondoNombre" placeholder="Nombre" />
+              <input class="inp w-sm" type="number" [(ngModel)]="editFondoTotal" placeholder="Total €" min="0" step="0.01"
+                (ngModelChange)="editFondoMonthly = editFondoTotal / (editFondoMeses || 11)" />
+              <input class="inp w-xs" type="number" [(ngModel)]="editFondoMeses" placeholder="Meses" min="1"
+                (ngModelChange)="editFondoMonthly = editFondoTotal / (editFondoMeses || 11)" />
+              <button class="btn-save" (click)="saveFondo(f.id)">Guardar</button>
+              <button class="btn-cancel" (click)="cancelEditFondo()">✕</button>
+            </div>
+          } @else {
+            <div class="item-info">
+              <span class="item-name">{{ f.name }}</span>
+              <span class="item-meta">
+                {{ f.monthly_amount | currency:'EUR':'symbol':'1.2-2':'es' }}/mes
+                · Total: {{ f.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }}
+                · {{ f.num_months }} meses
+              </span>
+            </div>
+            <div class="item-actions">
+              <button class="btn-icon" title="Editar" (click)="startEditFondo(f)">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="btn-icon" title="Archivar" (click)="archiveFondo(f.id)">
+                <i class="pi pi-archive"></i>
+              </button>
+              <button class="btn-icon danger" title="Eliminar" (click)="deleteFondo(f.id)">
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+          }
+        </div>
+      }
+      @if (fondos().length === 0) {
+        <p class="empty-hint">Sin fondos de ahorro. Añade uno abajo.</p>
+      }
+    </div>
+
+    <!-- Archived fondos toggle -->
+    <div class="archived-toggle-row">
+      <button class="btn-link" (click)="toggleFondosArchivados()">
+        <i class="pi pi-archive"></i>
+        {{ showFondosArchivados() ? 'Ocultar archivados' : 'Ver fondos archivados (' + fondosArchivados().length + ')' }}
+      </button>
+    </div>
+    @if (showFondosArchivados()) {
+      <div class="items-list">
+        @for (f of fondosArchivados(); track f.id) {
+          <div class="list-item archived-item">
+            <div class="item-info">
+              <span class="item-name">{{ f.name }}</span>
+              <span class="item-meta">{{ f.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }} · {{ f.num_months }} meses</span>
+            </div>
+          </div>
+        }
+        @if (fondosArchivados().length === 0) {
+          <p class="empty-hint">Sin fondos archivados.</p>
+        }
+      </div>
+    }
+
+    <!-- Add form -->
+    <div class="add-form">
+      <h3 class="add-title">Nuevo fondo de ahorro</h3>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Nombre del fondo</label>
+          <input class="inp" [(ngModel)]="newFondoNombre" placeholder="Ej: Seguro del coche" />
+        </div>
+        <div class="form-field">
+          <label>Importe total (€)</label>
+          <input class="inp" type="number" [(ngModel)]="newFondoTotal" placeholder="Ej: 500" min="0" step="0.01"
+            (ngModelChange)="newFondoMonthly = newFondoTotal / (newFondoMeses || 11)" />
+        </div>
+        <div class="form-field">
+          <label>Nº de meses <span class="field-hint">(por defecto 11)</span></label>
+          <input class="inp" type="number" [(ngModel)]="newFondoMeses" placeholder="11" min="1"
+            (ngModelChange)="newFondoMonthly = newFondoTotal / (newFondoMeses || 11)" />
+        </div>
+      </div>
+      @if (newFondoTotal > 0) {
+        <div class="calc-preview">
+          <span>Cuota mensual: <strong>{{ (newFondoTotal / (newFondoMeses || 11)) | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
+          <span>Durante <strong>{{ newFondoMeses || 11 }} meses</strong></span>
+        </div>
+      }
+      <div class="form-action-row">
+        <button class="btn-add" (click)="addFondo()" [disabled]="!newFondoNombre.trim() || newFondoTotal <= 0">
+          <i class="pi pi-plus"></i> Añadir fondo
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Ingreso Oficial / Pareja ───────────────────────────── -->
+  @if (profile()?.has_partner) {
+    <section class="settings-section">
+      <div class="section-header">
+        <h2 class="section-title">Pareja</h2>
+        <p class="section-desc">Las aportaciones se calculan automáticamente a partir de tus Ingresos Fijos configurados arriba.</p>
+      </div>
+
+      <!-- Read-only list of ingresos fijos -->
+      <div class="items-list">
+        @for (t of templates(); track t.id) {
+          <div class="list-item pareja-ingreso-item">
+            <span class="item-name">{{ t.fuente }}</span>
+            <span class="item-meta pareja-ingreso-amount">{{ t.esperado | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+          </div>
+        }
+        @if (templates().length === 0) {
+          <p class="empty-hint">Sin ingresos fijos configurados. Añádelos en la sección de arriba.</p>
+        }
+        <div class="list-item pareja-total-row">
+          <span class="pareja-total-label">Total base</span>
+          <span class="pareja-total-amount">{{ totalIngresosFijos() | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+        </div>
+      </div>
+
+      <div class="add-form">
+        <div class="form-grid">
+          <div class="form-field">
+            <label>% Ahorro pareja</label>
+            <input class="inp" type="number" [(ngModel)]="profileAhorroPct" placeholder="10" min="0" max="100" step="0.5" />
+          </div>
+          <div class="form-field">
+            <label>% Gastos pareja</label>
+            <input class="inp" type="number" [(ngModel)]="profileGastosPct" placeholder="5" min="0" max="100" step="0.5" />
+          </div>
+          <div class="form-field form-field-align-end">
+            <button class="btn-add" (click)="saveProfilePareja()" [disabled]="savingProfile()">
+              <i class="pi pi-save"></i> Guardar
+            </button>
+          </div>
+        </div>
+        @if (totalIngresosFijos() > 0) {
+          <div class="calc-preview">
+            <span>Ahorro pareja: <strong>{{ (totalIngresosFijos() * profileAhorroPct / 100) | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
+            <span>Gastos pareja: <strong>{{ (totalIngresosFijos() * profileGastosPct / 100) | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+</div>

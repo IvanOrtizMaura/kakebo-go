@@ -8,7 +8,15 @@ export class FondosAhorroService {
 
   async getActive(userId: string): Promise<FondoAhorro[]> {
     const { data } = await this.supabase.client
-      .from('fondos_ahorro').select('*').eq('user_id', userId).eq('is_active', true);
+      .from('fondos_ahorro').select('*').eq('user_id', userId).eq('is_active', true)
+      .order('created_at', { ascending: true });
+    return (data ?? []) as FondoAhorro[];
+  }
+
+  async getArchived(userId: string): Promise<FondoAhorro[]> {
+    const { data } = await this.supabase.client
+      .from('fondos_ahorro').select('*').eq('user_id', userId).eq('is_active', false)
+      .order('created_at', { ascending: true });
     return (data ?? []) as FondoAhorro[];
   }
 
@@ -19,10 +27,26 @@ export class FondosAhorroService {
     return data as FondoAhorro;
   }
 
-  async deactivate(id: string): Promise<void> {
+  async update(id: string, patch: Partial<Pick<FondoAhorro, 'name' | 'total_amount' | 'monthly_amount' | 'num_months'>>): Promise<void> {
+    const { error } = await this.supabase.client
+      .from('fondos_ahorro').update(patch).eq('id', id);
+    if (error) throw error;
+  }
+
+  async archive(id: string): Promise<void> {
     const { error } = await this.supabase.client
       .from('fondos_ahorro').update({ is_active: false }).eq('id', id);
     if (error) throw error;
+  }
+
+  async delete(id: string): Promise<void> {
+    const { error } = await this.supabase.client
+      .from('fondos_ahorro').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async deactivate(id: string): Promise<void> {
+    return this.archive(id);
   }
 
   async getMonthlyByMonth(monthId: string): Promise<FondoAhorroMonthly[]> {
