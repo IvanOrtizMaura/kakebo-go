@@ -1,0 +1,50 @@
+<aside class="sidebar" [class.open]="open()">
+  <div class="sidebar-header">
+    <img src="/logo.png" alt="Kakebo Go" class="sidebar-logo" />
+    <p class="sidebar-user">{{ userEmail() }}</p>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a routerLink="/dashboard" routerLinkActive="active" class="nav-item dashboard-item"
+       (click)="close()">
+      <i class="pi pi-home"></i>
+      <span>Resumen Anual</span>
+    </a>
+
+    <div class="year-selector">
+      <button class="year-btn" (click)="prevYear()"><i class="pi pi-chevron-left"></i></button>
+      <span class="year-label">{{ year() }}</span>
+      <button class="year-btn" [disabled]="year() >= currentYear" (click)="nextYear()"><i class="pi pi-chevron-right"></i></button>
+    </div>
+
+    <div class="months-list">
+      @for (m of monthList; track m.index) {
+        <a
+          [routerLink]="['/m', year(), m.index]"
+          routerLinkActive="active"
+          class="nav-item month-item"
+          [class.current]="m.index === currentMonth && year() === currentYear"
+          (click)="close()">
+          <span class="month-name">{{ m.name }}</span>
+          @if (m.index === currentMonth && year() === currentYear) {
+            <span class="current-badge">Hoy</span>
+          }
+        </a>
+      }
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a routerLink="/settings" routerLinkActive="active" class="nav-item settings-item">
+      <i class="pi pi-cog"></i>
+      <span>Configuración</span>
+    </a>
+    <button class="signout-btn" (click)="onSignOut()">
+      <i class="pi pi-sign-out"></i>
+      <span>Cerrar sesión</span>
+    </button>
+  </div>
+</aside>
+
+<!-- Mobile overlay -->
+<div class="sidebar-overlay" [class.visible]="open()" (click)="close()"></div>

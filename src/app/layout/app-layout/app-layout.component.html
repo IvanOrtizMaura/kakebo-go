@@ -1,0 +1,38 @@
+<div class="app-shell" [class.sidebar-open]="sidebar.open()">
+  <app-sidebar #sidebar />
+
+  <div class="main-area">
+    <header class="topbar">
+      <button class="hamburger" (click)="sidebar.toggle()">
+        <i class="pi pi-bars"></i>
+      </button>
+    </header>
+
+    <main class="main-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <a routerLink="/dashboard" routerLinkActive="bottom-nav-item--active"
+     class="bottom-nav-item" (click)="sidebar.close()">
+    <i class="pi pi-home"></i>
+    <span>Inicio</span>
+  </a>
+  <a [routerLink]="['/m', currentYear, currentMonth]"
+     routerLinkActive="bottom-nav-item--active"
+     class="bottom-nav-item" (click)="sidebar.close()">
+    <i class="pi pi-calendar"></i>
+    <span>Este mes</span>
+  </a>
+  <a routerLink="/settings" routerLinkActive="bottom-nav-item--active"
+     class="bottom-nav-item" (click)="sidebar.close()">
+    <i class="pi pi-cog"></i>
+    <span>Config.</span>
+  </a>
+  <button class="bottom-nav-item bottom-nav-item--button" (click)="sidebar.toggle()">
+    <i class="pi pi-bars"></i>
+    <span>Menú</span>
+  </button>
+</nav>
