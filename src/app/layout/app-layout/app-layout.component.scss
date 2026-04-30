@@ -1,6 +1,6 @@
 .app-shell {
   display: flex;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .main-area {
@@ -80,6 +80,12 @@
 @media (min-width: 768px) {
   .main-content {
     padding: 2rem 1.5rem;
+  }
+}
+
+@media (display-mode: standalone) {
+  .main-content {
+    padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
   }
 }
 
