@@ -55,7 +55,7 @@
   }
 
   .main-content {
-    padding: 1.5rem 1.25rem calc(4.5rem + env(safe-area-inset-bottom));
+    padding: 1.5rem 1.25rem calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
 
   .app-shell.sidebar-open .main-area {
@@ -71,7 +71,7 @@
     z-index: 200;
     background: var(--kakebo-indigo);
     border-top: 1px solid rgba(255, 255, 255, 0.12);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 

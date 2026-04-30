@@ -163,7 +163,7 @@
 
 @media (max-width: 767px) {
   .sidebar-footer {
-    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
