@@ -1,0 +1,117 @@
+<div class="ingresos-page">
+  <div class="ingresos-content">
+
+    <header class="ingresos-header">
+      <button class="back-button" (click)="navigateToHome()" type="button" aria-label="Volver al inicio">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+      <h1 class="ingresos-title">Ingresos</h1>
+      <span class="ingresos-mes">{{ mesNombre }}</span>
+    </header>
+
+    <div class="resumen-card">
+      <div class="resumen-card__header">
+        <span class="resumen-card__label">Total ingresado</span>
+        <span class="resumen-card__valores">
+          <span class="resumen-card__real">{{ totalReal() | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+          <span class="resumen-card__separator">/</span>
+          <span class="resumen-card__esperado">{{ totalEsperado() | currency:'EUR':'symbol':'1.0-0':'es' }} presupuestado</span>
+        </span>
+      </div>
+      <div class="resumen-card__barra-pista">
+        <div class="resumen-card__barra-relleno" [style.width.%]="progresoTotal()"></div>
+      </div>
+    </div>
+
+    <section class="lista-ingresos" aria-label="Lista de ingresos">
+      @for (ingreso of ingresos(); track ingreso.fuente) {
+        <div class="ingreso-card">
+          <div class="ingreso-card__fila-superior">
+            <span class="ingreso-card__fuente">{{ ingreso.fuente }}</span>
+            <div class="ingreso-card__importes">
+              <span class="ingreso-card__real">{{ ingreso.real | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+              <span class="ingreso-card__presupuestado">{{ ingreso.esperado | currency:'EUR':'symbol':'1.2-2':'es' }} presupuestado</span>
+            </div>
+          </div>
+          <div class="ingreso-card__fila-inferior">
+            <span class="ingreso-card__dia">Día {{ ingreso.dia_paga }}</span>
+            @if (ingreso.depositado) {
+              <span class="ingreso-card__badge ingreso-card__badge--depositado">Depositado</span>
+            } @else {
+              <span class="ingreso-card__badge ingreso-card__badge--pendiente">Pendiente</span>
+            }
+          </div>
+        </div>
+      }
+    </section>
+
+  </div>
+
+  <button class="fab-añadir" (click)="openDialog()" type="button" aria-label="Añadir ingreso">
+    <i class="pi pi-plus"></i>
+  </button>
+
+  <p-dialog
+    [visible]="dialogVisible()"
+    (visibleChange)="dialogVisible.set($event)"
+    header="Nuevo ingreso"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    position="bottom"
+    [style]="{ width: '100%', maxWidth: '430px', margin: '0 auto', borderRadius: '20px 20px 0 0' }"
+    styleClass="nuevo-ingreso-dialog"
+    [dismissableMask]="true"
+  >
+    <div class="dialog-form">
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="ingreso-nombre">Nombre</label>
+        <input
+          id="ingreso-nombre"
+          class="dialog-form__entrada"
+          type="text"
+          placeholder="Ej: Nómina"
+          [ngModel]="nuevoNombre()"
+          (ngModelChange)="nuevoNombre.set($event)"
+        />
+      </div>
+
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="ingreso-categoria">Categoría</label>
+        <p-select
+          inputId="ingreso-categoria"
+          [options]="categorias"
+          [ngModel]="nuevoGastoCategoria()"
+          (ngModelChange)="nuevoGastoCategoria.set($event)"
+          placeholder="Selecciona categoría"
+          styleClass="dialog-form__select"
+        />
+      </div>
+
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="ingreso-importe">Importe (€)</label>
+        <input
+          id="ingreso-importe"
+          class="dialog-form__entrada"
+          type="number"
+          placeholder="0"
+          min="0"
+          step="0.01"
+          [ngModel]="nuevoGastoImporte()"
+          (ngModelChange)="nuevoGastoImporte.set($event)"
+        />
+      </div>
+
+      <div class="dialog-form__acciones">
+        <button class="dialog-form__boton-guardar" type="button" (click)="guardarIngreso()">
+          Guardar
+        </button>
+        <button class="dialog-form__boton-cancelar" type="button" (click)="closeDialog()">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </p-dialog>
+
+  <app-bottom-nav />
+</div>

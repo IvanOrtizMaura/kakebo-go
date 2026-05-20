@@ -1,0 +1,137 @@
+<div class="resumen-page">
+  <div class="resumen-content">
+
+    <!-- ─── Header ─────────────────────────────────────────────────────── -->
+    <header class="resumen-header">
+      <button class="resumen-header__back" (click)="navegarAtras()" aria-label="Volver">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+
+      <h1 class="resumen-header__anio">{{ anio() }}</h1>
+
+      <div class="resumen-header__nav-anio">
+        <button class="resumen-header__nav-btn" (click)="navegarAnioAnterior()" aria-label="Año anterior">
+          <i class="pi pi-chevron-left"></i>
+        </button>
+        <button class="resumen-header__nav-btn" (click)="navegarAnioSiguiente()" aria-label="Año siguiente">
+          <i class="pi pi-chevron-right"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ─── Card resumen del año ────────────────────────────────────────── -->
+    <section class="resumen-card" aria-label="Resumen del año">
+      <p class="resumen-card__label">Ahorro total del año</p>
+      <p class="resumen-card__ahorro-total" [class.resumen-card__ahorro-total--negativo]="ahorroTotal() < 0">
+        {{ ahorroTotal() | currency:'EUR':'symbol':'1.0-0':'es' }}
+      </p>
+
+      <div class="resumen-card__metricas">
+        <div class="resumen-card__metrica">
+          <span class="resumen-card__metrica-icono resumen-card__metrica-icono--ingreso">💜</span>
+          <span class="resumen-card__metrica-label">Ingresos</span>
+          <span class="resumen-card__metrica-valor resumen-card__metrica-valor--ingreso">
+            {{ ingresosTotal() | currency:'EUR':'symbol':'1.0-0':'es' }}
+          </span>
+        </div>
+        <div class="resumen-card__separador"></div>
+        <div class="resumen-card__metrica">
+          <span class="resumen-card__metrica-icono">🔴</span>
+          <span class="resumen-card__metrica-label">Gastos</span>
+          <span class="resumen-card__metrica-valor resumen-card__metrica-valor--gasto">
+            {{ gastosTotal() | currency:'EUR':'symbol':'1.0-0':'es' }}
+          </span>
+        </div>
+        <div class="resumen-card__separador"></div>
+        <div class="resumen-card__metrica">
+          <span class="resumen-card__metrica-icono">🟢</span>
+          <span class="resumen-card__metrica-label">Balance</span>
+          <span class="resumen-card__metrica-valor" [class.resumen-card__metrica-valor--balance-positivo]="ahorroTotal() >= 0" [class.resumen-card__metrica-valor--balance-negativo]="ahorroTotal() < 0">
+            {{ ahorroTotal() | currency:'EUR':'symbol':'1.0-0':'es' }}
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Gráfica de barras SVG ────────────────────────────────────────── -->
+    <section class="grafica-card" aria-label="Evolución mensual">
+      <h2 class="grafica-card__titulo">Evolución mensual</h2>
+
+      <div class="grafica-wrapper">
+        <div class="grafica-barras">
+          @for (barra of barras(); track barra.indice) {
+            <div class="grafica-columna">
+              @if (barra.indice === mesActual && barra.estado !== 'pendiente') {
+                <span class="grafica-columna__label-encima">
+                  {{ barra.ahorro | currency:'EUR':'symbol':'1.0-0':'es' }}
+                </span>
+              }
+              <div class="grafica-columna__barra-wrapper">
+                <div
+                  class="grafica-columna__barra"
+                  [style.height.px]="barra.alturaPixeles"
+                  [style.background]="barra.color"
+                  [class.grafica-columna__barra--actual]="barra.indice === mesActual && barra.estado !== 'pendiente'"
+                ></div>
+              </div>
+              <span class="grafica-columna__inicial">{{ barra.inicial }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Grid de meses ────────────────────────────────────────────────── -->
+    <section class="meses-grid" aria-label="Meses del año">
+      <h2 class="meses-grid__titulo">Meses</h2>
+
+      <div class="meses-grid__grid">
+        @for (mes of meses(); track mes.nombre; let indice = $index) {
+          <button class="mes-card" (click)="navegarAlMes(indice)" [attr.aria-label]="mes.nombre">
+
+            <div class="mes-card__cabecera">
+              <span class="mes-card__nombre">{{ mes.nombre }}</span>
+              <span
+                class="mes-card__badge"
+                [class.mes-card__badge--cerrado]="mes.estado === 'cerrado'"
+                [class.mes-card__badge--en-curso]="mes.estado === 'en-curso'"
+                [class.mes-card__badge--pendiente]="mes.estado === 'pendiente'"
+              >
+                @switch (mes.estado) {
+                  @case ('cerrado') { Cerrado }
+                  @case ('en-curso') { En curso }
+                  @case ('pendiente') { Pendiente }
+                }
+              </span>
+            </div>
+
+            <p
+              class="mes-card__ahorro"
+              [class.mes-card__ahorro--positivo]="mes.ahorro > 0"
+              [class.mes-card__ahorro--negativo]="mes.ahorro < 0"
+              [class.mes-card__ahorro--neutro]="mes.estado === 'pendiente'"
+            >
+              @if (mes.estado === 'pendiente') {
+                —
+              } @else {
+                {{ mes.ahorro | currency:'EUR':'symbol':'1.0-2':'es' }}
+              }
+            </p>
+
+            <div class="mes-card__progreso-wrapper" aria-hidden="true">
+              <div
+                class="mes-card__progreso-barra"
+                [style.width.%]="calcularPorcentajeProgreso(mes.gastado, mes.presupuestado)"
+                [class.mes-card__progreso-barra--llena]="calcularPorcentajeProgreso(mes.gastado, mes.presupuestado) >= 100"
+              ></div>
+            </div>
+
+          </button>
+        }
+      </div>
+    </section>
+
+  </div>
+
+  <app-bottom-nav />
+</div>

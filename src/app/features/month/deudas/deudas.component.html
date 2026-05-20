@@ -1,0 +1,125 @@
+<div class="deudas-page">
+  <div class="deudas-content">
+
+    <header class="deudas-header">
+      <button class="back-button" (click)="navigateBack()" type="button" aria-label="Volver">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+      <h1 class="deudas-title">Deudas</h1>
+      <span class="deudas-mes">{{ mesNombre }}</span>
+    </header>
+
+    <div class="resumen-card">
+      <div class="resumen-card__header">
+        <span class="resumen-card__label">Total pagado</span>
+        <span class="resumen-card__valores">
+          <span class="resumen-card__real">{{ totalReal() | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+          <span class="resumen-card__separator">/</span>
+          <span class="resumen-card__presupuestado">{{ totalPresupuestado() | currency:'EUR':'symbol':'1.0-0':'es' }} presupuestado</span>
+        </span>
+      </div>
+      <div class="resumen-card__barra-pista">
+        <div class="resumen-card__barra-relleno" [style.width.%]="progresoTotal()"></div>
+      </div>
+    </div>
+
+    <section class="lista-deudas" aria-label="Lista de deudas">
+      @for (deuda of deudas(); track deuda.nombre) {
+        <div class="deuda-card">
+          <div class="deuda-card__fila-superior">
+            <span class="deuda-card__nombre">{{ deuda.nombre }}</span>
+            <div class="deuda-card__importes">
+              <span class="deuda-card__real">{{ deuda.real | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+              <span class="deuda-card__presupuestado">{{ deuda.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }} presupuestado</span>
+            </div>
+          </div>
+
+          <div class="deuda-card__amortizacion">
+            <div class="deuda-card__amortizacion-pista">
+              <div
+                class="deuda-card__amortizacion-relleno"
+                [style.width.%]="amortizacionPorcentaje(deuda)"
+              ></div>
+            </div>
+            <span class="deuda-card__amortizacion-texto">
+              Quedan {{ deuda.pendiente | currency:'EUR':'symbol':'1.0-0':'es' }} de {{ deuda.total | currency:'EUR':'symbol':'1.0-0':'es' }}
+            </span>
+          </div>
+
+          <div class="deuda-card__fila-inferior">
+            <span class="deuda-card__tae">{{ deuda.tae }}% TAE</span>
+          </div>
+        </div>
+      }
+    </section>
+
+  </div>
+
+  <button class="fab-añadir" (click)="openDialog()" type="button" aria-label="Añadir deuda">
+    <i class="pi pi-plus"></i>
+  </button>
+
+  <p-dialog
+    [visible]="dialogVisible()"
+    (visibleChange)="dialogVisible.set($event)"
+    header="Nueva deuda"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    position="bottom"
+    [style]="{ width: '100%', maxWidth: '430px', margin: '0 auto', borderRadius: '20px 20px 0 0' }"
+    styleClass="nueva-deuda-dialog"
+    [dismissableMask]="true"
+  >
+    <div class="dialog-form">
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="deuda-nombre">Nombre</label>
+        <input
+          id="deuda-nombre"
+          class="dialog-form__entrada"
+          type="text"
+          placeholder="Ej: Préstamo coche"
+          [ngModel]="nuevoNombre()"
+          (ngModelChange)="nuevoNombre.set($event)"
+        />
+      </div>
+
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="deuda-categoria">Categoría</label>
+        <p-select
+          inputId="deuda-categoria"
+          [options]="categorias"
+          [ngModel]="nuevoGastoCategoria()"
+          (ngModelChange)="nuevoGastoCategoria.set($event)"
+          placeholder="Selecciona categoría"
+          styleClass="dialog-form__select"
+        />
+      </div>
+
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="deuda-importe">Importe (€)</label>
+        <input
+          id="deuda-importe"
+          class="dialog-form__entrada"
+          type="number"
+          placeholder="0"
+          min="0"
+          step="0.01"
+          [ngModel]="nuevoGastoImporte()"
+          (ngModelChange)="nuevoGastoImporte.set($event)"
+        />
+      </div>
+
+      <div class="dialog-form__acciones">
+        <button class="dialog-form__boton-guardar" type="button" (click)="guardarDeuda()">
+          Guardar
+        </button>
+        <button class="dialog-form__boton-cancelar" type="button" (click)="closeDialog()">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </p-dialog>
+
+  <app-bottom-nav />
+</div>

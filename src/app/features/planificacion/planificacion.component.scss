@@ -1,0 +1,550 @@
+// ── Variables
+$color-green: #22c55e;
+$color-blue: #3b82f6;
+$color-red: #ef4444;
+$color-purple: #8b5cf6;
+$color-amber: #f59e0b;
+$color-background: #f8fafc;
+$color-card: #ffffff;
+$color-border: #e2e8f0;
+$color-text: #0f172a;
+$color-text-secondary: #64748b;
+$color-step-inactive: #e2e8f0;
+$color-step-inactive-text: #64748b;
+
+$border-radius: 12px;
+$max-width: 430px;
+$font-family: 'DM Sans', sans-serif;
+
+// ── Page wrapper
+.planificacion-page {
+  font-family: $font-family;
+  background-color: $color-background;
+  min-height: 100dvh;
+  max-width: $max-width;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 88px;
+}
+
+// ── Status bar iOS
+.status-bar {
+  height: 44px;
+  background-color: $color-card;
+  flex-shrink: 0;
+}
+
+// ── Header
+.planificacion-header {
+  background-color: $color-card;
+  border-bottom: 1px solid $color-border;
+  padding: 0 16px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  &__spacer {
+    width: 36px;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: $color-text;
+    text-align: center;
+    margin: 0;
+    flex: 1;
+    line-height: 1.3;
+  }
+
+  &__close {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: $color-text-secondary;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background-color 0.15s;
+
+    &:hover {
+      background-color: $color-background;
+    }
+  }
+}
+
+// ── Stepper
+.stepper {
+  background-color: $color-card;
+  padding: 16px 12px;
+  border-bottom: 1px solid $color-border;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+  }
+
+  &__circle-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 6px;
+  }
+
+  &__connector {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: calc(100% - 4px);
+    height: 2px;
+    background-color: $color-step-inactive;
+    transform: translateY(-50%);
+    z-index: 0;
+
+    &--completed {
+      background-color: $color-green;
+    }
+  }
+
+  &__circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: $color-step-inactive;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    flex-shrink: 0;
+    position: relative;
+    transition: background-color 0.2s;
+
+    &--completed {
+      background-color: $color-green;
+    }
+
+    &--active {
+      background-color: $color-green;
+    }
+  }
+
+  &__number {
+    font-size: 11px;
+    font-weight: 600;
+    color: $color-step-inactive-text;
+
+    .stepper__circle--active & {
+      color: #ffffff;
+    }
+  }
+
+  &__label {
+    font-size: 10px;
+    font-weight: 400;
+    color: $color-step-inactive-text;
+    text-align: center;
+    line-height: 1.2;
+    white-space: nowrap;
+
+    &--active {
+      font-weight: 700;
+      color: $color-text;
+    }
+
+    &--completed {
+      color: $color-green;
+      font-weight: 500;
+    }
+  }
+}
+
+// ── Step content
+.step-content {
+  flex: 1;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__title {
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-text;
+    margin: 0;
+  }
+
+  &__subtitle {
+    font-size: 14px;
+    color: $color-text-secondary;
+    margin: 0;
+  }
+}
+
+// ── Items list
+.items-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-row {
+  background-color: $color-card;
+  border: 1px solid $color-border;
+  border-radius: $border-radius;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  &__nombre {
+    font-size: 14px;
+    font-weight: 500;
+    color: $color-text;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  &__importe {
+    font-size: 14px;
+    font-weight: 600;
+
+    &--blue  { color: $color-blue; }
+    &--red   { color: $color-red; }
+    &--green { color: $color-green; }
+    &--amber { color: $color-amber; }
+  }
+
+  &__dia {
+    font-size: 11px;
+    color: $color-text-secondary;
+  }
+}
+
+// ── Add item button
+.add-item-button {
+  width: 100%;
+  padding: 12px;
+  border-radius: $border-radius;
+  background-color: transparent;
+  font-family: $font-family;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-style: dashed;
+  border-width: 1.5px;
+  transition: background-color 0.15s;
+
+  &--green {
+    color: $color-green;
+    border-color: $color-green;
+
+    &:hover { background-color: rgba($color-green, 0.05); }
+  }
+
+  &--blue {
+    color: $color-blue;
+    border-color: $color-blue;
+
+    &:hover { background-color: rgba($color-blue, 0.05); }
+  }
+
+  &--red {
+    color: $color-red;
+    border-color: $color-red;
+
+    &:hover { background-color: rgba($color-red, 0.05); }
+  }
+
+  &--amber {
+    color: $color-amber;
+    border-color: $color-amber;
+
+    &:hover { background-color: rgba($color-amber, 0.05); }
+  }
+}
+
+// ── Inline form
+.inline-form {
+  background-color: $color-card;
+  border: 1px solid $color-border;
+  border-radius: $border-radius;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__input {
+    font-family: $font-family;
+    font-size: 14px;
+    color: $color-text;
+    background-color: $color-background;
+    border: 1px solid $color-border;
+    border-radius: 8px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+
+    &::placeholder {
+      color: $color-text-secondary;
+    }
+
+    &:focus {
+      border-color: $color-green;
+    }
+
+    &[type='number'] {
+      -moz-appearance: textfield;
+      appearance: textfield;
+
+      &::-webkit-outer-spin-button,
+      &::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  &__confirm-button {
+    font-family: $font-family;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    background-color: $color-green;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+
+    &:hover {
+      opacity: 0.9;
+    }
+  }
+
+  &__cancel-button {
+    font-family: $font-family;
+    font-size: 13px;
+    font-weight: 400;
+    color: $color-text-secondary;
+    background: transparent;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-text;
+    }
+  }
+}
+
+// ── Total banner
+.total-banner {
+  border-radius: $border-radius;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  &--green  { background-color: rgba($color-green, 0.08); }
+  &--blue   { background-color: rgba($color-blue,  0.08); }
+  &--red    { background-color: rgba($color-red,   0.08); }
+  &--amber  { background-color: rgba($color-amber, 0.08); }
+
+  &__label {
+    font-size: 14px;
+    font-weight: 500;
+    color: $color-text-secondary;
+  }
+
+  &__value {
+    font-size: 16px;
+    font-weight: 700;
+    color: $color-text;
+  }
+}
+
+// ── Resumen final (paso 5)
+.resumen-final {
+  background-color: $color-card;
+  border: 1px solid $color-border;
+  border-radius: $border-radius;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__titulo {
+    font-size: 15px;
+    font-weight: 700;
+    color: $color-text;
+    margin: 0 0 4px;
+  }
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__label {
+    font-size: 14px;
+    font-weight: 500;
+
+    &--purple { color: $color-purple; }
+    &--blue   { color: $color-blue; }
+    &--red    { color: $color-red; }
+    &--green  { color: $color-green; }
+    &--amber  { color: $color-amber; }
+  }
+
+  &__value {
+    font-size: 14px;
+    font-weight: 600;
+    color: $color-text;
+  }
+}
+
+// ── Footer fijo
+.planificacion-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: $color-card;
+  border-top: 1px solid $color-border;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  max-width: $max-width;
+  margin: 0 auto;
+
+  &__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+}
+
+.footer-button {
+  font-family: $font-family;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+
+  &--primary {
+    background-color: $color-green;
+    color: #ffffff;
+
+    &:hover { opacity: 0.9; }
+  }
+
+  &--secondary {
+    background-color: $color-background;
+    color: $color-text-secondary;
+    border: 1px solid $color-border;
+
+    &:hover { background-color: $color-border; }
+  }
+
+  &--save {
+    background-color: $color-green;
+  }
+
+  &--placeholder {
+    width: 80px;
+    flex-shrink: 0;
+  }
+}
+
+.footer-step-label {
+  font-size: 13px;
+  font-weight: 400;
+  color: $color-text-secondary;
+  text-align: center;
+  flex: 1;
+}
+
+// ── DatePicker overrides (inline-form)
+.inline-form {
+  ::ng-deep .inline-form__datepicker {
+    width: 100%;
+
+    .p-datepicker-input {
+      font-family: $font-family;
+      font-size: 14px;
+      color: $color-text;
+      background-color: $color-background;
+      border: 1px solid $color-border;
+      border-radius: 8px;
+      padding: 10px 12px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+
+      &::placeholder {
+        color: $color-text-secondary;
+      }
+
+      &:focus {
+        border-color: $color-green;
+        box-shadow: none;
+      }
+    }
+
+    .p-datepicker-input-icon-container {
+      right: 10px;
+      color: $color-text-secondary;
+    }
+  }
+}

@@ -1,0 +1,243 @@
+<div class="home-page">
+  <div class="home-content">
+
+    <!-- ───── HEADER ───── -->
+    <header class="home-header">
+      <button class="month-nav-button" (click)="navigateToPreviousMonth()" aria-label="Mes anterior">
+        <i class="pi pi-chevron-left"></i>
+      </button>
+
+      <div class="month-title">
+        <span class="month-name">{{ mesNombre() }}</span>
+      </div>
+
+      <button class="month-nav-button" (click)="navigateToNextMonth()" aria-label="Mes siguiente">
+        <i class="pi pi-chevron-right"></i>
+      </button>
+    </header>
+
+    <!-- ───── AJUSTAR PRESUPUESTO ───── -->
+    <button class="adjust-budget-button" (click)="onAjustarPresupuestoClick()" type="button" aria-label="Ajustar presupuesto">
+      <i class="pi pi-sliders-h adjust-budget-button__icon"></i>
+      <span class="adjust-budget-button__label">Ajustar presupuesto</span>
+    </button>
+
+    <!-- ───── KPI GRID 2×2 ───── -->
+    <section class="kpi-grid" aria-label="Resumen del mes">
+
+      <div class="kpi-card">
+        <div class="kpi-card__header">
+          <span class="kpi-card__icon kpi-card__icon--green">
+            <i class="pi pi-arrow-up-right"></i>
+          </span>
+          <span class="kpi-card__label">Ingresos</span>
+        </div>
+        <span class="kpi-card__value kpi-card__value--green">
+          {{ ingresos() | currency:'EUR':'symbol':'1.0-0':'es' }}
+        </span>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-card__header">
+          <span class="kpi-card__icon kpi-card__icon--red">
+            <i class="pi pi-arrow-down-left"></i>
+          </span>
+          <span class="kpi-card__label">Gastos</span>
+        </div>
+        <span class="kpi-card__value kpi-card__value--red">
+          {{ gastos() | currency:'EUR':'symbol':'1.0-0':'es' }}
+        </span>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-card__header">
+          <span class="kpi-card__icon" [class.kpi-card__icon--green]="disponible() >= 0" [class.kpi-card__icon--red]="disponible() < 0">
+            <i class="pi pi-calculator"></i>
+          </span>
+          <span class="kpi-card__label">Disponible</span>
+        </div>
+        <span class="kpi-card__value" [class.kpi-card__value--green]="disponible() >= 0" [class.kpi-card__value--red]="disponible() < 0">
+          {{ disponible() | currency:'EUR':'symbol':'1.0-0':'es' }}
+        </span>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-card__header">
+          <span class="kpi-card__icon kpi-card__icon--blue">
+            <i class="pi pi-wallet"></i>
+          </span>
+          <span class="kpi-card__label">Ahorro</span>
+        </div>
+        <span class="kpi-card__value kpi-card__value--green">
+          {{ ahorro() | currency:'EUR':'symbol':'1.0-0':'es' }}
+        </span>
+      </div>
+
+    </section>
+
+    <!-- ───── DONUT CHART ───── -->
+    <section class="donut-section" aria-label="Distribución del gasto">
+      <h2 class="section-title">Distribución del gasto</h2>
+
+      <div class="donut-wrapper">
+        <svg
+          class="donut-svg"
+          viewBox="0 0 100 100"
+          aria-hidden="true"
+        >
+          <circle
+            cx="50"
+            cy="50"
+            r="45"
+            fill="none"
+            stroke="#f1f5f9"
+            stroke-width="10"
+          />
+
+          <g transform="rotate(-90 50 50)">
+            @for (segment of donutSegments(); track segment.label) {
+              <circle
+                cx="50"
+                cy="50"
+                r="45"
+                fill="none"
+                [attr.stroke]="segment.color"
+                stroke-width="10"
+                stroke-linecap="butt"
+                [attr.stroke-dasharray]="segment.strokeDasharray"
+                [attr.stroke-dashoffset]="segment.strokeDashoffset"
+              />
+            }
+          </g>
+
+          <text x="50" y="47" class="donut-center-label">Total</text>
+          <text x="50" y="58" class="donut-center-value">{{ totalGastos() }}€</text>
+        </svg>
+
+        <ul class="donut-legend">
+          @for (segment of donutSegments(); track segment.label) {
+            <li class="donut-legend__item">
+              <span class="donut-legend__dot" [style.background]="segment.color"></span>
+              <span class="donut-legend__label">{{ segment.label }}</span>
+              <span class="donut-legend__value">{{ segment.value | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+            </li>
+          }
+        </ul>
+      </div>
+    </section>
+
+    <!-- ───── SECCIONES CON PROGRESS ───── -->
+    <section class="sections-list" aria-label="Secciones del presupuesto">
+      <h2 class="section-title">Por sección</h2>
+
+      @for (seccion of secciones(); track seccion.nombre) {
+        <div class="budget-row">
+          <div class="budget-row__top">
+            <div class="budget-row__name">
+              <span class="budget-row__icon" [style.color]="seccion.color">
+                <i class="pi {{ seccion.icono }}"></i>
+              </span>
+              <span class="budget-row__label">{{ seccion.nombre }}</span>
+            </div>
+            <div class="budget-row__amounts">
+              <span
+                class="budget-row__real"
+                [class.budget-row__real--exceeded]="isSectionExceeded(seccion)"
+              >
+                {{ seccion.real | currency:'EUR':'symbol':'1.0-0':'es' }}
+              </span>
+              <span class="budget-row__separator">/</span>
+              <span class="budget-row__budgeted">{{ seccion.presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+            </div>
+          </div>
+
+          <div class="budget-row__bar-track">
+            <div
+              class="budget-row__bar-fill"
+              [class.budget-row__bar-fill--exceeded]="isSectionExceeded(seccion)"
+              [style.width.%]="sectionProgressPercentage(seccion)"
+              [style.background]="isSectionExceeded(seccion) ? '#ef4444' : seccion.color"
+            ></div>
+          </div>
+        </div>
+      }
+    </section>
+
+  </div>
+
+  <!-- ───── FAB NUEVO GASTO ───── -->
+  <button
+    class="fab-nuevo-ingreso"
+    (click)="openNuevoGastoDialog()"
+    type="button"
+    aria-label="Añadir gasto"
+  >
+    <i class="pi pi-plus"></i>
+  </button>
+
+  <!-- ───── DIALOG NUEVO GASTO ───── -->
+  <p-dialog
+    [visible]="nuevoGastoDialogVisible()"
+    (visibleChange)="nuevoGastoDialogVisible.set($event)"
+    header="Nuevo gasto"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    position="bottom"
+    [style]="{ width: '100%', maxWidth: '430px', margin: '0 auto', borderRadius: '20px 20px 0 0' }"
+    styleClass="nuevo-ingreso-dialog"
+    [dismissableMask]="true"
+  >
+    <div class="nuevo-ingreso-form">
+      <div class="nuevo-ingreso-form__field">
+        <label class="nuevo-ingreso-form__label" for="gasto-nombre">Nombre</label>
+        <input
+          id="gasto-nombre"
+          class="nuevo-ingreso-form__input"
+          type="text"
+          placeholder="Ej: Supermercado"
+          [ngModel]="nuevoGastoNombre()"
+          (ngModelChange)="nuevoGastoNombre.set($event)"
+        />
+      </div>
+
+      <div class="nuevo-ingreso-form__field">
+        <label class="nuevo-ingreso-form__label" for="gasto-categoria">Categoría</label>
+        <p-select
+          inputId="gasto-categoria"
+          [options]="categorias"
+          [ngModel]="nuevoGastoCategoria()"
+          (ngModelChange)="nuevoGastoCategoria.set($event)"
+          placeholder="Selecciona categoría"
+          styleClass="nuevo-ingreso-form__select"
+        />
+      </div>
+
+      <div class="nuevo-ingreso-form__field">
+        <label class="nuevo-ingreso-form__label" for="gasto-importe">Importe (€)</label>
+        <input
+          id="gasto-importe"
+          class="nuevo-ingreso-form__input"
+          type="number"
+          placeholder="0"
+          min="0"
+          step="0.01"
+          [ngModel]="nuevoGastoImporte()"
+          (ngModelChange)="nuevoGastoImporte.set($event)"
+        />
+      </div>
+
+      <div class="nuevo-ingreso-form__actions">
+        <button class="nuevo-ingreso-form__save-button" type="button" (click)="saveNuevoGasto()">
+          Guardar
+        </button>
+        <button class="nuevo-ingreso-form__cancel-button" type="button" (click)="closeNuevoGastoDialog()">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </p-dialog>
+
+  <!-- ───── BOTTOM NAV ───── -->
+  <app-bottom-nav />
+</div>

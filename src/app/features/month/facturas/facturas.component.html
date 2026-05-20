@@ -1,0 +1,131 @@
+<div class="facturas-page">
+  <div class="facturas-content">
+
+    <header class="facturas-header">
+      <button class="back-button" (click)="navigateBack()" type="button" aria-label="Volver">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+      <h1 class="facturas-title">Facturas</h1>
+      <span class="facturas-mes">{{ mesNombre }}</span>
+    </header>
+
+    <div class="resumen-card" [class.resumen-card--excedido]="totalExcedido()">
+      <div class="resumen-card__header">
+        <span class="resumen-card__label">Total facturas</span>
+        <span class="resumen-card__valores">
+          <span class="resumen-card__real" [class.resumen-card__real--excedido]="totalExcedido()">
+            {{ totalReal() | currency:'EUR':'symbol':'1.0-0':'es' }}
+          </span>
+          <span class="resumen-card__separator">/</span>
+          <span class="resumen-card__presupuestado">{{ totalPresupuestado() | currency:'EUR':'symbol':'1.0-0':'es' }} presupuestado</span>
+        </span>
+      </div>
+      <div class="resumen-card__barra-pista">
+        <div
+          class="resumen-card__barra-relleno"
+          [class.resumen-card__barra-relleno--excedido]="totalExcedido()"
+          [style.width.%]="progresoTotal()"
+        ></div>
+      </div>
+    </div>
+
+    <section class="lista-facturas" aria-label="Lista de facturas">
+      @for (factura of facturas(); track factura.nombre) {
+        <div class="factura-card">
+          <div class="factura-card__fila-superior">
+            <span class="factura-card__nombre">{{ factura.nombre }}</span>
+            <div class="factura-card__importes">
+              <span
+                class="factura-card__real"
+                [class.factura-card__real--excedido]="isFacturaExcedida(factura)"
+                [class.factura-card__real--dentro]="!isFacturaExcedida(factura)"
+              >
+                {{ factura.real | currency:'EUR':'symbol':'1.2-2':'es' }}
+              </span>
+              <span class="factura-card__presupuestado">{{ factura.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }} presupuestado</span>
+            </div>
+          </div>
+          <div class="factura-card__fila-inferior">
+            <span class="factura-card__dia">Día {{ factura.dia }}</span>
+            @if (isFacturaExcedida(factura)) {
+              <span class="factura-card__badge factura-card__badge--excedido">+{{ diferencia(factura) | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+            } @else if (diferencia(factura) < 0) {
+              <span class="factura-card__badge factura-card__badge--ahorro">{{ diferencia(factura) | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+            } @else {
+              <span class="factura-card__badge factura-card__badge--neutro">Ajustado</span>
+            }
+          </div>
+        </div>
+      }
+    </section>
+
+  </div>
+
+  <button class="fab-añadir" (click)="openDialog()" type="button" aria-label="Añadir factura">
+    <i class="pi pi-plus"></i>
+  </button>
+
+  <p-dialog
+    [visible]="dialogVisible()"
+    (visibleChange)="dialogVisible.set($event)"
+    header="Nueva factura"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    position="bottom"
+    [style]="{ width: '100%', maxWidth: '430px', margin: '0 auto', borderRadius: '20px 20px 0 0' }"
+    styleClass="nueva-factura-dialog"
+    [dismissableMask]="true"
+  >
+    <div class="dialog-form">
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="factura-nombre">Nombre</label>
+        <input
+          id="factura-nombre"
+          class="dialog-form__entrada"
+          type="text"
+          placeholder="Ej: Alquiler"
+          [ngModel]="nuevoNombre()"
+          (ngModelChange)="nuevoNombre.set($event)"
+        />
+      </div>
+
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="factura-categoria">Categoría</label>
+        <p-select
+          inputId="factura-categoria"
+          [options]="categorias"
+          [ngModel]="nuevoGastoCategoria()"
+          (ngModelChange)="nuevoGastoCategoria.set($event)"
+          placeholder="Selecciona categoría"
+          styleClass="dialog-form__select"
+        />
+      </div>
+
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="factura-importe">Importe (€)</label>
+        <input
+          id="factura-importe"
+          class="dialog-form__entrada"
+          type="number"
+          placeholder="0"
+          min="0"
+          step="0.01"
+          [ngModel]="nuevoGastoImporte()"
+          (ngModelChange)="nuevoGastoImporte.set($event)"
+        />
+      </div>
+
+      <div class="dialog-form__acciones">
+        <button class="dialog-form__boton-guardar" type="button" (click)="guardarFactura()">
+          Guardar
+        </button>
+        <button class="dialog-form__boton-cancelar" type="button" (click)="closeDialog()">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </p-dialog>
+
+  <app-bottom-nav />
+</div>
