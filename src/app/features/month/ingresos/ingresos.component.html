@@ -24,7 +24,7 @@
     </div>
 
     <section class="lista-ingresos" aria-label="Lista de ingresos">
-      @for (ingreso of ingresos(); track ingreso.fuente) {
+      @for (ingreso of ingresos(); track ingreso.id) {
         <div class="ingreso-card">
           <div class="ingreso-card__fila-superior">
             <span class="ingreso-card__fuente">{{ ingreso.fuente }}</span>
@@ -65,7 +65,7 @@
   >
     <div class="dialog-form">
       <div class="dialog-form__campo">
-        <label class="dialog-form__etiqueta" for="ingreso-nombre">Nombre</label>
+        <label class="dialog-form__etiqueta" for="ingreso-nombre">Fuente</label>
         <input
           id="ingreso-nombre"
           class="dialog-form__entrada"
@@ -77,19 +77,7 @@
       </div>
 
       <div class="dialog-form__campo">
-        <label class="dialog-form__etiqueta" for="ingreso-categoria">Categoría</label>
-        <p-select
-          inputId="ingreso-categoria"
-          [options]="categorias"
-          [ngModel]="nuevoGastoCategoria()"
-          (ngModelChange)="nuevoGastoCategoria.set($event)"
-          placeholder="Selecciona categoría"
-          styleClass="dialog-form__select"
-        />
-      </div>
-
-      <div class="dialog-form__campo">
-        <label class="dialog-form__etiqueta" for="ingreso-importe">Importe (€)</label>
+        <label class="dialog-form__etiqueta" for="ingreso-importe">Importe esperado (€)</label>
         <input
           id="ingreso-importe"
           class="dialog-form__entrada"

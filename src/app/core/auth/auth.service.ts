@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Auth, User, authState, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from '@angular/fire/auth';
+import { Auth, User, authState, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from '@angular/fire/auth';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 @Injectable({ providedIn: 'root' })
@@ -8,17 +8,20 @@ export class AuthService {
   private readonly auth = inject(Auth);
   private readonly router = inject(Router);
 
-  /**
-   * Signal reactivo con el usuario de Firebase Auth.
-   * Es null mientras no hay sesión activa.
-   */
-  readonly user = toSignal<User | null>(authState(this.auth), { initialValue: null });
+  // Promise que se resuelve cuando Firebase termina de procesar el redirect de Google.
+  // El guard espera esta promise antes de evaluar el estado de auth.
+  readonly redirectHandled: Promise<void>;
 
-  /**
-   * Alias de compatibilidad: el guard y otros servicios pueden leer `session`
-   * igual que antes. En Firebase Auth el "session" equivale al User.
-   */
+  readonly user = toSignal<User | null>(authState(this.auth), { initialValue: null });
   readonly session = this.user;
+
+  constructor() {
+    this.redirectHandled = getRedirectResult(this.auth).then(result => {
+      if (result?.user) {
+        this.router.navigate(['/home']);
+      }
+    }).catch(() => {});
+  }
 
   get currentUser(): User | null {
     return this.user();
@@ -41,12 +44,8 @@ export class AuthService {
   }
 
   async signInWithGoogle(): Promise<void> {
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(this.auth, provider);
-    } catch (error) {
-      throw error;
-    }
+    const provider = new GoogleAuthProvider();
+    await signInWithRedirect(this.auth, provider);
   }
 
   async signOut(): Promise<void> {

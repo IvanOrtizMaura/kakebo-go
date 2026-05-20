@@ -3,15 +3,21 @@ import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Dialog } from 'primeng/dialog';
-import { Select } from 'primeng/select';
+import { toSignal, toObservable } from '@angular/core/rxjs-interop';
+import { filter, switchMap, map } from 'rxjs';
 import { BottomNavComponent } from '../../../layout/bottom-nav/bottom-nav.component';
+import { AuthService } from '../../../core/auth/auth.service';
+import { MonthService } from '../../../shared/services/month.service';
+import { SectionService } from '../../../shared/services/section.service';
+import { Gasto } from '../../../shared/models';
 
 const MONTH_NAMES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
-interface GastoItem {
+interface GastoViewItem {
+  id: string;
   nombre: string;
   presupuestado: number;
   real: number;
@@ -20,21 +26,36 @@ interface GastoItem {
 @Component({
   selector: 'app-gastos',
   standalone: true,
-  imports: [CurrencyPipe, FormsModule, Dialog, Select, BottomNavComponent],
+  imports: [CurrencyPipe, FormsModule, Dialog, BottomNavComponent],
   templateUrl: './gastos.component.html',
   styleUrl: './gastos.component.scss'
 })
 export class GastosComponent {
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly monthService = inject(MonthService);
+  private readonly sectionService = inject(SectionService);
 
   readonly mesNombre = `${MONTH_NAMES[new Date().getMonth()]} ${new Date().getFullYear()}`;
 
-  readonly gastos = signal<GastoItem[]>([
-    { nombre: 'Supermercado',  presupuestado: 300, real: 320 },
-    { nombre: 'Gasolina',      presupuestado: 150, real: 130 },
-    { nombre: 'Restaurantes',  presupuestado: 100, real: 150 },
-    { nombre: 'Ropa',          presupuestado: 50,  real: 50  },
-  ]);
+  private readonly currentMonthId = signal<string | null>(null);
+
+  readonly gastos = toSignal(
+    toObservable(this.currentMonthId).pipe(
+      filter((id): id is string => id !== null),
+      switchMap(id =>
+        (this.sectionService.gastos.getAll(id) as ReturnType<typeof this.sectionService.gastos.getAll>).pipe(
+          map(items => (items as unknown as Gasto[]).map((item): GastoViewItem => ({
+            id: item.id,
+            nombre: item.name,
+            presupuestado: item.presupuestado,
+            real: item.real
+          })))
+        )
+      )
+    ),
+    { initialValue: [] as GastoViewItem[] }
+  );
 
   readonly totalReal = computed(() =>
     this.gastos().reduce((sum, gasto) => sum + gasto.real, 0)
@@ -56,25 +77,32 @@ export class GastosComponent {
 
   readonly dialogVisible = signal(false);
   readonly nuevoNombre = signal('');
-  readonly nuevoGastoCategoria = signal<string>('');
   readonly nuevoGastoImporte = signal<number | null>(null);
-  readonly categorias = ['Ingresos', 'Facturas', 'Gastos', 'Deudas', 'Ahorros'];
+
+  constructor() {
+    const user = this.authService.currentUser;
+    if (user) {
+      const now = new Date();
+      this.monthService.getOrCreateMonth(user.uid, now.getFullYear(), now.getMonth() + 1)
+        .then(month => this.currentMonthId.set(month.id))
+        .catch(error => console.error('Error al cargar mes:', error));
+    }
+  }
 
   navigateToHome(): void {
     this.router.navigate(['/home']);
   }
 
-  diferencia(gasto: GastoItem): number {
+  diferencia(gasto: GastoViewItem): number {
     return gasto.real - gasto.presupuestado;
   }
 
-  isGastoExcedido(gasto: GastoItem): boolean {
+  isGastoExcedido(gasto: GastoViewItem): boolean {
     return gasto.real > gasto.presupuestado;
   }
 
   openDialog(): void {
     this.nuevoNombre.set('');
-    this.nuevoGastoCategoria.set('');
     this.nuevoGastoImporte.set(null);
     this.dialogVisible.set(true);
   }
@@ -83,12 +111,27 @@ export class GastosComponent {
     this.dialogVisible.set(false);
   }
 
-  guardarGasto(): void {
-    console.log({
-      nombre: this.nuevoNombre(),
-      categoria: this.nuevoGastoCategoria(),
-      importe: this.nuevoGastoImporte()
-    });
-    this.closeDialog();
+  async guardarGasto(): Promise<void> {
+    const monthId = this.currentMonthId();
+    const user = this.authService.currentUser;
+    const nombre = this.nuevoNombre().trim();
+    const importe = this.nuevoGastoImporte();
+
+    if (!monthId || !user || !nombre || importe === null || importe <= 0) return;
+
+    try {
+      await this.sectionService.gastos.add({
+        month_id: monthId,
+        user_id: user.uid,
+        name: nombre,
+        presupuestado: importe,
+        real: 0,
+        tipo: 'variables',
+        order_index: this.gastos().length
+      });
+      this.closeDialog();
+    } catch (error) {
+      console.error('Error al guardar gasto:', error);
+    }
   }
 }

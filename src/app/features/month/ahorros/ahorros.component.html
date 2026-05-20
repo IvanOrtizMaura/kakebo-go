@@ -24,7 +24,7 @@
     </div>
 
     <section class="lista-ahorros" aria-label="Lista de fondos de ahorro">
-      @for (ahorro of ahorros(); track ahorro.nombre) {
+      @for (ahorro of ahorros(); track ahorro.id) {
         <div class="ahorro-card">
           <div class="ahorro-card__fila-superior">
             <span class="ahorro-card__nombre">{{ ahorro.nombre }}</span>
@@ -83,19 +83,7 @@
       </div>
 
       <div class="dialog-form__campo">
-        <label class="dialog-form__etiqueta" for="ahorro-categoria">Categoría</label>
-        <p-select
-          inputId="ahorro-categoria"
-          [options]="categorias"
-          [ngModel]="nuevoGastoCategoria()"
-          (ngModelChange)="nuevoGastoCategoria.set($event)"
-          placeholder="Selecciona categoría"
-          styleClass="dialog-form__select"
-        />
-      </div>
-
-      <div class="dialog-form__campo">
-        <label class="dialog-form__etiqueta" for="ahorro-importe">Importe (€)</label>
+        <label class="dialog-form__etiqueta" for="ahorro-importe">Presupuestado (€)</label>
         <input
           id="ahorro-importe"
           class="dialog-form__entrada"

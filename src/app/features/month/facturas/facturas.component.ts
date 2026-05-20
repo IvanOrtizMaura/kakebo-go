@@ -3,39 +3,60 @@ import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Location } from '@angular/common';
 import { Dialog } from 'primeng/dialog';
-import { Select } from 'primeng/select';
+import { toSignal, toObservable } from '@angular/core/rxjs-interop';
+import { filter, switchMap, map } from 'rxjs';
 import { BottomNavComponent } from '../../../layout/bottom-nav/bottom-nav.component';
+import { AuthService } from '../../../core/auth/auth.service';
+import { MonthService } from '../../../shared/services/month.service';
+import { FacturasService } from '../../../shared/services/facturas.service';
 
 const MONTH_NAMES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
-interface FacturaItem {
+interface FacturaViewItem {
+  id: string;
   nombre: string;
   presupuestado: number;
   real: number;
-  dia: string;
+  dia: string | null;
 }
 
 @Component({
   selector: 'app-facturas',
   standalone: true,
-  imports: [CurrencyPipe, FormsModule, Dialog, Select, BottomNavComponent],
+  imports: [CurrencyPipe, FormsModule, Dialog, BottomNavComponent],
   templateUrl: './facturas.component.html',
   styleUrl: './facturas.component.scss'
 })
 export class FacturasComponent {
   private readonly location = inject(Location);
+  private readonly authService = inject(AuthService);
+  private readonly monthService = inject(MonthService);
+  private readonly facturasService = inject(FacturasService);
 
   readonly mesNombre = `${MONTH_NAMES[new Date().getMonth()]} ${new Date().getFullYear()}`;
 
-  readonly facturas = signal<FacturaItem[]>([
-    { nombre: 'Alquiler', presupuestado: 800, real: 800, dia: '1' },
-    { nombre: 'Luz',      presupuestado: 80,  real: 72,  dia: '5' },
-    { nombre: 'Internet', presupuestado: 40,  real: 40,  dia: '10' },
-    { nombre: 'Gym',      presupuestado: 30,  real: 38,  dia: '15' },
-  ]);
+  private readonly currentMonthId = signal<string | null>(null);
+
+  readonly facturas = toSignal(
+    toObservable(this.currentMonthId).pipe(
+      filter((id): id is string => id !== null),
+      switchMap(id =>
+        this.facturasService.getAll(id).pipe(
+          map(items => items.map((item): FacturaViewItem => ({
+            id: item.id,
+            nombre: item.name,
+            presupuestado: item.presupuestado,
+            real: item.real,
+            dia: item.fecha
+          })))
+        )
+      )
+    ),
+    { initialValue: [] as FacturaViewItem[] }
+  );
 
   readonly totalReal = computed(() =>
     this.facturas().reduce((sum, factura) => sum + factura.real, 0)
@@ -57,25 +78,32 @@ export class FacturasComponent {
 
   readonly dialogVisible = signal(false);
   readonly nuevoNombre = signal('');
-  readonly nuevoGastoCategoria = signal<string>('');
   readonly nuevoGastoImporte = signal<number | null>(null);
-  readonly categorias = ['Ingresos', 'Facturas', 'Gastos', 'Deudas', 'Ahorros'];
+
+  constructor() {
+    const user = this.authService.currentUser;
+    if (user) {
+      const now = new Date();
+      this.monthService.getOrCreateMonth(user.uid, now.getFullYear(), now.getMonth() + 1)
+        .then(month => this.currentMonthId.set(month.id))
+        .catch(error => console.error('Error al cargar mes:', error));
+    }
+  }
 
   navigateBack(): void {
     this.location.back();
   }
 
-  diferencia(factura: FacturaItem): number {
+  diferencia(factura: FacturaViewItem): number {
     return factura.real - factura.presupuestado;
   }
 
-  isFacturaExcedida(factura: FacturaItem): boolean {
+  isFacturaExcedida(factura: FacturaViewItem): boolean {
     return factura.real > factura.presupuestado;
   }
 
   openDialog(): void {
     this.nuevoNombre.set('');
-    this.nuevoGastoCategoria.set('');
     this.nuevoGastoImporte.set(null);
     this.dialogVisible.set(true);
   }
@@ -84,12 +112,28 @@ export class FacturasComponent {
     this.dialogVisible.set(false);
   }
 
-  guardarFactura(): void {
-    console.log({
-      nombre: this.nuevoNombre(),
-      categoria: this.nuevoGastoCategoria(),
-      importe: this.nuevoGastoImporte()
-    });
-    this.closeDialog();
+  async guardarFactura(): Promise<void> {
+    const monthId = this.currentMonthId();
+    const user = this.authService.currentUser;
+    const nombre = this.nuevoNombre().trim();
+    const importe = this.nuevoGastoImporte();
+
+    if (!monthId || !user || !nombre || importe === null || importe <= 0) return;
+
+    try {
+      await this.facturasService.add({
+        month_id: monthId,
+        user_id: user.uid,
+        name: nombre,
+        fecha: null,
+        presupuestado: importe,
+        real: 0,
+        is_recurring: false,
+        order_index: this.facturas().length
+      });
+      this.closeDialog();
+    } catch (error) {
+      console.error('Error al guardar factura:', error);
+    }
   }
 }

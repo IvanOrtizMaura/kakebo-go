@@ -16,6 +16,7 @@ import {
   serverTimestamp,
   writeBatch
 } from '@angular/fire/firestore';
+import { Observable, of } from 'rxjs';
 import { Deuda, DeudaMonthly } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -47,6 +48,15 @@ export class DeudasService {
         error: reject
       });
     });
+  }
+
+  getActiveObservable(): Observable<Deuda[]> {
+    try {
+      const q = query(this.deudasCol(), where('is_active', '==', true), orderBy('total_amount'));
+      return collectionData(q, { idField: 'id' }) as Observable<Deuda[]>;
+    } catch {
+      return of([]);
+    }
   }
 
   async getArchived(userId: string): Promise<Deuda[]> {

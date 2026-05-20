@@ -24,7 +24,7 @@
     </div>
 
     <section class="lista-deudas" aria-label="Lista de deudas">
-      @for (deuda of deudas(); track deuda.nombre) {
+      @for (deuda of deudas(); track deuda.id) {
         <div class="deuda-card">
           <div class="deuda-card__fila-superior">
             <span class="deuda-card__nombre">{{ deuda.nombre }}</span>
@@ -85,19 +85,7 @@
       </div>
 
       <div class="dialog-form__campo">
-        <label class="dialog-form__etiqueta" for="deuda-categoria">Categoría</label>
-        <p-select
-          inputId="deuda-categoria"
-          [options]="categorias"
-          [ngModel]="nuevoGastoCategoria()"
-          (ngModelChange)="nuevoGastoCategoria.set($event)"
-          placeholder="Selecciona categoría"
-          styleClass="dialog-form__select"
-        />
-      </div>
-
-      <div class="dialog-form__campo">
-        <label class="dialog-form__etiqueta" for="deuda-importe">Importe (€)</label>
+        <label class="dialog-form__etiqueta" for="deuda-importe">Pago mensual (€)</label>
         <input
           id="deuda-importe"
           class="dialog-form__entrada"

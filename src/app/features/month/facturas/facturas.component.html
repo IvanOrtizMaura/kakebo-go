@@ -30,7 +30,7 @@
     </div>
 
     <section class="lista-facturas" aria-label="Lista de facturas">
-      @for (factura of facturas(); track factura.nombre) {
+      @for (factura of facturas(); track factura.id) {
         <div class="factura-card">
           <div class="factura-card__fila-superior">
             <span class="factura-card__nombre">{{ factura.nombre }}</span>
@@ -91,19 +91,7 @@
       </div>
 
       <div class="dialog-form__campo">
-        <label class="dialog-form__etiqueta" for="factura-categoria">Categoría</label>
-        <p-select
-          inputId="factura-categoria"
-          [options]="categorias"
-          [ngModel]="nuevoGastoCategoria()"
-          (ngModelChange)="nuevoGastoCategoria.set($event)"
-          placeholder="Selecciona categoría"
-          styleClass="dialog-form__select"
-        />
-      </div>
-
-      <div class="dialog-form__campo">
-        <label class="dialog-form__etiqueta" for="factura-importe">Importe (€)</label>
+        <label class="dialog-form__etiqueta" for="factura-importe">Presupuestado (€)</label>
         <input
           id="factura-importe"
           class="dialog-form__entrada"
