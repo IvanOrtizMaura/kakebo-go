@@ -1,49 +1,56 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Session, User } from '@supabase/supabase-js';
-import { SupabaseService } from '../supabase/supabase.service';
+import { Auth, User, authState, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from '@angular/fire/auth';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  readonly session = signal<Session | null>(null);
-  readonly user = signal<User | null>(null);
+  private readonly auth = inject(Auth);
+  private readonly router = inject(Router);
 
-  constructor(private supabase: SupabaseService, private router: Router) {
-    this.supabase.client.auth.getSession().then(({ data }) => {
-      this.session.set(data.session);
-      this.user.set(data.session?.user ?? null);
-    });
+  /**
+   * Signal reactivo con el usuario de Firebase Auth.
+   * Es null mientras no hay sesión activa.
+   */
+  readonly user = toSignal<User | null>(authState(this.auth), { initialValue: null });
 
-    this.supabase.client.auth.onAuthStateChange((_event, session) => {
-      this.session.set(session);
-      this.user.set(session?.user ?? null);
-    });
-  }
+  /**
+   * Alias de compatibilidad: el guard y otros servicios pueden leer `session`
+   * igual que antes. En Firebase Auth el "session" equivale al User.
+   */
+  readonly session = this.user;
 
-  async signInWithEmail(email: string, password: string) {
-    const { error } = await this.supabase.client.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-  }
-
-  async signUpWithEmail(email: string, password: string) {
-    const { error } = await this.supabase.client.auth.signUp({ email, password });
-    if (error) throw error;
-  }
-
-  async signInWithGoogle() {
-    const { error } = await this.supabase.client.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` }
-    });
-    if (error) throw error;
-  }
-
-  async signOut() {
-    await this.supabase.client.auth.signOut();
-    this.router.navigate(['/auth/login']);
-  }
-
-  get currentUser() {
+  get currentUser(): User | null {
     return this.user();
+  }
+
+  async signInWithEmail(email: string, password: string): Promise<void> {
+    try {
+      await signInWithEmailAndPassword(this.auth, email, password);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async signUpWithEmail(email: string, password: string): Promise<void> {
+    try {
+      await createUserWithEmailAndPassword(this.auth, email, password);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async signInWithGoogle(): Promise<void> {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(this.auth, provider);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async signOut(): Promise<void> {
+    await signOut(this.auth);
+    this.router.navigate(['/auth/login']);
   }
 }

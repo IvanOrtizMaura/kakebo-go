@@ -1,26 +1,10 @@
-import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { environment } from '../../../environments/environment';
-
-@Injectable({ providedIn: 'root' })
-export class SupabaseService {
-  private _client: SupabaseClient | null = null;
-
-  get client(): SupabaseClient {
-    if (!this._client) {
-      this._client = createClient(
-        environment.supabaseUrl,
-        environment.supabaseKey,
-        {
-          auth: {
-            autoRefreshToken: true,
-            persistSession: true,
-            detectSessionInUrl: true,
-            storage: typeof window !== 'undefined' ? window.localStorage : undefined
-          }
-        }
-      );
-    }
-    return this._client;
-  }
-}
+/**
+ * @deprecated Supabase ha sido reemplazado por Firebase.
+ * Este servicio ya no está en uso. Ver:
+ *   src/app/core/firebase/firebase.service.ts
+ *   src/app/core/auth/auth.service.ts
+ *
+ * Este archivo se mantiene vacío para evitar errores de compilación
+ * en caso de imports residuales durante la transición.
+ */
+export {};

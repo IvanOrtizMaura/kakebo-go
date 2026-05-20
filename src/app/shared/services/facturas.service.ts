@@ -1,33 +1,60 @@
-import { Injectable } from '@angular/core';
-import { SupabaseService } from '../../core/supabase/supabase.service';
+import { Injectable, inject } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
+import {
+  Firestore,
+  collection,
+  collectionData,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  serverTimestamp
+} from '@angular/fire/firestore';
+import { Observable } from 'rxjs';
 import { Factura } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class FacturasService {
-  constructor(private supabase: SupabaseService) {}
+  private readonly firestore = inject(Firestore);
+  private readonly auth = inject(Auth);
 
+  /** Ruta: users/{uid}/months/{monthId}/facturas */
+  private colRef(monthId: string) {
+    const uid = this.auth.currentUser?.uid;
+    if (!uid) throw new Error('Usuario no autenticado');
+    return collection(this.firestore, 'users', uid, 'months', monthId, 'facturas');
+  }
+
+  getAll(monthId: string): Observable<Factura[]> {
+    const q = query(this.colRef(monthId), orderBy('order_index'));
+    return collectionData(q, { idField: 'id' }) as Observable<Factura[]>;
+  }
+
+  /** @deprecated Usa getAll() para flujo reactivo. Mantener para compatibilidad. */
   async getByMonth(monthId: string): Promise<Factura[]> {
-    const { data } = await this.supabase.client
-      .from('facturas').select('*').eq('month_id', monthId).order('order_index');
-    return (data ?? []) as Factura[];
+    return new Promise((resolve, reject) => {
+      const sub = this.getAll(monthId).subscribe({ next: v => { sub.unsubscribe(); resolve(v); }, error: reject });
+    });
   }
 
   async add(item: Omit<Factura, 'id'>): Promise<Factura> {
-    const { data, error } = await this.supabase.client
-      .from('facturas').insert(item).select().single();
-    if (error) throw error;
-    return data as Factura;
+    const ref = await addDoc(this.colRef(item.month_id), { ...item, createdAt: serverTimestamp() });
+    return { ...item, id: ref.id };
   }
 
-  async update(id: string, changes: Partial<Factura>): Promise<void> {
-    const { error } = await this.supabase.client
-      .from('facturas').update(changes).eq('id', id);
-    if (error) throw error;
+  async update(id: string, monthId: string, changes: Partial<Factura>): Promise<void> {
+    const uid = this.auth.currentUser?.uid;
+    if (!uid) throw new Error('Usuario no autenticado');
+    const ref = doc(this.firestore, 'users', uid, 'months', monthId, 'facturas', id);
+    await updateDoc(ref, changes as any);
   }
 
-  async remove(id: string): Promise<void> {
-    const { error } = await this.supabase.client
-      .from('facturas').delete().eq('id', id);
-    if (error) throw error;
+  async remove(id: string, monthId: string): Promise<void> {
+    const uid = this.auth.currentUser?.uid;
+    if (!uid) throw new Error('Usuario no autenticado');
+    const ref = doc(this.firestore, 'users', uid, 'months', monthId, 'facturas', id);
+    await deleteDoc(ref);
   }
 }

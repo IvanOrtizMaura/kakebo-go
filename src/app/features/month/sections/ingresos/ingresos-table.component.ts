@@ -210,7 +210,7 @@ export class IngresosTableComponent implements OnChanges {
     else if (cell.field === 'real') update.real = this.editNum;
     else if (cell.field === 'dia_de_paga') update.dia_de_paga = this.editDate ? this.formatLocalDate(this.editDate) : null;
     this.editingCell.set(null);
-    await this.service.update(row.id, update);
+    await this.service.update(row.id, this.monthId, update);
     this.changed.emit();
   }
 
@@ -218,7 +218,7 @@ export class IngresosTableComponent implements OnChanges {
 
   async toggleDepositado(row: Ingreso) {
     const newDepositado = !row.depositado;
-    await this.service.update(row.id, {
+    await this.service.update(row.id, this.monthId, {
       depositado: newDepositado,
       real: newDepositado ? row.esperado : 0
     });
@@ -243,7 +243,7 @@ export class IngresosTableComponent implements OnChanges {
   }
 
   async onDelete(id: string) {
-    await this.service.remove(id);
+    await this.service.remove(id, this.monthId);
     this.changed.emit();
   }
 }

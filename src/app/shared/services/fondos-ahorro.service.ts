@@ -1,80 +1,110 @@
-import { Injectable } from '@angular/core';
-import { SupabaseService } from '../../core/supabase/supabase.service';
+import { Injectable, inject } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
+import {
+  Firestore,
+  collection,
+  collectionData,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  serverTimestamp,
+  setDoc,
+  getCountFromServer
+} from '@angular/fire/firestore';
 import { FondoAhorro, FondoAhorroMonthly } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class FondosAhorroService {
-  constructor(private supabase: SupabaseService) {}
+  private readonly firestore = inject(Firestore);
+  private readonly auth = inject(Auth);
+
+  private get uid(): string {
+    const uid = this.auth.currentUser?.uid;
+    if (!uid) throw new Error('Usuario no autenticado');
+    return uid;
+  }
+
+  private fondosCol() {
+    return collection(this.firestore, 'users', this.uid, 'fondos_ahorro');
+  }
+
+  private monthlyCol() {
+    return collection(this.firestore, 'users', this.uid, 'fondos_ahorro_monthly');
+  }
 
   async getActive(userId: string): Promise<FondoAhorro[]> {
-    const { data } = await this.supabase.client
-      .from('fondos_ahorro').select('*').eq('user_id', userId).eq('is_active', true)
-      .order('created_at', { ascending: true });
-    return (data ?? []) as FondoAhorro[];
+    return new Promise((resolve, reject) => {
+      const q = query(this.fondosCol(), where('is_active', '==', true), orderBy('createdAt'));
+      const sub = collectionData(q, { idField: 'id' }).subscribe({
+        next: v => { sub.unsubscribe(); resolve(v as FondoAhorro[]); },
+        error: reject
+      });
+    });
   }
 
   async getArchived(userId: string): Promise<FondoAhorro[]> {
-    const { data } = await this.supabase.client
-      .from('fondos_ahorro').select('*').eq('user_id', userId).eq('is_active', false)
-      .order('created_at', { ascending: true });
-    return (data ?? []) as FondoAhorro[];
+    return new Promise((resolve, reject) => {
+      const q = query(this.fondosCol(), where('is_active', '==', false), orderBy('createdAt'));
+      const sub = collectionData(q, { idField: 'id' }).subscribe({
+        next: v => { sub.unsubscribe(); resolve(v as FondoAhorro[]); },
+        error: reject
+      });
+    });
   }
 
   async create(fondo: Omit<FondoAhorro, 'id'>): Promise<FondoAhorro> {
-    const { data, error } = await this.supabase.client
-      .from('fondos_ahorro').insert(fondo).select().single();
-    if (error) throw error;
-    return data as FondoAhorro;
+    const ref = await addDoc(this.fondosCol(), { ...fondo, createdAt: serverTimestamp() });
+    return { ...fondo, id: ref.id };
   }
 
   async update(id: string, patch: Partial<Pick<FondoAhorro, 'name' | 'total_amount' | 'monthly_amount' | 'num_months'>>): Promise<void> {
-    const { error } = await this.supabase.client
-      .from('fondos_ahorro').update(patch).eq('id', id);
-    if (error) throw error;
+    const ref = doc(this.firestore, 'users', this.uid, 'fondos_ahorro', id);
+    await updateDoc(ref, patch as any);
   }
 
   async archive(id: string): Promise<void> {
-    const { error } = await this.supabase.client
-      .from('fondos_ahorro').update({ is_active: false }).eq('id', id);
-    if (error) throw error;
-  }
-
-  async delete(id: string): Promise<void> {
-    const { error } = await this.supabase.client
-      .from('fondos_ahorro').delete().eq('id', id);
-    if (error) throw error;
+    const ref = doc(this.firestore, 'users', this.uid, 'fondos_ahorro', id);
+    await updateDoc(ref, { is_active: false });
   }
 
   async deactivate(id: string): Promise<void> {
     return this.archive(id);
   }
 
+  async delete(id: string): Promise<void> {
+    const ref = doc(this.firestore, 'users', this.uid, 'fondos_ahorro', id);
+    await deleteDoc(ref);
+  }
+
   async getMonthlyByMonth(monthId: string): Promise<FondoAhorroMonthly[]> {
-    const { data } = await this.supabase.client
-      .from('fondos_ahorro_monthly').select('*').eq('month_id', monthId);
-    return (data ?? []) as FondoAhorroMonthly[];
+    return new Promise((resolve, reject) => {
+      const q = query(this.monthlyCol(), where('month_id', '==', monthId));
+      const sub = collectionData(q, { idField: 'id' }).subscribe({
+        next: v => { sub.unsubscribe(); resolve(v as FondoAhorroMonthly[]); },
+        error: reject
+      });
+    });
   }
 
   async upsertMonthly(item: Omit<FondoAhorroMonthly, 'id'>): Promise<void> {
-    const { error } = await this.supabase.client
-      .from('fondos_ahorro_monthly').upsert(item, { onConflict: 'fondo_id,month_id' });
-    if (error) throw error;
+    const id = `${item.fondo_id}_${item.month_id}`;
+    const ref = doc(this.firestore, 'users', this.uid, 'fondos_ahorro_monthly', id);
+    await setDoc(ref, item, { merge: true });
   }
 
   async updateMonthlyReal(fondoId: string, monthId: string, real: number): Promise<void> {
-    const { error } = await this.supabase.client
-      .from('fondos_ahorro_monthly')
-      .update({ real })
-      .eq('fondo_id', fondoId)
-      .eq('month_id', monthId);
-    if (error) throw error;
+    const id = `${fondoId}_${monthId}`;
+    const ref = doc(this.firestore, 'users', this.uid, 'fondos_ahorro_monthly', id);
+    await updateDoc(ref, { real });
   }
 
   async countCompletedMonths(fondoId: string): Promise<number> {
-    const { count } = await this.supabase.client
-      .from('fondos_ahorro_monthly')
-      .select('*', { count: 'exact', head: true })
-      .eq('fondo_id', fondoId);
-    return count ?? 0;
+    const q = query(this.monthlyCol(), where('fondo_id', '==', fondoId));
+    const snap = await getCountFromServer(q);
+    return snap.data().count;
   }
 }

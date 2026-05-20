@@ -1,5 +1,17 @@
-import { Injectable } from '@angular/core';
-import { SupabaseService } from '../../core/supabase/supabase.service';
+import { Injectable, inject } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
+import {
+  Firestore,
+  collection,
+  collectionData,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  serverTimestamp
+} from '@angular/fire/firestore';
 
 export interface IngresoTemplate {
   id: string;
@@ -12,40 +24,41 @@ export interface IngresoTemplate {
 
 @Injectable({ providedIn: 'root' })
 export class IngresoTemplatesService {
-  constructor(private supabase: SupabaseService) {}
+  private readonly firestore = inject(Firestore);
+  private readonly auth = inject(Auth);
+
+  private get uid(): string {
+    const uid = this.auth.currentUser?.uid;
+    if (!uid) throw new Error('Usuario no autenticado');
+    return uid;
+  }
+
+  private col() {
+    return collection(this.firestore, 'users', this.uid, 'ingreso_templates');
+  }
 
   async getAll(userId: string): Promise<IngresoTemplate[]> {
-    const { data } = await this.supabase.client
-      .from('ingreso_templates')
-      .select('*')
-      .eq('user_id', userId)
-      .order('order_index');
-    return (data ?? []) as IngresoTemplate[];
+    return new Promise((resolve, reject) => {
+      const q = query(this.col(), orderBy('order_index'));
+      const sub = collectionData(q, { idField: 'id' }).subscribe({
+        next: v => { sub.unsubscribe(); resolve(v as IngresoTemplate[]); },
+        error: reject
+      });
+    });
   }
 
   async add(item: Omit<IngresoTemplate, 'id'>): Promise<IngresoTemplate> {
-    const { data, error } = await this.supabase.client
-      .from('ingreso_templates')
-      .insert(item)
-      .select()
-      .single();
-    if (error) throw error;
-    return data as IngresoTemplate;
+    const ref = await addDoc(this.col(), { ...item, createdAt: serverTimestamp() });
+    return { ...item, id: ref.id };
   }
 
   async update(id: string, changes: Partial<Pick<IngresoTemplate, 'fuente' | 'esperado'>>): Promise<void> {
-    const { error } = await this.supabase.client
-      .from('ingreso_templates')
-      .update(changes)
-      .eq('id', id);
-    if (error) throw error;
+    const ref = doc(this.firestore, 'users', this.uid, 'ingreso_templates', id);
+    await updateDoc(ref, changes as any);
   }
 
   async remove(id: string): Promise<void> {
-    const { error } = await this.supabase.client
-      .from('ingreso_templates')
-      .delete()
-      .eq('id', id);
-    if (error) throw error;
+    const ref = doc(this.firestore, 'users', this.uid, 'ingreso_templates', id);
+    await deleteDoc(ref);
   }
 }

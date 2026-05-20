@@ -1,7 +1,7 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
-import { SupabaseService } from '../../core/supabase/supabase.service';
+import { Auth } from '@angular/fire/auth';
 import { UserProfileService } from '../../core/auth/user-profile.service';
 import { IngresoTemplatesService, IngresoTemplate } from '../../shared/services/ingreso-templates.service';
 import { DeudasService } from '../../shared/services/deudas.service';
@@ -89,8 +89,9 @@ export class SettingsComponent implements OnInit {
 
   private userId = '';
 
+  private fbAuth = inject(Auth);
+
   constructor(
-    private supabase: SupabaseService,
     private templatesService: IngresoTemplatesService,
     private deudasService: DeudasService,
     private ahorroTemplatesService: AhorroTemplatesService,
@@ -99,8 +100,7 @@ export class SettingsComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
-    const { data } = await this.supabase.client.auth.getSession();
-    this.userId = data.session?.user.id ?? '';
+    this.userId = this.fbAuth.currentUser?.uid ?? '';
     if (!this.userId) return;
     await Promise.all([
       this.loadTemplates(),

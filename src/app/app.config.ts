@@ -6,8 +6,12 @@ import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import { provideServiceWorker } from '@angular/service-worker';
 import { isDevMode } from '@angular/core';
+import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
+import { provideFirestore, getFirestore } from '@angular/fire/firestore';
+import { provideAuth, getAuth } from '@angular/fire/auth';
 
 import { routes } from './app.routes';
+import { firebaseConfig } from './core/firebase/firebase.config';
 
 const KakeboTheme = definePreset(Aura, {
   semantic: {
@@ -39,6 +43,10 @@ export const appConfig: ApplicationConfig = {
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000'
-    })
+    }),
+    // Firebase providers
+    provideFirebaseApp(() => initializeApp(firebaseConfig)),
+    provideFirestore(() => getFirestore()),
+    provideAuth(() => getAuth())
   ]
 };

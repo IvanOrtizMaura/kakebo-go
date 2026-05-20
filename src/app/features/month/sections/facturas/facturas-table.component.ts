@@ -184,14 +184,14 @@ export class FacturasTableComponent {
     else if (cell.field === 'presupuestado') update.presupuestado = this.editNum;
     else if (cell.field === 'real') update.real = this.editNum;
     this.editingCell.set(null);
-    await this.service.update(row.id, update);
+    await this.service.update(row.id, this.monthId, update);
     this.changed.emit();
   }
 
   cancelEdit() { this.editingCell.set(null); }
 
   async toggleRecurrente(row: Factura) {
-    await this.service.update(row.id, { is_recurring: !row.is_recurring });
+    await this.service.update(row.id, this.monthId, { is_recurring: !row.is_recurring });
     this.changed.emit();
   }
 
@@ -204,7 +204,7 @@ export class FacturasTableComponent {
   }
 
   async onDelete(id: string) {
-    await this.service.remove(id);
+    await this.service.remove(id, this.monthId);
     this.changed.emit();
   }
 }

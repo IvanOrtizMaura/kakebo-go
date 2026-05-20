@@ -1,9 +1,17 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { CurrencyPipe } from '@angular/common';
+import { inject } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
+import {
+  Firestore,
+  collection,
+  collectionData,
+  query,
+  where
+} from '@angular/fire/firestore';
 import { AuthService } from '../../core/auth/auth.service';
 import { MonthService } from '../../shared/services/month.service';
-import { SupabaseService } from '../../core/supabase/supabase.service';
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -297,7 +305,6 @@ export class DashboardComponent implements OnInit {
 
   constructor(
     private auth: AuthService,
-    private supabase: SupabaseService,
     private router: Router
   ) {}
 
@@ -310,14 +317,15 @@ export class DashboardComponent implements OnInit {
     await this.loadYear();
   }
 
+  private fbAuth = inject(Auth);
+  private firestore = inject(Firestore);
+  private monthService = inject(MonthService);
+
   private async loadYear() {
-    const { data: sessionData } = await this.supabase.client.auth.getSession();
-    const uid = sessionData.session?.user.id;
+    const uid = this.fbAuth.currentUser?.uid;
     if (!uid) return;
 
-    const { data: months } = await this.supabase.client
-      .from('months').select('id, month')
-      .eq('user_id', uid).eq('year', this.year());
+    const months = await this.monthService.getMonthsForYear(uid, this.year());
 
     const cards: MonthCard[] = await Promise.all(
       Array.from({ length: 12 }, async (_, i) => {
@@ -325,23 +333,45 @@ export class DashboardComponent implements OnInit {
         const isCurrent = monthNum === this.currentMonth && this.year() === this.currentYear;
         const isFuture = this.year() === this.currentYear ? monthNum > this.currentMonth : this.year() > this.currentYear;
         const isPast = !isCurrent && !isFuture;
-        const rec = months?.find(m => m.month === monthNum);
+        const rec = months.find(m => m.month === monthNum);
 
         if (!rec) {
           return { monthNum, name: MONTH_NAMES[i], ingresos: 0, gastos: 0, ahorros: 0, balance: 0, hasData: false, isCurrent, isFuture, isPast };
         }
 
-        const [{ data: ingresos }, { data: facturas }, { data: gastos }, { data: ahorros }, { data: pareja }, { data: fondos_monthly }, { data: deudas_monthly }] = await Promise.all([
-          this.supabase.client.from('ingresos').select('real').eq('month_id', rec.id),
-          this.supabase.client.from('facturas').select('real').eq('month_id', rec.id),
-          this.supabase.client.from('gastos').select('real').eq('month_id', rec.id),
-          this.supabase.client.from('ahorros').select('real').eq('month_id', rec.id),
-          this.supabase.client.from('pareja').select('real').eq('month_id', rec.id),
-          this.supabase.client.from('fondos_ahorro_monthly').select('real').eq('month_id', rec.id),
-          this.supabase.client.from('deudas_monthly').select('real').eq('month_id', rec.id)
+        // Leer subcollecciones del mes en paralelo
+        const readSubcol = (sub: string): Promise<{ real: number }[]> =>
+          new Promise((resolve, reject) => {
+            const ref = collection(this.firestore, 'users', uid, 'months', rec.id, sub);
+            const sub$ = collectionData(ref).subscribe({
+              next: v => { sub$.unsubscribe(); resolve(v as { real: number }[]); },
+              error: reject
+            });
+          });
+
+        const readUserCol = (col: string, monthId: string): Promise<{ real: number }[]> =>
+          new Promise((resolve, reject) => {
+            const q = query(
+              collection(this.firestore, 'users', uid, col),
+              where('month_id', '==', monthId)
+            );
+            const sub$ = collectionData(q).subscribe({
+              next: v => { sub$.unsubscribe(); resolve(v as { real: number }[]); },
+              error: reject
+            });
+          });
+
+        const [ingresos, facturas, gastos, ahorros, pareja, fondos_monthly, deudas_monthly] = await Promise.all([
+          readSubcol('ingresos'),
+          readSubcol('facturas'),
+          readSubcol('gastos'),
+          readSubcol('ahorros'),
+          readSubcol('pareja'),
+          readUserCol('fondos_ahorro_monthly', rec.id),
+          readUserCol('deudas_monthly', rec.id)
         ]);
 
-        const sum = (arr: { real: number }[] | null) => (arr ?? []).reduce((s, r) => s + r.real, 0);
+        const sum = (arr: { real: number }[]) => arr.reduce((s, r) => s + (r.real ?? 0), 0);
         const totalIngresos = sum(ingresos);
         const totalAhorros = sum(ahorros) + sum(fondos_monthly);
         const totalGastos = sum(facturas) + sum(gastos) + totalAhorros + sum(pareja) + sum(deudas_monthly);

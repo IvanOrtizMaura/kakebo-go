@@ -1,32 +1,62 @@
-import { Injectable } from '@angular/core';
-import { SupabaseService } from '../../core/supabase/supabase.service';
+import { Injectable, inject } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
+import {
+  Firestore,
+  collection,
+  collectionData,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  serverTimestamp
+} from '@angular/fire/firestore';
+import { Observable } from 'rxjs';
+
+type SubCollection = 'gastos' | 'ahorros' | 'pareja';
 
 @Injectable({ providedIn: 'root' })
 export class SectionService {
-  constructor(private supabase: SupabaseService) {}
+  private readonly firestore = inject(Firestore);
+  private readonly auth = inject(Auth);
 
-  private crud(table: string) {
+  private colRef(monthId: string, sub: SubCollection) {
+    const uid = this.auth.currentUser?.uid;
+    if (!uid) throw new Error('Usuario no autenticado');
+    return collection(this.firestore, 'users', uid, 'months', monthId, sub);
+  }
+
+  private crud(sub: SubCollection) {
     return {
-      getByMonth: async (monthId: string) => {
-        const { data } = await this.supabase.client
-          .from(table).select('*').eq('month_id', monthId).order('order_index');
-        return data ?? [];
+      getAll: (monthId: string): Observable<Record<string, unknown>[]> => {
+        const q = query(this.colRef(monthId, sub), orderBy('order_index'));
+        return collectionData(q, { idField: 'id' }) as Observable<Record<string, unknown>[]>;
       },
-      add: async (item: Record<string, unknown>) => {
-        const { data, error } = await this.supabase.client
-          .from(table).insert(item).select().single();
-        if (error) throw error;
-        return data;
+      getByMonth: async (monthId: string): Promise<Record<string, unknown>[]> => {
+        return new Promise((resolve, reject) => {
+          const sub$ = collectionData(
+            query(this.colRef(monthId, sub), orderBy('order_index')),
+            { idField: 'id' }
+          ).subscribe({ next: v => { sub$.unsubscribe(); resolve(v as Record<string, unknown>[]); }, error: reject });
+        });
       },
-      update: async (id: string, changes: Record<string, unknown>) => {
-        const { error } = await this.supabase.client
-          .from(table).update(changes).eq('id', id);
-        if (error) throw error;
+      add: async (item: Record<string, unknown>): Promise<Record<string, unknown>> => {
+        const monthId = item['month_id'] as string;
+        const ref = await addDoc(this.colRef(monthId, sub), { ...item, createdAt: serverTimestamp() });
+        return { ...item, id: ref.id };
       },
-      remove: async (id: string) => {
-        const { error } = await this.supabase.client
-          .from(table).delete().eq('id', id);
-        if (error) throw error;
+      update: async (id: string, changes: Record<string, unknown>, monthId: string): Promise<void> => {
+        const uid = this.auth.currentUser?.uid;
+        if (!uid) throw new Error('Usuario no autenticado');
+        const ref = doc(this.firestore, 'users', uid, 'months', monthId, sub, id);
+        await updateDoc(ref, changes as any);
+      },
+      remove: async (id: string, monthId: string): Promise<void> => {
+        const uid = this.auth.currentUser?.uid;
+        if (!uid) throw new Error('Usuario no autenticado');
+        const ref = doc(this.firestore, 'users', uid, 'months', monthId, sub, id);
+        await deleteDoc(ref);
       }
     };
   }

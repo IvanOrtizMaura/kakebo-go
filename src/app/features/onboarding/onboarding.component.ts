@@ -626,7 +626,7 @@ export class OnboardingComponent {
     try {
       // 1. Guardar perfil
       await this.profileService.upsertProfile({
-        id: user.id,
+        id: user.uid,
         ...this.profile,
         has_high_interest_debt: this.pendingDeudas.some(d => d.tipo === 'bank' && d.interes > 10),
         onboarding_completed: true
@@ -635,7 +635,7 @@ export class OnboardingComponent {
       // 2. Crear ingreso fijo template
       if (this.profile.monthly_net_income > 0 && this.newIngresoFuente.trim()) {
         await this.ingresoTemplatesService.add({
-          user_id: user.id,
+          user_id: user.uid,
           fuente: this.newIngresoFuente.trim(),
           esperado: this.profile.monthly_net_income,
           dia_de_paga: null,
@@ -652,7 +652,7 @@ export class OnboardingComponent {
           ? d.capital * 1.05
           : (d.meses ? cuota * d.meses : d.capital);
         await this.deudasService.create({
-          user_id: user.id,
+          user_id: user.uid,
           name: d.nombre,
           type: d.tipo,
           principal_amount: d.capital,

@@ -187,14 +187,14 @@ export class GastosTableComponent {
     else if (cell.field === 'presupuestado') update.presupuestado = this.editNum;
     else if (cell.field === 'real') update.real = this.editNum;
     this.editingCell.set(null);
-    await this.service.gastos.update(row.id, update);
+    await this.service.gastos.update(row.id, update, this.monthId);
     this.changed.emit();
   }
 
   cancelEdit() { this.editingCell.set(null); }
 
   async toggleTipo(row: Gasto) {
-    await this.service.gastos.update(row.id, { tipo: row.tipo === 'fijos' ? 'variables' : 'fijos' });
+    await this.service.gastos.update(row.id, { tipo: row.tipo === 'fijos' ? 'variables' : 'fijos' }, this.monthId);
     this.changed.emit();
   }
 
@@ -206,5 +206,5 @@ export class GastosTableComponent {
     this.changed.emit();
   }
 
-  async onDelete(id: string) { await this.service.gastos.remove(id); this.changed.emit(); }
+  async onDelete(id: string) { await this.service.gastos.remove(id, this.monthId); this.changed.emit(); }
 }

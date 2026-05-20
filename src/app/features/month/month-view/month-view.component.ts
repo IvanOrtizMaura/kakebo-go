@@ -3,8 +3,8 @@ import { ActivatedRoute } from '@angular/router';
 import { CurrencyPipe } from '@angular/common';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+import { Auth } from '@angular/fire/auth';
 import { AuthService } from '../../../core/auth/auth.service';
-import { SupabaseService } from '../../../core/supabase/supabase.service';
 import { MonthService } from '../../../shared/services/month.service';
 import { IngresosService } from '../../../shared/services/ingresos.service';
 import { FacturasService } from '../../../shared/services/facturas.service';
@@ -265,7 +265,7 @@ export class MonthViewComponent implements OnInit {
   monthNum = signal(0);
 
   monthName = computed(() => MONTH_NAMES[this.monthNum() - 1] ?? '');
-  userId = computed(() => this.auth.currentUser?.id ?? '');
+  userId = computed(() => this.fbAuth.currentUser?.uid ?? '');
   hasPartner = computed(() => this.profile()?.has_partner ?? false);
 
   // Computed totals
@@ -316,10 +316,11 @@ export class MonthViewComponent implements OnInit {
     ...p, name: p.name, presupuestado: p.presupuestado, real: p.real
   })));
 
+  private fbAuth = inject(Auth);
+
   constructor(
     private route: ActivatedRoute,
     private auth: AuthService,
-    private supabase: SupabaseService,
     private monthService: MonthService,
     private ingresosService: IngresosService,
     private facturasService: FacturasService,
@@ -365,9 +366,8 @@ export class MonthViewComponent implements OnInit {
   }
 
   private async loadAll() {
-    // Get session directly to avoid race condition with signal initialization
-    const { data } = await this.supabase.client.auth.getSession();
-    const uid = data.session?.user.id;
+    // Usamos Firebase Auth para obtener el uid del usuario actual
+    const uid = this.fbAuth.currentUser?.uid;
     if (!uid) return;
 
     const [monthRec, profileData] = await Promise.all([
@@ -402,19 +402,19 @@ export class MonthViewComponent implements OnInit {
   async loadGastos() {
     const mid = this.monthRecord()?.id;
     if (!mid) return;
-    this.gastos.set(await this.sectionService.gastos.getByMonth(mid) as Gasto[]);
+    this.gastos.set(await this.sectionService.gastos.getByMonth(mid) as unknown as Gasto[]);
   }
 
   async loadAhorros() {
     const mid = this.monthRecord()?.id;
     if (!mid) return;
-    this.ahorros.set(await this.sectionService.ahorros.getByMonth(mid) as Ahorro[]);
+    this.ahorros.set(await this.sectionService.ahorros.getByMonth(mid) as unknown as Ahorro[]);
   }
 
   async loadPareja() {
     const mid = this.monthRecord()?.id;
     if (!mid) return;
-    this.pareja.set(await this.sectionService.pareja.getByMonth(mid) as Pareja[]);
+    this.pareja.set(await this.sectionService.pareja.getByMonth(mid) as unknown as Pareja[]);
   }
 
   async addAhorro(e: { name: string; presupuestado: number }) {
@@ -425,12 +425,16 @@ export class MonthViewComponent implements OnInit {
   }
 
   async updateAhorro(e: { id: string; name: string; presupuestado: number; real: number }) {
-    await this.sectionService.ahorros.update(e.id, { name: e.name, presupuestado: e.presupuestado, real: e.real });
+    const mid = this.monthRecord()?.id;
+    if (!mid) return;
+    await this.sectionService.ahorros.update(e.id, { name: e.name, presupuestado: e.presupuestado, real: e.real }, mid);
     await this.loadAhorros();
   }
 
   async deleteAhorro(id: string) {
-    await this.sectionService.ahorros.remove(id);
+    const mid = this.monthRecord()?.id;
+    if (!mid) return;
+    await this.sectionService.ahorros.remove(id, mid);
     await this.loadAhorros();
   }
 
@@ -442,12 +446,16 @@ export class MonthViewComponent implements OnInit {
   }
 
   async updatePareja(e: { id: string; name: string; presupuestado: number; real: number }) {
-    await this.sectionService.pareja.update(e.id, { name: e.name, presupuestado: e.presupuestado, real: e.real });
+    const mid = this.monthRecord()?.id;
+    if (!mid) return;
+    await this.sectionService.pareja.update(e.id, { name: e.name, presupuestado: e.presupuestado, real: e.real }, mid);
     await this.loadPareja();
   }
 
   async deletePareja(id: string) {
-    await this.sectionService.pareja.remove(id);
+    const mid = this.monthRecord()?.id;
+    if (!mid) return;
+    await this.sectionService.pareja.remove(id, mid);
     await this.loadPareja();
   }
 
