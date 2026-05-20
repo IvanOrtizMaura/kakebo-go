@@ -181,6 +181,18 @@ $font-family: 'DM Sans', sans-serif;
   flex-direction: column;
   gap: 16px;
 
+  &__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 0;
+  }
+
+  &__loading-text {
+    font-size: 14px;
+    color: $color-text-secondary;
+  }
+
   &__header {
     display: flex;
     flex-direction: column;

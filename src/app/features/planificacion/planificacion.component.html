@@ -53,6 +53,12 @@
   <!-- ── CONTENIDO DEL PASO ── -->
   <div class="step-content">
 
+    @if (cargando()) {
+      <div class="step-content__loading">
+        <span class="step-content__loading-text">Cargando datos…</span>
+      </div>
+    } @else {
+
     <div class="step-content__header">
       <h2 class="step-content__title">{{ pasoActualConfig().label }}</h2>
       <p class="step-content__subtitle">{{ pasoActualConfig().subtitulo }}</p>
@@ -186,6 +192,8 @@
       </div>
     }
 
+    }
+
   </div>
 
   <!-- ── FOOTER FIJO ── -->
@@ -203,8 +211,12 @@
       <span class="footer-step-label">Paso {{ pasoActual() }} de 5</span>
 
       @if (esUltimoPaso()) {
-        <button class="footer-button footer-button--primary footer-button--save" type="button" (click)="guardar()">
-          Guardar ✓
+        <button class="footer-button footer-button--primary footer-button--save" type="button" (click)="guardar()" [disabled]="guardando()">
+          @if (guardando()) {
+            Guardando…
+          } @else {
+            Guardar ✓
+          }
         </button>
       } @else {
         <button class="footer-button footer-button--primary" type="button" (click)="avanzarPaso()">
