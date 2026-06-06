@@ -1,4 +1,5 @@
-import { Component, OnInit, signal, computed, effect, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, effect, inject, untracked } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { CurrencyPipe } from '@angular/common';
 import { ToastModule } from 'primeng/toast';
@@ -246,7 +247,7 @@ const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','A
     }
   `]
 })
-export class MonthViewComponent implements OnInit {
+export class MonthViewComponent implements OnInit, OnDestroy {
   loading = signal(true);
   monthRecord = signal<Month | null>(null);
   ingresos = signal<Ingreso[]>([]);
@@ -318,6 +319,10 @@ export class MonthViewComponent implements OnInit {
 
   private fbAuth = inject(Auth);
 
+  private _presupuestoWarnShown = false;
+  private _gastosWarnShown = false;
+  private _routeSubscription: Subscription | null = null;
+
   constructor(
     private route: ActivatedRoute,
     private auth: AuthService,
@@ -332,32 +337,50 @@ export class MonthViewComponent implements OnInit {
   ) {
     effect(() => {
       const restante = this.quedaParaPresupuestar();
-      if (restante < 0 && !this.loading()) {
-        this.messageService.add({
-          severity: 'warn',
-          summary: '⚠️ Presupuesto excedido',
-          detail: `Tus gastos presupuestados superan tus ingresos esperados en ${Math.abs(restante).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}.`,
-          life: 6000
-        });
+      const isLoading = this.loading();
+      if (restante < 0 && !isLoading) {
+        if (!this._presupuestoWarnShown) {
+          this._presupuestoWarnShown = true;
+          untracked(() => this.messageService.add({
+            severity: 'warn',
+            summary: '⚠️ Presupuesto excedido',
+            detail: `Tus gastos presupuestados superan tus ingresos esperados en ${Math.abs(restante).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}.`,
+            life: 6000
+          }));
+        }
+      } else {
+        this._presupuestoWarnShown = false;
       }
     });
 
     effect(() => {
       const restante = this.quedaPorGastar();
-      if (restante < 0 && !this.loading()) {
-        this.messageService.add({
-          severity: 'error',
-          summary: '🚨 Gastos por encima de ingresos',
-          detail: `Has gastado ${Math.abs(restante).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })} más de lo que has ingresado este mes.`,
-          life: 6000
-        });
+      const isLoading = this.loading();
+      if (restante < 0 && !isLoading) {
+        if (!this._gastosWarnShown) {
+          this._gastosWarnShown = true;
+          untracked(() => this.messageService.add({
+            severity: 'error',
+            summary: '🚨 Gastos por encima de ingresos',
+            detail: `Has gastado ${Math.abs(restante).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })} más de lo que has ingresado este mes.`,
+            life: 6000
+          }));
+        }
+      } else {
+        this._gastosWarnShown = false;
       }
     });
   }
 
+  ngOnDestroy(): void {
+    this._routeSubscription?.unsubscribe();
+  }
+
   async ngOnInit() {
-    this.route.params.subscribe(async params => {
+    this._routeSubscription = this.route.params.subscribe(async params => {
       this.loading.set(true);
+      this._presupuestoWarnShown = false;
+      this._gastosWarnShown = false;
       this.year.set(+params['year']);
       this.monthNum.set(+params['month']);
       await this.loadAll();
