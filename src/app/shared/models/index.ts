@@ -73,6 +73,16 @@ export interface Pareja {
   order_index: number;
 }
 
+export interface DeudaSection {
+  id: string;
+  month_id: string;
+  user_id: string;
+  name: string;
+  presupuestado: number;
+  real: number;
+  order_index: number;
+}
+
 export interface FondoAhorro {
   id: string;
   user_id: string;
@@ -126,6 +136,16 @@ export interface AhorroTemplate {
   presupuestado: number;
   order_index: number;
   created_at?: string;
+}
+
+export interface InversionOro {
+  id: string;
+  user_id: string;
+  name: string;
+  gramos: number;
+  pureza: number;
+  precio_compra: number;
+  created_at: string;
 }
 
 export interface BudgetItem {  id: string;

@@ -1,0 +1,193 @@
+<div class="inversiones-page">
+  <div class="inversiones-content">
+
+    <header class="inversiones-header">
+      <button class="back-button" (click)="navigateBack()" type="button" aria-label="Volver">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+      <h1 class="inversiones-title">Inversiones</h1>
+    </header>
+
+    @if (inversiones().length > 0) {
+      <div class="portfolio-summary-card">
+        <div class="portfolio-summary-card__row">
+          <span class="portfolio-summary-card__label">Total invertido</span>
+          <span class="portfolio-summary-card__amount">
+            {{ totalInvertido() | currency:'EUR':'symbol':'1.0-0':'es' }}
+          </span>
+        </div>
+        @if (goldPriceLoading()) {
+          <div class="portfolio-summary-card__row portfolio-summary-card__row--loading">
+            <span class="portfolio-summary-card__label">Cargando precio del oro…</span>
+          </div>
+        } @else if (totalValorActual() !== null) {
+          <div class="portfolio-summary-card__divider"></div>
+          <div class="portfolio-summary-card__row">
+            <span class="portfolio-summary-card__label">Valor actual</span>
+            <span class="portfolio-summary-card__amount">
+              {{ totalValorActual() | currency:'EUR':'symbol':'1.0-0':'es' }}
+            </span>
+          </div>
+          <div class="portfolio-summary-card__row">
+            <span class="portfolio-summary-card__label">Ganancia / Pérdida</span>
+            <span class="portfolio-summary-card__ganancia" [class.portfolio-summary-card__ganancia--positivo]="(totalGanancia() ?? 0) >= 0" [class.portfolio-summary-card__ganancia--negativo]="(totalGanancia() ?? 0) < 0">
+              {{ (totalGanancia() ?? 0) >= 0 ? '+' : '' }}{{ totalGanancia() | currency:'EUR':'symbol':'1.0-0':'es' }}
+              ({{ (totalPorcentaje() ?? 0) >= 0 ? '+' : '' }}{{ totalPorcentaje() | number:'1.1-1':'es' }}%)
+            </span>
+          </div>
+        }
+      </div>
+
+      <section class="oro-section" aria-label="Oro">
+        <h3 class="section-heading">
+          <span class="gold-dot"></span>
+          Oro
+          @if (goldPrice() !== null) {
+            <span class="gold-price-badge">{{ goldPrice() | currency:'EUR':'symbol':'1.2-2':'es' }}/g</span>
+          }
+        </h3>
+        @if (lastUpdatedLabel()) {
+          <div class="gold-update-info">
+            <i class="pi pi-clock"></i>
+            Actualizado: {{ lastUpdatedLabel() }}
+            <span class="gold-update-info__requests">{{ requestsUsed() }}/100 consultas este mes</span>
+          </div>
+        }
+
+        @for (inversion of inversiones(); track inversion.id) {
+          <div class="investment-card">
+            <div class="investment-card__header">
+              <span class="investment-card__name">{{ inversion.name }}</span>
+              <button
+                class="investment-card__delete-button"
+                type="button"
+                (click)="eliminarInversion(inversion)"
+                aria-label="Eliminar inversión"
+              >
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+            <span class="investment-card__details">
+              {{ inversion.gramos }} g · {{ purezaLabel(inversion.pureza) }} · Comprado a {{ inversion.precio_compra | currency:'EUR':'symbol':'1.0-0':'es' }}
+            </span>
+            <div class="investment-card__valor-row">
+              @if (goldPriceLoading()) {
+                <span class="valor-placeholder-pill">Cargando…</span>
+              } @else if (valorActual(inversion) !== null) {
+                <span class="valor-actual-pill">{{ valorActual(inversion) | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                <span class="ganancia-badge" [class.ganancia-badge--positivo]="(ganancia(inversion) ?? 0) >= 0" [class.ganancia-badge--negativo]="(ganancia(inversion) ?? 0) < 0">
+                  {{ (ganancia(inversion) ?? 0) >= 0 ? '+' : '' }}{{ ganancia(inversion) | currency:'EUR':'symbol':'1.0-0':'es' }}
+                  ({{ (porcentaje(inversion) ?? 0) >= 0 ? '+' : '' }}{{ porcentaje(inversion) | number:'1.1-1':'es' }}%)
+                </span>
+              } @else {
+                <span class="valor-placeholder-pill">Valor no disponible</span>
+              }
+            </div>
+          </div>
+        }
+      </section>
+    } @else {
+      <div class="empty-state">
+        <div class="empty-state__icon-wrapper">
+          <i class="pi pi-chart-line empty-state__icon"></i>
+        </div>
+        <span class="empty-state__title">Sin inversiones todavía</span>
+        <span class="empty-state__subtext">Añade tu primera inversión de oro</span>
+      </div>
+    }
+
+  </div>
+
+  <button class="fab-añadir" (click)="openDialog()" type="button" aria-label="Añadir inversión">
+    <i class="pi pi-plus"></i>
+  </button>
+
+  <p-dialog
+    [visible]="dialogVisible()"
+    (visibleChange)="dialogVisible.set($event)"
+    header="Nueva inversión"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    position="bottom"
+    styleClass="nueva-inversion-dialog"
+    [dismissableMask]="true"
+  >
+    <div class="dialog-form">
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="inversion-nombre">Nombre</label>
+        <input
+          id="inversion-nombre"
+          class="dialog-form__entrada"
+          type="text"
+          placeholder="Ej: Lingote oro"
+          [ngModel]="nombreNuevaInversion()"
+          (ngModelChange)="nombreNuevaInversion.set($event)"
+        />
+      </div>
+
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="inversion-gramos">Gramos</label>
+        <input
+          id="inversion-gramos"
+          class="dialog-form__entrada"
+          type="number"
+          placeholder="Ej: 31.1"
+          min="0"
+          step="0.1"
+          [ngModel]="gramosNuevaInversion()"
+          (ngModelChange)="gramosNuevaInversion.set($event)"
+        />
+      </div>
+
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta">Pureza</label>
+        <div class="quilates-selector">
+          @for (opcion of quilatesOpciones; track opcion.value) {
+            <button
+              type="button"
+              class="quilates-btn"
+              [class.quilates-btn--active]="purezaNuevaInversion() === opcion.value"
+              (click)="purezaNuevaInversion.set(opcion.value)"
+            >
+              {{ opcion.label }}
+              <span class="quilates-btn__sub">{{ opcion.value }}‰</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="inversion-precio">
+          Precio de compra <span class="dialog-form__hint">€</span>
+        </label>
+        <input
+          id="inversion-precio"
+          class="dialog-form__entrada"
+          type="number"
+          placeholder="0"
+          min="0"
+          step="0.01"
+          [ngModel]="precioCompraNuevaInversion()"
+          (ngModelChange)="precioCompraNuevaInversion.set($event)"
+        />
+      </div>
+
+      <div class="dialog-form__acciones">
+        <button
+          class="dialog-form__boton-guardar"
+          type="button"
+          (click)="guardarInversion()"
+          [disabled]="guardandoInversion()"
+        >
+          {{ guardandoInversion() ? 'Guardando…' : 'Guardar' }}
+        </button>
+        <button class="dialog-form__boton-cancelar" type="button" (click)="closeDialog()">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </p-dialog>
+
+  <app-bottom-nav />
+</div>

@@ -1,7 +1,10 @@
-import { Component, signal, computed, inject } from '@angular/core';
+import { Component, signal, computed, inject, effect } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { Router } from '@angular/router';
+import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
+import { Auth } from '@angular/fire/auth';
 import { BottomNavComponent } from '../../layout/bottom-nav/bottom-nav.component';
+import { AuthService } from '../../core/auth/auth.service';
 
 export type EstadoMes = 'cerrado' | 'en-curso' | 'pendiente';
 
@@ -23,12 +26,17 @@ export interface BarraMes {
   indice: number;
 }
 
+const NOMBRES_MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const INICIALES_MESES = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 const ALTURA_MAXIMA_BARRA = 72;
 const COLOR_VERDE = '#22c55e';
 const COLOR_ROJO = '#ef4444';
 const COLOR_GRIS = '#e2e8f0';
 const COLOR_AZUL = '#3b82f6';
+
+function buildPendingYear(): ResumenMes[] {
+  return NOMBRES_MESES.map(nombre => ({ nombre, estado: 'pendiente' as EstadoMes, ahorro: 0, presupuestado: 0, gastado: 0 }));
+}
 
 @Component({
   selector: 'app-resumen-anual',
@@ -39,25 +47,17 @@ const COLOR_AZUL = '#3b82f6';
 })
 export class ResumenAnualComponent {
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly firestore = inject(Firestore);
+  private readonly auth = inject(Auth);
 
   readonly mesActual = new Date().getMonth();
 
   readonly anio = signal<number>(new Date().getFullYear());
 
-  readonly meses = computed<ResumenMes[]>(() => [
-    { nombre: 'Enero',      estado: 'cerrado',   ahorro: 180,  presupuestado: 2450, gastado: 2270 },
-    { nombre: 'Febrero',    estado: 'cerrado',   ahorro: 220,  presupuestado: 2450, gastado: 2230 },
-    { nombre: 'Marzo',      estado: 'cerrado',   ahorro: 95,   presupuestado: 2450, gastado: 2355 },
-    { nombre: 'Abril',      estado: 'cerrado',   ahorro: 310,  presupuestado: 2450, gastado: 2140 },
-    { nombre: 'Mayo',       estado: 'cerrado',   ahorro: 150,  presupuestado: 2450, gastado: 2300 },
-    { nombre: 'Junio',      estado: 'en-curso',  ahorro: 200,  presupuestado: 2450, gastado: 2250 },
-    { nombre: 'Julio',      estado: 'pendiente', ahorro: 0,    presupuestado: 0,    gastado: 0    },
-    { nombre: 'Agosto',     estado: 'pendiente', ahorro: 0,    presupuestado: 0,    gastado: 0    },
-    { nombre: 'Septiembre', estado: 'pendiente', ahorro: 0,    presupuestado: 0,    gastado: 0    },
-    { nombre: 'Octubre',    estado: 'pendiente', ahorro: 0,    presupuestado: 0,    gastado: 0    },
-    { nombre: 'Noviembre',  estado: 'pendiente', ahorro: 0,    presupuestado: 0,    gastado: 0    },
-    { nombre: 'Diciembre',  estado: 'pendiente', ahorro: 0,    presupuestado: 0,    gastado: 0    },
-  ]);
+  readonly loading = signal<boolean>(false);
+
+  readonly meses = signal<ResumenMes[]>(buildPendingYear());
 
   readonly ahorroTotal = computed(() =>
     this.meses().reduce((suma, mes) => suma + mes.ahorro, 0)
@@ -108,6 +108,78 @@ export class ResumenAnualComponent {
     });
   });
 
+  constructor() {
+    effect(() => {
+      const year = this.anio();
+      this.loadYear(year);
+    });
+  }
+
+  private async loadYear(year: number): Promise<void> {
+    const uid = this.auth.currentUser?.uid;
+    if (!uid) return;
+
+    this.loading.set(true);
+    this.meses.set(buildPendingYear());
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-based
+
+    // Get all month docs for this year (no orderBy to avoid composite index requirement)
+    const monthsSnap = await getDocs(
+      query(collection(this.firestore, 'users', uid, 'months'), where('year', '==', year))
+    );
+    const existingMonths = monthsSnap.docs.map(d => ({ id: d.id, ...(d.data() as { month: number; year: number }) }));
+
+    const results: ResumenMes[] = await Promise.all(
+      NOMBRES_MESES.map(async (nombre, idx) => {
+        const monthNumber = idx + 1; // 1-based
+        const monthDoc = existingMonths.find(m => m.month === monthNumber);
+
+        let estado: EstadoMes;
+        if (year < currentYear || (year === currentYear && monthNumber < currentMonth)) {
+          estado = 'cerrado';
+        } else if (year === currentYear && monthNumber === currentMonth) {
+          estado = 'en-curso';
+        } else {
+          estado = 'pendiente';
+        }
+
+        if (!monthDoc || estado === 'pendiente') {
+          return { nombre, estado, ahorro: 0, presupuestado: 0, gastado: 0 };
+        }
+
+        const monthId = monthDoc.id;
+
+        // Load all sections in parallel using getDocs (no injection context issues)
+        const [ingSnap, facSnap, gasSnap, ahoSnap] = await Promise.all([
+          getDocs(collection(this.firestore, 'users', uid, 'months', monthId, 'ingresos')),
+          getDocs(collection(this.firestore, 'users', uid, 'months', monthId, 'facturas')),
+          getDocs(collection(this.firestore, 'users', uid, 'months', monthId, 'gastos')),
+          getDocs(collection(this.firestore, 'users', uid, 'months', monthId, 'ahorros')),
+        ]);
+
+        const sum = (snap: typeof ingSnap, field: string) =>
+          snap.docs.reduce((s, d) => s + ((d.data()[field] as number) ?? 0), 0);
+
+        const totalIngresos = sum(ingSnap, 'real');
+        const totalFacturas = sum(facSnap, 'real');
+        const totalGastos = sum(gasSnap, 'real');
+        const totalAhorros = sum(ahoSnap, 'real');
+        const presupuestado = sum(ingSnap, 'esperado');
+
+        const gastado = totalFacturas + totalGastos + totalAhorros;
+        const balance = totalIngresos - gastado;
+
+        return { nombre, estado, ahorro: balance, presupuestado, gastado };
+      })
+    );
+
+    this.meses.set(results);
+    this.loading.set(false);
+  }
+
   navegarAtras(): void {
     this.router.navigate(['/mas']);
   }
@@ -120,8 +192,10 @@ export class ResumenAnualComponent {
     this.anio.update(anioActual => anioActual + 1);
   }
 
-  navegarAlMes(_indice: number): void {
-    this.router.navigate(['/home']);
+  navegarAlMes(indice: number): void {
+    const year = this.anio();
+    const month = indice;
+    this.router.navigate(['/home'], { queryParams: { year, month } });
   }
 
   calcularPorcentajeProgreso(gastado: number, presupuestado: number): number {

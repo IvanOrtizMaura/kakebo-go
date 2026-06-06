@@ -1,15 +1,16 @@
 import { Component, signal, computed, effect, inject, OnInit } from '@angular/core';
 import { CurrencyPipe, LowerCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Auth } from '@angular/fire/auth';
+import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
 import { DatePicker } from 'primeng/datepicker';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { MonthService } from '../../shared/services/month.service';
 import { IngresosService } from '../../shared/services/ingresos.service';
 import { FacturasService } from '../../shared/services/facturas.service';
 import { SectionService } from '../../shared/services/section.service';
-import { DeudasService } from '../../shared/services/deudas.service';
-import { Ingreso, Factura, Deuda } from '../../shared/models';
 
 export interface PlanItem {
   id: string;
@@ -50,14 +51,19 @@ const PASOS: PasoConfig[] = [
 })
 export class PlanificacionComponent implements OnInit {
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(Auth);
   private readonly authService = inject(AuthService);
   private readonly monthService = inject(MonthService);
+  private readonly firestore = inject(Firestore);
   private readonly ingresosService = inject(IngresosService);
   private readonly facturasService = inject(FacturasService);
   private readonly sectionService = inject(SectionService);
-  private readonly deudasService = inject(DeudasService);
 
-  readonly mesNombre = `${MONTH_NAMES[new Date().getMonth()]} ${new Date().getFullYear()}`;
+  readonly mesNombre = computed(() => {
+    const { year, month } = this.getTargetMonth();
+    return `${MONTH_NAMES[month - 1]} ${year}`;
+  });
   readonly pasos = PASOS;
 
   readonly pasoActual = signal<number>(1);
@@ -120,7 +126,16 @@ export class PlanificacionComponent implements OnInit {
   }
 
   pasoEsCompletado(numeroPaso: number): boolean {
-    return numeroPaso < this.pasoActual();
+    if (numeroPaso < this.pasoActual()) return true;
+    // Also show as completed if the step has items already loaded
+    const itemsMap: Record<number, () => PlanItem[]> = {
+      1: () => this.ingresos(),
+      2: () => this.facturas(),
+      3: () => this.gastos(),
+      4: () => this.ahorros(),
+      5: () => this.deudas(),
+    };
+    return (itemsMap[numeroPaso]?.() ?? []).length > 0;
   }
 
   pasoEsActivo(numeroPaso: number): boolean {
@@ -181,17 +196,15 @@ export class PlanificacionComponent implements OnInit {
   }
 
   async guardar(): Promise<void> {
-    const uid = this.authService.currentUser?.uid;
+    const uid = this.auth.currentUser?.uid;
     if (!uid || this.guardando()) return;
 
     this.guardando.set(true);
 
     try {
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonthNumber = now.getMonth() + 1;
+      const { year: targetYear, month: targetMonth } = this.getTargetMonth();
 
-      const month = await this.monthService.getOrCreateMonth(uid, currentYear, currentMonthNumber);
+      const month = await this.monthService.getOrCreateMonth(uid, targetYear, targetMonth);
       const monthId = month.id;
 
       const newIngresos = this.ingresos().filter(item => !item.firestoreId);
@@ -199,11 +212,11 @@ export class PlanificacionComponent implements OnInit {
       const newGastos = this.gastos().filter(item => !item.firestoreId);
       const newAhorros = this.ahorros().filter(item => !item.firestoreId);
       const newDeudas = this.deudas().filter(item => !item.firestoreId);
-
       const existingIngresosCount = this.ingresos().filter(item => !!item.firestoreId).length;
       const existingFacturasCount = this.facturas().filter(item => !!item.firestoreId).length;
       const existingGastosCount = this.gastos().filter(item => !!item.firestoreId).length;
       const existingAhorrosCount = this.ahorros().filter(item => !!item.firestoreId).length;
+      const existingDeudasCount = this.deudas().filter(item => !!item.firestoreId).length;
 
       await Promise.all([
         ...newIngresos.map((item, index) =>
@@ -251,22 +264,21 @@ export class PlanificacionComponent implements OnInit {
             order_index: existingAhorrosCount + index
           })
         ),
-        ...newDeudas.map(item =>
-          this.deudasService.create({
+        ...newDeudas.map((item, index) =>
+          this.sectionService.deudas.add({
+            month_id: monthId,
             user_id: uid,
             name: item.nombre,
-            type: 'bank',
-            principal_amount: item.presupuestado,
-            total_amount: item.presupuestado,
-            interest_rate: 0,
-            monthly_payment: item.presupuestado,
-            amount_remaining: item.presupuestado,
-            is_active: true
+            presupuestado: item.presupuestado,
+            real: 0,
+            order_index: existingDeudasCount + index
           })
         )
       ]);
 
-      await this.router.navigate(['/home']);
+      await this.router.navigate(['/home'], {
+        queryParams: { year: targetYear, month: targetMonth - 1 }
+      });
     } catch (error) {
       console.error('Error guardando planificación:', error);
     } finally {
@@ -275,23 +287,41 @@ export class PlanificacionComponent implements OnInit {
   }
 
   cerrar(): void {
-    this.router.navigate(['/home']);
+    const { year, month } = this.getTargetMonth();
+    this.router.navigate(['/home'], {
+      queryParams: { year, month: month - 1 }
+    });
+  }
+
+  private getTargetMonth(): { year: number; month: number } {
+    const params = this.route.snapshot.queryParams;
+    if (params['year'] && params['month'] !== undefined) {
+      return {
+        year: +params['year'],
+        month: +params['month'] + 1
+      };
+    }
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
   }
 
   private async cargarDatosExistentes(): Promise<void> {
-    const uid = this.authService.currentUser?.uid;
+    const uid = this.auth.currentUser?.uid;
     if (!uid) {
       this.cargando.set(false);
       return;
     }
 
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonthNumber = now.getMonth() + 1;
-
     try {
-      const months = await this.monthService.getMonthsForYear(uid, currentYear);
-      const existingMonth = months.find(m => m.month === currentMonthNumber) ?? null;
+      const { year: targetYear, month: targetMonth } = this.getTargetMonth();
+
+      // Use getDocs directly to avoid collectionData injection context issues
+      const monthsSnap = await getDocs(
+        query(collection(this.firestore, 'users', uid, 'months'), where('year', '==', targetYear))
+      );
+      const existingMonth = monthsSnap.docs
+        .map(d => ({ id: d.id, ...(d.data() as { month: number }) }))
+        .find(m => m.month === targetMonth) ?? null;
 
       if (!existingMonth) {
         this.cargando.set(false);
@@ -300,52 +330,47 @@ export class PlanificacionComponent implements OnInit {
 
       const monthId = existingMonth.id;
 
-      const [ingresosData, facturasData, gastosData, ahorrosData, deudasData] = await Promise.all([
-        this.ingresosService.getByMonth(monthId),
-        this.facturasService.getByMonth(monthId),
-        this.sectionService.gastos.getByMonth(monthId),
-        this.sectionService.ahorros.getByMonth(monthId),
-        this.deudasService.getActive(uid)
+      // Load section data - split deudas to prevent its potential index error from blocking everything
+      const [ingSnap, facSnap, gasSnap, ahoSnap] = await Promise.all([
+        getDocs(collection(this.firestore, 'users', uid, 'months', monthId, 'ingresos')),
+        getDocs(collection(this.firestore, 'users', uid, 'months', monthId, 'facturas')),
+        getDocs(collection(this.firestore, 'users', uid, 'months', monthId, 'gastos')),
+        getDocs(collection(this.firestore, 'users', uid, 'months', monthId, 'ahorros')),
       ]);
 
-      this.ingresos.set(ingresosData.map((ingreso: Ingreso) => ({
-        id: ingreso.id,
-        firestoreId: ingreso.id,
-        nombre: ingreso.fuente,
-        presupuestado: ingreso.esperado,
-        dia: ingreso.dia_de_paga ?? undefined
-      })));
+      this.ingresos.set(ingSnap.docs.map(d => {
+        const data = d.data() as Record<string, unknown>;
+        return { id: d.id, firestoreId: d.id, nombre: data['fuente'] as string, presupuestado: (data['esperado'] as number) ?? 0, dia: data['dia_de_paga'] as string ?? undefined };
+      }));
 
-      this.facturas.set(facturasData.map((factura: Factura) => ({
-        id: factura.id,
-        firestoreId: factura.id,
-        nombre: factura.name,
-        presupuestado: factura.presupuestado,
-        dia: factura.fecha ?? undefined
-      })));
+      this.facturas.set(facSnap.docs.map(d => {
+        const data = d.data() as Record<string, unknown>;
+        return { id: d.id, firestoreId: d.id, nombre: data['name'] as string, presupuestado: (data['presupuestado'] as number) ?? 0, dia: data['fecha'] as string ?? undefined };
+      }));
 
-      this.gastos.set(gastosData.map((gasto: Record<string, unknown>) => ({
-        id: gasto['id'] as string,
-        firestoreId: gasto['id'] as string,
-        nombre: gasto['name'] as string,
-        presupuestado: gasto['presupuestado'] as number
-      })));
+      this.gastos.set(gasSnap.docs.map(d => {
+        const data = d.data() as Record<string, unknown>;
+        return { id: d.id, firestoreId: d.id, nombre: data['name'] as string, presupuestado: (data['presupuestado'] as number) ?? 0 };
+      }));
 
-      this.ahorros.set(ahorrosData.map((ahorro: Record<string, unknown>) => ({
-        id: ahorro['id'] as string,
-        firestoreId: ahorro['id'] as string,
-        nombre: ahorro['name'] as string,
-        presupuestado: ahorro['presupuestado'] as number
-      })));
+      this.ahorros.set(ahoSnap.docs.map(d => {
+        const data = d.data() as Record<string, unknown>;
+        return { id: d.id, firestoreId: d.id, nombre: data['name'] as string, presupuestado: (data['presupuestado'] as number) ?? 0 };
+      }));
 
-      this.deudas.set(deudasData.map((deuda: Deuda) => ({
-        id: deuda.id,
-        firestoreId: deuda.id,
-        nombre: deuda.name,
-        presupuestado: deuda.monthly_payment
-      })));
-    } catch {
-      // Si falla la carga, el stepper arranca vacío sin bloquear al usuario
+      // Load deudas separately so a missing Firestore index doesn't block the rest
+      const deudasData = await firstValueFrom(this.sectionService.deudas.getAll(monthId));
+      this.deudas.set(deudasData.map(deuda => {
+        const data = deuda as Record<string, unknown>;
+        return {
+          id: data['id'] as string,
+          firestoreId: data['id'] as string,
+          nombre: data['name'] as string,
+          presupuestado: (data['presupuestado'] as number) ?? 0
+        };
+      }));
+    } catch (e) {
+      console.error('[Planificacion] Error cargando datos existentes:', e);
     } finally {
       this.cargando.set(false);
     }

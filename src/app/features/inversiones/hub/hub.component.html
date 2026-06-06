@@ -1,0 +1,51 @@
+<div class="hub-page">
+  <div class="hub-content">
+
+    <header class="hub-header">
+      <button class="back-button" (click)="navigateBack()" type="button" aria-label="Volver">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+      <h1 class="hub-title">Inversiones</h1>
+    </header>
+
+    <p class="hub-subtitle">Gestiona tus activos por categoría</p>
+
+    <div class="category-grid">
+
+      <button class="category-card category-card--oro" type="button" (click)="navigateToOro()">
+        <div class="category-card__icon-wrapper category-card__icon-wrapper--oro">
+          <i class="pi pi-chart-line category-card__icon"></i>
+        </div>
+        <div class="category-card__body">
+          <span class="category-card__name">Oro</span>
+          @if (oroTotalItems() > 0) {
+            <span class="category-card__summary">
+              {{ oroTotalItems() }} {{ oroTotalItems() === 1 ? 'posición' : 'posiciones' }} · {{ oroTotalInvertido() | currency:'EUR':'symbol':'1.0-0':'es' }} invertidos
+            </span>
+          } @else {
+            <span class="category-card__summary">Sin posiciones todavía</span>
+          }
+        </div>
+        <i class="pi pi-chevron-right category-card__chevron"></i>
+      </button>
+
+      <button class="category-card category-card--pensiones" type="button" (click)="navigateToPensiones()">
+        <div class="category-card__icon-wrapper category-card__icon-wrapper--pensiones">
+          <i class="pi pi-building category-card__icon"></i>
+        </div>
+        <div class="category-card__body">
+          <span class="category-card__name">Pensiones</span>
+          <span class="category-card__summary">Planes de pensiones y jubilación</span>
+        </div>
+        <div class="category-card__right">
+          <span class="badge-proximamente">Próximamente</span>
+          <i class="pi pi-chevron-right category-card__chevron"></i>
+        </div>
+      </button>
+
+    </div>
+
+  </div>
+
+  <app-bottom-nav />
+</div>

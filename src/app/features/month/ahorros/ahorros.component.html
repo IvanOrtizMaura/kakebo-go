@@ -5,8 +5,21 @@
       <button class="back-button" (click)="navigateBack()" type="button" aria-label="Volver">
         <i class="pi pi-arrow-left"></i>
       </button>
-      <h1 class="ahorros-title">Ahorros</h1>
-      <span class="ahorros-mes">{{ mesNombre }}</span>
+      <div class="month-nav">
+        <button class="month-nav-button" (click)="navigateToPreviousMonth()" type="button" aria-label="Mes anterior">
+          <i class="pi pi-chevron-left"></i>
+        </button>
+        <span class="month-name">{{ mesNombre() }}</span>
+        @if (monthOffset() !== 0) {
+          <button class="today-button" (click)="goToToday()">
+            <i class="pi pi-replay today-button__icon"></i>
+            Hoy
+          </button>
+        }
+        <button class="month-nav-button" (click)="navigateToNextMonth()" type="button" aria-label="Mes siguiente">
+          <i class="pi pi-chevron-right"></i>
+        </button>
+      </div>
     </header>
 
     <div class="resumen-card">
@@ -47,6 +60,23 @@
           <div class="ahorro-card__fila-inferior">
             <span class="ahorro-card__objetivo">Objetivo: {{ ahorro.objetivo | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
           </div>
+          <div class="item-actions">
+            <button
+              class="action-btn action-btn--check"
+              type="button"
+              [class.action-btn--active]="ahorro.real >= ahorro.presupuestado && ahorro.presupuestado > 0"
+              (click)="toggleDepositado(ahorro)"
+              aria-label="Marcar depositado"
+            >
+              <i class="pi" [class.pi-check-circle]="ahorro.real >= ahorro.presupuestado && ahorro.presupuestado > 0" [class.pi-circle]="ahorro.real < ahorro.presupuestado || ahorro.presupuestado === 0"></i>
+            </button>
+            <button class="action-btn" type="button" (click)="openEditDialog(ahorro)" aria-label="Editar">
+              <i class="pi pi-pencil"></i>
+            </button>
+            <button class="action-btn action-btn--delete" type="button" (click)="eliminarAhorro(ahorro)" aria-label="Borrar">
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
         </div>
       }
     </section>
@@ -60,7 +90,7 @@
   <p-dialog
     [visible]="dialogVisible()"
     (visibleChange)="dialogVisible.set($event)"
-    header="Nuevo fondo de ahorro"
+    [header]="editMode() ? 'Editar ahorro' : 'Nuevo fondo de ahorro'"
     [modal]="true"
     [draggable]="false"
     [resizable]="false"
@@ -96,9 +126,25 @@
         />
       </div>
 
+      @if (editMode()) {
+        <div class="dialog-form__campo">
+          <label class="dialog-form__etiqueta" for="ahorro-real">Importe real (€)</label>
+          <input
+            id="ahorro-real"
+            class="dialog-form__entrada"
+            type="number"
+            placeholder="0"
+            min="0"
+            step="0.01"
+            [ngModel]="editReal()"
+            (ngModelChange)="editReal.set($event)"
+          />
+        </div>
+      }
+
       <div class="dialog-form__acciones">
         <button class="dialog-form__boton-guardar" type="button" (click)="guardarAhorro()">
-          Guardar
+          {{ editMode() ? 'Actualizar' : 'Guardar' }}
         </button>
         <button class="dialog-form__boton-cancelar" type="button" (click)="closeDialog()">
           Cancelar

@@ -61,6 +61,23 @@
   letter-spacing: -0.02em;
 }
 
+.today-button {
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #7c3aed;
+  }
+}
+
 // ─── Section title ───────────────────────────────────────────────────────────
 .section-title {
   font-size: 13px;
@@ -122,7 +139,7 @@
   box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
-  z-index: 50;
+  z-index: 110;
   -webkit-tap-highlight-color: transparent;
 
   .pi {
@@ -341,9 +358,9 @@
 }
 
 .donut-svg {
-  width: 140px;
-  min-width: 140px;
-  height: 140px;
+  width: 160px;
+  min-width: 160px;
+  height: 160px;
 
   .donut-center-label {
     font-family: 'DM Sans', system-ui, sans-serif;
@@ -360,6 +377,13 @@
     font-weight: 700;
     fill: #0f172a;
     text-anchor: middle;
+    dominant-baseline: middle;
+  }
+
+  .donut-callout-text {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 8.5px;
+    font-weight: 700;
     dominant-baseline: middle;
   }
 }

@@ -3,9 +3,9 @@ import { Auth } from '@angular/fire/auth';
 import {
   Firestore,
   collection,
-  collectionData,
   doc,
   getDoc,
+  getDocs,
   addDoc,
   setDoc,
   query,
@@ -76,32 +76,23 @@ export class MonthService {
   }
 
   async getMonthsForYear(userId: string, year: number): Promise<Month[]> {
-    return new Promise((resolve, reject) => {
-      const q = query(this.monthsCol(), where('year', '==', year), orderBy('month'));
-      const sub = collectionData(q, { idField: 'id' }).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as Month[]); },
-        error: reject
-      });
-    });
+    const q = query(this.monthsCol(), where('year', '==', year), orderBy('month'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Month));
   }
 
   // ─── Métodos privados de inicialización ───────────────────────────────────
 
   private async findMonth(userId: string, year: number, month: number): Promise<Month | null> {
-    return new Promise((resolve, reject) => {
-      const q = query(
-        this.monthsCol(),
-        where('year', '==', year),
-        where('month', '==', month)
-      );
-      const sub = collectionData(q, { idField: 'id' }).subscribe({
-        next: v => {
-          sub.unsubscribe();
-          resolve(v.length > 0 ? v[0] as Month : null);
-        },
-        error: reject
-      });
-    });
+    const q = query(
+      this.monthsCol(),
+      where('year', '==', year),
+      where('month', '==', month)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return { id: d.id, ...d.data() } as Month;
   }
 
   private async copyRecurringFacturas(userId: string, newMonth: Month): Promise<void> {
@@ -112,16 +103,12 @@ export class MonthService {
     if (!prevMonth) return;
 
     // Obtener facturas recurrentes del mes anterior
-    const facturas = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
-      const q = query(
-        collection(this.firestore, 'users', this.uid, 'months', prevMonth.id, 'facturas'),
-        where('is_recurring', '==', true)
-      );
-      const sub = collectionData(q, { idField: 'id' }).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as Record<string, unknown>[]); },
-        error: reject
-      });
-    });
+    const facturasQuery = query(
+      collection(this.firestore, 'users', this.uid, 'months', prevMonth.id, 'facturas'),
+      where('is_recurring', '==', true)
+    );
+    const facturasSnap = await getDocs(facturasQuery);
+    const facturas = facturasSnap.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, unknown>));
 
     if (!facturas.length) return;
 
@@ -134,16 +121,12 @@ export class MonthService {
   }
 
   private async copyIngresoTemplates(userId: string, newMonth: Month): Promise<void> {
-    const templates = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
-      const q = query(
-        collection(this.firestore, 'users', userId, 'ingreso_templates'),
-        orderBy('order_index')
-      );
-      const sub = collectionData(q, { idField: 'id' }).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as Record<string, unknown>[]); },
-        error: reject
-      });
-    });
+    const q = query(
+      collection(this.firestore, 'users', userId, 'ingreso_templates'),
+      orderBy('order_index')
+    );
+    const snap = await getDocs(q);
+    const templates = snap.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, unknown>));
 
     if (!templates.length) return;
 
@@ -165,26 +148,19 @@ export class MonthService {
   }
 
   private async syncAhorroTemplates(userId: string, month: Month): Promise<void> {
-    const [templates, existingAhorros] = await Promise.all([
-      new Promise<Record<string, unknown>[]>((resolve, reject) => {
-        const q = query(
-          collection(this.firestore, 'users', userId, 'ahorro_templates'),
-          orderBy('order_index')
-        );
-        const sub = collectionData(q).subscribe({
-          next: v => { sub.unsubscribe(); resolve(v as Record<string, unknown>[]); },
-          error: reject
-        });
-      }),
-      new Promise<Record<string, unknown>[]>((resolve, reject) => {
-        const sub = collectionData(
-          collection(this.firestore, 'users', this.uid, 'months', month.id, 'ahorros')
-        ).subscribe({
-          next: v => { sub.unsubscribe(); resolve(v as Record<string, unknown>[]); },
-          error: reject
-        });
-      })
+    const templatesQuery = query(
+      collection(this.firestore, 'users', userId, 'ahorro_templates'),
+      orderBy('order_index')
+    );
+    const ahorrosColRef = collection(this.firestore, 'users', this.uid, 'months', month.id, 'ahorros');
+
+    const [templatesSnap, ahorrosSnap] = await Promise.all([
+      getDocs(templatesQuery),
+      getDocs(ahorrosColRef)
     ]);
+
+    const templates = templatesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, unknown>));
+    const existingAhorros = ahorrosSnap.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, unknown>));
 
     if (!templates.length) return;
 
@@ -215,14 +191,9 @@ export class MonthService {
     const profile = profileSnap.data();
     if (!profile['has_partner'] || !profile['ingreso_oficial']) return;
 
-    const existingPareja = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
-      const sub = collectionData(
-        collection(this.firestore, 'users', this.uid, 'months', month.id, 'pareja')
-      ).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as Record<string, unknown>[]); },
-        error: reject
-      });
-    });
+    const parejaColRef = collection(this.firestore, 'users', this.uid, 'months', month.id, 'pareja');
+    const parejaSnap = await getDocs(parejaColRef);
+    const existingPareja = parejaSnap.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, unknown>));
 
     const existingNames = new Set(existingPareja.map(p => p['name'] as string));
     const toInsert: Record<string, unknown>[] = [];

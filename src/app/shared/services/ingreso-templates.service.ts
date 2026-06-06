@@ -3,8 +3,8 @@ import { Auth } from '@angular/fire/auth';
 import {
   Firestore,
   collection,
-  collectionData,
   doc,
+  getDocs,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -38,13 +38,9 @@ export class IngresoTemplatesService {
   }
 
   async getAll(userId: string): Promise<IngresoTemplate[]> {
-    return new Promise((resolve, reject) => {
-      const q = query(this.col(), orderBy('order_index'));
-      const sub = collectionData(q, { idField: 'id' }).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as IngresoTemplate[]); },
-        error: reject
-      });
-    });
+    const q = query(this.col(), orderBy('order_index'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as IngresoTemplate));
   }
 
   async add(item: Omit<IngresoTemplate, 'id'>): Promise<IngresoTemplate> {

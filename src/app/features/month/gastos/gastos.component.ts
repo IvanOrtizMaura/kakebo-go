@@ -1,7 +1,7 @@
 import { Component, signal, computed, inject } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Dialog } from 'primeng/dialog';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { filter, switchMap, map } from 'rxjs';
@@ -21,6 +21,7 @@ interface GastoViewItem {
   nombre: string;
   presupuestado: number;
   real: number;
+  pagado: boolean;
 }
 
 @Component({
@@ -31,12 +32,27 @@ interface GastoViewItem {
   styleUrl: './gastos.component.scss'
 })
 export class GastosComponent {
+  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
   private readonly monthService = inject(MonthService);
   private readonly sectionService = inject(SectionService);
 
-  readonly mesNombre = `${MONTH_NAMES[new Date().getMonth()]} ${new Date().getFullYear()}`;
+  private readonly baseYear = new Date().getFullYear();
+  private readonly baseMonthIndex = new Date().getMonth();
+  readonly monthOffset = signal(this.calculateInitialOffset());
+
+  readonly currentMonthIndex = computed(() => {
+    const rawIndex = this.baseMonthIndex + this.monthOffset();
+    return ((rawIndex % 12) + 12) % 12;
+  });
+
+  readonly currentYear = computed(() => {
+    const rawIndex = this.baseMonthIndex + this.monthOffset();
+    return this.baseYear + Math.floor(rawIndex / 12);
+  });
+
+  readonly mesNombre = computed(() => `${MONTH_NAMES[this.currentMonthIndex()]} ${this.currentYear()}`);
 
   private readonly currentMonthId = signal<string | null>(null);
 
@@ -49,7 +65,8 @@ export class GastosComponent {
             id: item.id,
             nombre: item.name,
             presupuestado: item.presupuestado,
-            real: item.real
+            real: item.real,
+            pagado: !!(item as any)['pagado']
           })))
         )
       )
@@ -76,21 +93,60 @@ export class GastosComponent {
   );
 
   readonly dialogVisible = signal(false);
+  readonly editMode = signal(false);
+  readonly editingItemId = signal<string | null>(null);
   readonly nuevoNombre = signal('');
   readonly nuevoGastoImporte = signal<number | null>(null);
+  readonly editReal = signal<number | null>(null);
 
   constructor() {
     const user = this.authService.currentUser;
     if (user) {
-      const now = new Date();
-      this.monthService.getOrCreateMonth(user.uid, now.getFullYear(), now.getMonth() + 1)
-        .then(month => this.currentMonthId.set(month.id))
-        .catch(error => console.error('Error al cargar mes:', error));
+      this.loadMonth(user.uid, this.currentYear(), this.currentMonthIndex() + 1);
     }
+  }
+
+  private calculateInitialOffset(): number {
+    const params = this.route.snapshot.queryParams;
+    if (params['year'] && params['month'] !== undefined) {
+      const targetYear = +params['year'];
+      const targetMonth = +params['month'];
+      const currentTotalMonths = this.baseYear * 12 + this.baseMonthIndex;
+      const targetTotalMonths = targetYear * 12 + targetMonth;
+      return targetTotalMonths - currentTotalMonths;
+    }
+    return 0;
   }
 
   navigateToHome(): void {
     this.router.navigate(['/home']);
+  }
+
+  navigateToPreviousMonth(): void {
+    const user = this.authService.currentUser;
+    if (!user) return;
+    this.monthOffset.update(offset => offset - 1);
+    this.loadMonth(user.uid, this.currentYear(), this.currentMonthIndex() + 1);
+  }
+
+  navigateToNextMonth(): void {
+    const user = this.authService.currentUser;
+    if (!user) return;
+    this.monthOffset.update(offset => offset + 1);
+    this.loadMonth(user.uid, this.currentYear(), this.currentMonthIndex() + 1);
+  }
+
+  goToToday(): void {
+    const user = this.authService.currentUser;
+    if (!user) return;
+    this.monthOffset.set(0);
+    this.loadMonth(user.uid, this.currentYear(), this.currentMonthIndex() + 1);
+  }
+
+  private loadMonth(userId: string, year: number, month: number): void {
+    this.monthService.getOrCreateMonth(userId, year, month)
+      .then(monthData => this.currentMonthId.set(monthData.id))
+      .catch(error => console.error('Error al cargar mes:', error));
   }
 
   diferencia(gasto: GastoViewItem): number {
@@ -102,8 +158,20 @@ export class GastosComponent {
   }
 
   openDialog(): void {
+    this.editMode.set(false);
+    this.editingItemId.set(null);
     this.nuevoNombre.set('');
     this.nuevoGastoImporte.set(null);
+    this.editReal.set(null);
+    this.dialogVisible.set(true);
+  }
+
+  openEditDialog(gasto: GastoViewItem): void {
+    this.editMode.set(true);
+    this.editingItemId.set(gasto.id);
+    this.nuevoNombre.set(gasto.nombre);
+    this.nuevoGastoImporte.set(gasto.presupuestado);
+    this.editReal.set(gasto.real);
     this.dialogVisible.set(true);
   }
 
@@ -120,18 +188,56 @@ export class GastosComponent {
     if (!monthId || !user || !nombre || importe === null || importe <= 0) return;
 
     try {
-      await this.sectionService.gastos.add({
-        month_id: monthId,
-        user_id: user.uid,
-        name: nombre,
-        presupuestado: importe,
-        real: 0,
-        tipo: 'variables',
-        order_index: this.gastos().length
-      });
+      if (this.editMode()) {
+        const itemId = this.editingItemId();
+        if (!itemId) return;
+        await this.sectionService.gastos.update(itemId, {
+          name: nombre,
+          presupuestado: importe,
+          real: this.editReal() ?? 0
+        }, monthId);
+      } else {
+        await this.sectionService.gastos.add({
+          month_id: monthId,
+          user_id: user.uid,
+          name: nombre,
+          presupuestado: importe,
+          real: 0,
+          tipo: 'variables',
+          order_index: this.gastos().length
+        });
+      }
       this.closeDialog();
     } catch (error) {
       console.error('Error al guardar gasto:', error);
+    }
+  }
+
+  async togglePagado(gasto: GastoViewItem): Promise<void> {
+    const monthId = this.currentMonthId();
+    if (!monthId) return;
+    const nowPagado = !gasto.pagado;
+    try {
+      await this.sectionService.gastos.update(gasto.id, {
+        pagado: nowPagado,
+        real: nowPagado ? gasto.presupuestado : 0
+      }, monthId);
+    } catch (error) {
+      console.error('Error al actualizar gasto:', error);
+    }
+  }
+
+  async eliminarGasto(gasto: GastoViewItem): Promise<void> {
+    const monthId = this.currentMonthId();
+    if (!monthId) return;
+
+    const confirmado = window.confirm('¿Eliminar este gasto?');
+    if (!confirmado) return;
+
+    try {
+      await this.sectionService.gastos.remove(gasto.id, monthId);
+    } catch (error) {
+      console.error('Error al eliminar gasto:', error);
     }
   }
 }

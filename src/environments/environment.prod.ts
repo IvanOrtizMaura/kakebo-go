@@ -8,6 +8,7 @@ export const environment = {
     messagingSenderId: '866371776072',
     appId: '1:866371776072:web:d5844dd4e395c97d51327d',
     measurementId: 'G-GP46WT1LFF'
-  }
+  },
+  goldApiKey: 'ZTH2BIT7TBBRN9UHL7VV380UHL7VV'
 };
 

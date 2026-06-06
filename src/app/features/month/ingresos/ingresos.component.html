@@ -5,8 +5,21 @@
       <button class="back-button" (click)="navigateToHome()" type="button" aria-label="Volver al inicio">
         <i class="pi pi-arrow-left"></i>
       </button>
-      <h1 class="ingresos-title">Ingresos</h1>
-      <span class="ingresos-mes">{{ mesNombre }}</span>
+      <div class="month-nav">
+        <button class="month-nav-button" (click)="navigateToPreviousMonth()" type="button" aria-label="Mes anterior">
+          <i class="pi pi-chevron-left"></i>
+        </button>
+        <span class="month-name">{{ mesNombre() }}</span>
+        @if (monthOffset() !== 0) {
+          <button class="today-button" (click)="goToToday()">
+            <i class="pi pi-replay today-button__icon"></i>
+            Hoy
+          </button>
+        }
+        <button class="month-nav-button" (click)="navigateToNextMonth()" type="button" aria-label="Mes siguiente">
+          <i class="pi pi-chevron-right"></i>
+        </button>
+      </div>
     </header>
 
     <div class="resumen-card">
@@ -41,6 +54,23 @@
               <span class="ingreso-card__badge ingreso-card__badge--pendiente">Pendiente</span>
             }
           </div>
+          <div class="item-actions">
+            <button
+              class="action-btn action-btn--check"
+              type="button"
+              [class.action-btn--active]="ingreso.depositado"
+              (click)="toggleDepositado(ingreso)"
+              aria-label="Marcar depositado"
+            >
+              <i class="pi" [class.pi-check-circle]="ingreso.depositado" [class.pi-circle]="!ingreso.depositado"></i>
+            </button>
+            <button class="action-btn" type="button" (click)="openEditDialog(ingreso)" aria-label="Editar">
+              <i class="pi pi-pencil"></i>
+            </button>
+            <button class="action-btn action-btn--delete" type="button" (click)="eliminarIngreso(ingreso)" aria-label="Borrar">
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
         </div>
       }
     </section>
@@ -54,7 +84,7 @@
   <p-dialog
     [visible]="dialogVisible()"
     (visibleChange)="dialogVisible.set($event)"
-    header="Nuevo ingreso"
+    [header]="editMode() ? 'Editar ingreso' : 'Nuevo ingreso'"
     [modal]="true"
     [draggable]="false"
     [resizable]="false"
@@ -90,9 +120,42 @@
         />
       </div>
 
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta">Día de paga</label>
+        <p-datepicker
+          [ngModel]="editDiaPagaDate()"
+          (ngModelChange)="editDiaPagaDate.set($event)"
+          [defaultDate]="defaultPickerDate()"
+          [showIcon]="false"
+          [inline]="false"
+          dateFormat="dd/mm/yy"
+          [showOtherMonths]="false"
+          [selectOtherMonths]="false"
+          styleClass="dia-paga-picker"
+          placeholder="Selecciona día"
+          appendTo="body"
+        />
+      </div>
+
+      @if (editMode()) {
+        <div class="dialog-form__campo">
+          <label class="dialog-form__etiqueta" for="ingreso-real">Importe real (€)</label>
+          <input
+            id="ingreso-real"
+            class="dialog-form__entrada"
+            type="number"
+            placeholder="0"
+            min="0"
+            step="0.01"
+            [ngModel]="editReal()"
+            (ngModelChange)="editReal.set($event)"
+          />
+        </div>
+      }
+
       <div class="dialog-form__acciones">
         <button class="dialog-form__boton-guardar" type="button" (click)="guardarIngreso()">
-          Guardar
+          {{ editMode() ? 'Actualizar' : 'Guardar' }}
         </button>
         <button class="dialog-form__boton-cancelar" type="button" (click)="closeDialog()">
           Cancelar

@@ -62,5 +62,20 @@ export const routes: Routes = [
     loadComponent: () => import('./features/resumen-anual/resumen-anual.component').then(m => m.ResumenAnualComponent),
     canActivate: [authGuard, onboardingGuard]
   },
+  {
+    path: 'inversiones',
+    loadComponent: () => import('./features/inversiones/hub/hub.component').then(m => m.InversionesHubComponent),
+    canActivate: [authGuard, onboardingGuard]
+  },
+  {
+    path: 'inversiones/oro',
+    loadComponent: () => import('./features/inversiones/oro/oro.component').then(m => m.OroComponent),
+    canActivate: [authGuard, onboardingGuard]
+  },
+  {
+    path: 'inversiones/pensiones',
+    loadComponent: () => import('./features/inversiones/pensiones/pensiones.component').then(m => m.PensionesComponent),
+    canActivate: [authGuard, onboardingGuard]
+  },
   { path: '**', redirectTo: '/home' }
 ];

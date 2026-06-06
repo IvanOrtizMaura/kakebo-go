@@ -5,16 +5,19 @@ import {
   collection,
   collectionData,
   doc,
+  getDocs,
   addDoc,
   updateDoc,
   deleteDoc,
   query,
   orderBy,
-  serverTimestamp
+  serverTimestamp,
+  DocumentData,
+  UpdateData
 } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 
-type SubCollection = 'gastos' | 'ahorros' | 'pareja';
+type SubCollection = 'gastos' | 'ahorros' | 'pareja' | 'deudas';
 
 @Injectable({ providedIn: 'root' })
 export class SectionService {
@@ -34,23 +37,21 @@ export class SectionService {
         return collectionData(q, { idField: 'id' }) as Observable<Record<string, unknown>[]>;
       },
       getByMonth: async (monthId: string): Promise<Record<string, unknown>[]> => {
-        return new Promise((resolve, reject) => {
-          const sub$ = collectionData(
-            query(this.colRef(monthId, sub), orderBy('order_index')),
-            { idField: 'id' }
-          ).subscribe({ next: v => { sub$.unsubscribe(); resolve(v as Record<string, unknown>[]); }, error: reject });
-        });
+        const snap = await getDocs(
+          query(this.colRef(monthId, sub), orderBy('order_index'))
+        );
+        return snap.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, unknown>));
       },
       add: async (item: Record<string, unknown>): Promise<Record<string, unknown>> => {
         const monthId = item['month_id'] as string;
         const ref = await addDoc(this.colRef(monthId, sub), { ...item, createdAt: serverTimestamp() });
         return { ...item, id: ref.id };
       },
-      update: async (id: string, changes: Record<string, unknown>, monthId: string): Promise<void> => {
+      update: async (id: string, changes: UpdateData<DocumentData>, monthId: string): Promise<void> => {
         const uid = this.auth.currentUser?.uid;
         if (!uid) throw new Error('Usuario no autenticado');
         const ref = doc(this.firestore, 'users', uid, 'months', monthId, sub, id);
-        await updateDoc(ref, changes as any);
+        await updateDoc(ref, changes);
       },
       remove: async (id: string, monthId: string): Promise<void> => {
         const uid = this.auth.currentUser?.uid;
@@ -64,4 +65,5 @@ export class SectionService {
   readonly gastos = this.crud('gastos');
   readonly ahorros = this.crud('ahorros');
   readonly pareja = this.crud('pareja');
+  readonly deudas = this.crud('deudas');
 }

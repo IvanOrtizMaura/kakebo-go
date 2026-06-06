@@ -5,8 +5,21 @@
       <button class="back-button" (click)="navigateToHome()" type="button" aria-label="Volver al inicio">
         <i class="pi pi-arrow-left"></i>
       </button>
-      <h1 class="gastos-title">Gastos</h1>
-      <span class="gastos-mes">{{ mesNombre }}</span>
+      <div class="month-nav">
+        <button class="month-nav-button" (click)="navigateToPreviousMonth()" type="button" aria-label="Mes anterior">
+          <i class="pi pi-chevron-left"></i>
+        </button>
+        <span class="month-name">{{ mesNombre() }}</span>
+        @if (monthOffset() !== 0) {
+          <button class="today-button" (click)="goToToday()">
+            <i class="pi pi-replay today-button__icon"></i>
+            Hoy
+          </button>
+        }
+        <button class="month-nav-button" (click)="navigateToNextMonth()" type="button" aria-label="Mes siguiente">
+          <i class="pi pi-chevron-right"></i>
+        </button>
+      </div>
     </header>
 
     <div class="resumen-card" [class.resumen-card--excedido]="totalExcedido()">
@@ -31,24 +44,38 @@
 
     <section class="lista-gastos" aria-label="Lista de gastos">
       @for (gasto of gastos(); track gasto.id) {
-        <div class="gasto-card">
+        <div class="gasto-card" [class.gasto-card--pagado]="gasto.pagado" (click)="togglePagado(gasto)">
           <div class="gasto-card__fila-superior">
             <span class="gasto-card__nombre">{{ gasto.nombre }}</span>
             <div class="gasto-card__importes">
-              <span class="gasto-card__real" [class.gasto-card__real--excedido]="isGastoExcedido(gasto)" [class.gasto-card__real--dentro]="!isGastoExcedido(gasto)">
-                {{ gasto.real | currency:'EUR':'symbol':'1.2-2':'es' }}
-              </span>
+              @if (gasto.pagado) {
+                <span class="gasto-card__badge-pagado">Pagado</span>
+              } @else {
+                <span class="gasto-card__real" [class.gasto-card__real--excedido]="isGastoExcedido(gasto)" [class.gasto-card__real--dentro]="!isGastoExcedido(gasto)">
+                  {{ gasto.real | currency:'EUR':'symbol':'1.2-2':'es' }}
+                </span>
+              }
               <span class="gasto-card__presupuestado">{{ gasto.presupuestado | currency:'EUR':'symbol':'1.2-2':'es' }} presupuestado</span>
             </div>
           </div>
           <div class="gasto-card__fila-inferior">
-            @if (isGastoExcedido(gasto)) {
-              <span class="gasto-card__badge gasto-card__badge--excedido">+{{ diferencia(gasto) | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
-            } @else if (diferencia(gasto) < 0) {
-              <span class="gasto-card__badge gasto-card__badge--ahorro">{{ diferencia(gasto) | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
-            } @else {
-              <span class="gasto-card__badge gasto-card__badge--neutro">Ajustado</span>
+            @if (!gasto.pagado) {
+              @if (isGastoExcedido(gasto)) {
+                <span class="gasto-card__badge gasto-card__badge--excedido">+{{ diferencia(gasto) | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+              } @else if (diferencia(gasto) < 0) {
+                <span class="gasto-card__badge gasto-card__badge--ahorro">{{ diferencia(gasto) | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+              } @else {
+                <span class="gasto-card__badge gasto-card__badge--neutro">Ajustado</span>
+              }
             }
+          </div>
+          <div class="item-actions" (click)="$event.stopPropagation()">
+            <button class="action-btn" type="button" (click)="openEditDialog(gasto)" aria-label="Editar">
+              <i class="pi pi-pencil"></i>
+            </button>
+            <button class="action-btn action-btn--delete" type="button" (click)="eliminarGasto(gasto)" aria-label="Borrar">
+              <i class="pi pi-trash"></i>
+            </button>
           </div>
         </div>
       }
@@ -63,7 +90,7 @@
   <p-dialog
     [visible]="dialogVisible()"
     (visibleChange)="dialogVisible.set($event)"
-    header="Nuevo gasto"
+    [header]="editMode() ? 'Editar gasto' : 'Nuevo gasto'"
     [modal]="true"
     [draggable]="false"
     [resizable]="false"
@@ -99,9 +126,25 @@
         />
       </div>
 
+      @if (editMode()) {
+        <div class="dialog-form__campo">
+          <label class="dialog-form__etiqueta" for="gasto-real">Importe real (€)</label>
+          <input
+            id="gasto-real"
+            class="dialog-form__entrada"
+            type="number"
+            placeholder="0"
+            min="0"
+            step="0.01"
+            [ngModel]="editReal()"
+            (ngModelChange)="editReal.set($event)"
+          />
+        </div>
+      }
+
       <div class="dialog-form__acciones">
         <button class="dialog-form__boton-guardar" type="button" (click)="guardarGasto()">
-          Guardar
+          {{ editMode() ? 'Actualizar' : 'Guardar' }}
         </button>
         <button class="dialog-form__boton-cancelar" type="button" (click)="closeDialog()">
           Cancelar

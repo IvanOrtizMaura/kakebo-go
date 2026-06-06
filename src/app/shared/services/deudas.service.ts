@@ -6,6 +6,7 @@ import {
   collectionData,
   doc,
   getDoc,
+  getDocs,
   addDoc,
   setDoc,
   updateDoc,
@@ -41,13 +42,9 @@ export class DeudasService {
   }
 
   async getActive(userId: string): Promise<Deuda[]> {
-    return new Promise((resolve, reject) => {
-      const q = query(this.deudasCol(), where('is_active', '==', true), orderBy('total_amount'));
-      const sub = collectionData(q, { idField: 'id' }).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as Deuda[]); },
-        error: reject
-      });
-    });
+    const q = query(this.deudasCol(), where('is_active', '==', true), orderBy('total_amount'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Deuda));
   }
 
   getActiveObservable(): Observable<Deuda[]> {
@@ -60,13 +57,9 @@ export class DeudasService {
   }
 
   async getArchived(userId: string): Promise<Deuda[]> {
-    return new Promise((resolve, reject) => {
-      const q = query(this.deudasCol(), where('is_active', '==', false), orderBy('total_amount'));
-      const sub = collectionData(q, { idField: 'id' }).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as Deuda[]); },
-        error: reject
-      });
-    });
+    const q = query(this.deudasCol(), where('is_active', '==', false), orderBy('total_amount'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Deuda));
   }
 
   async create(deuda: Omit<Deuda, 'id'>): Promise<Deuda> {
@@ -94,14 +87,9 @@ export class DeudasService {
 
     // Eliminar registros mensuales asociados
     const monthlyQuery = query(this.monthlyCol(), where('deuda_id', '==', id));
-    const monthlySnap = await new Promise<DeudaMonthly[]>((resolve, reject) => {
-      const sub = collectionData(monthlyQuery, { idField: 'id' }).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as DeudaMonthly[]); },
-        error: reject
-      });
-    });
+    const monthlySnap = await getDocs(monthlyQuery);
 
-    monthlySnap.forEach(m => {
+    monthlySnap.docs.forEach(m => {
       batch.delete(doc(this.firestore, 'users', this.uid, 'deudas_monthly', m.id));
     });
     batch.delete(doc(this.firestore, 'users', this.uid, 'deudas', id));
@@ -109,13 +97,9 @@ export class DeudasService {
   }
 
   async getMonthlyByMonth(monthId: string): Promise<DeudaMonthly[]> {
-    return new Promise((resolve, reject) => {
-      const q = query(this.monthlyCol(), where('month_id', '==', monthId));
-      const sub = collectionData(q, { idField: 'id' }).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as DeudaMonthly[]); },
-        error: reject
-      });
-    });
+    const q = query(this.monthlyCol(), where('month_id', '==', monthId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as DeudaMonthly));
   }
 
   async upsertMonthly(item: Omit<DeudaMonthly, 'id'>): Promise<void> {

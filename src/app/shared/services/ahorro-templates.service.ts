@@ -3,8 +3,8 @@ import { Auth } from '@angular/fire/auth';
 import {
   Firestore,
   collection,
-  collectionData,
   doc,
+  getDocs,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -30,13 +30,9 @@ export class AhorroTemplatesService {
   }
 
   async getAll(userId: string): Promise<AhorroTemplate[]> {
-    return new Promise((resolve, reject) => {
-      const q = query(this.col(), orderBy('order_index'));
-      const sub = collectionData(q, { idField: 'id' }).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as AhorroTemplate[]); },
-        error: reject
-      });
-    });
+    const q = query(this.col(), orderBy('order_index'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as AhorroTemplate));
   }
 
   async add(template: Omit<AhorroTemplate, 'id' | 'created_at'>): Promise<void> {

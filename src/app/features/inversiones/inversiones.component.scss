@@ -1,0 +1,495 @@
+:host {
+  display: block;
+}
+
+.inversiones-page {
+  min-height: 100dvh;
+  background: #ffffff;
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  color: #0f172a;
+}
+
+.inversiones-content {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 0 0 calc(80px + 72px + env(safe-area-inset-bottom, 0px)) 0;
+}
+
+// ─── Header ─────────────────────────────────────────────────────────────────
+
+.inversiones-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 16px 16px;
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  z-index: 10;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active {
+    background: #e2e8f0;
+    color: #0f172a;
+  }
+}
+
+.inversiones-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.2;
+}
+
+// ─── Summary card ────────────────────────────────────────────────────────────
+
+.portfolio-summary-card {
+  background: #fffbeb;
+  border: 1.5px solid #f59e0b;
+  border-radius: 16px;
+  padding: 20px;
+  margin: 0 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &__label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #92400e;
+    letter-spacing: 0.01em;
+  }
+
+  &__amount {
+    font-size: 28px;
+    font-weight: 700;
+    color: #92400e;
+    line-height: 1.15;
+  }
+}
+
+// ─── Section heading ─────────────────────────────────────────────────────────
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 16px 12px;
+}
+
+.gold-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  flex-shrink: 0;
+}
+
+// ─── Investment card ─────────────────────────────────────────────────────────
+
+.investment-card {
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 16px;
+  margin: 0 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.3;
+  }
+
+  &__delete-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #94a3b8;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+      background: #fee2e2;
+      color: #ef4444;
+    }
+  }
+
+  &__details {
+    font-size: 13px;
+    font-weight: 400;
+    color: #64748b;
+    line-height: 1.4;
+  }
+
+  &__valor-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+  }
+}
+
+// ─── Valor placeholder ───────────────────────────────────────────────────────
+
+.valor-placeholder-pill {
+  background: #f1f5f9;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
+.proxima-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #8b5cf6;
+}
+
+// ─── Empty state ─────────────────────────────────────────────────────────────
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px 32px;
+  gap: 12px;
+
+  &__icon-wrapper {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #fffbeb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+  }
+
+  &__icon {
+    font-size: 28px;
+    color: #f59e0b;
+  }
+
+  &__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #0f172a;
+    text-align: center;
+  }
+
+  &__subtext {
+    font-size: 14px;
+    font-weight: 400;
+    color: #64748b;
+    text-align: center;
+  }
+}
+
+// ─── FAB ─────────────────────────────────────────────────────────────────────
+
+.fab-añadir {
+  position: fixed;
+  bottom: calc(72px + 20px + env(safe-area-inset-bottom, 0px));
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #8b5cf6;
+  border: none;
+  color: #ffffff;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+  cursor: pointer;
+  z-index: 20;
+  transition: background 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active {
+    background: #7c3aed;
+    transform: scale(0.94);
+  }
+}
+
+// ─── Dialog form ─────────────────────────────────────────────────────────────
+
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0 8px;
+
+  &__campo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__etiqueta {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__hint {
+    font-size: 12px;
+    font-weight: 400;
+    color: #94a3b8;
+  }
+
+  &__entrada {
+    width: 100%;
+    height: 44px;
+    padding: 0 12px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    color: #0f172a;
+    background: #ffffff;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+
+    &::placeholder {
+      color: #cbd5e1;
+    }
+
+    &:focus {
+      border-color: #8b5cf6;
+    }
+
+    &[type='number'] {
+      -moz-appearance: textfield;
+
+      &::-webkit-outer-spin-button,
+      &::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+    }
+  }
+
+  &__acciones {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  &__boton-guardar {
+    width: 100%;
+    height: 48px;
+    background: #8b5cf6;
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+      background: #7c3aed;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  &__boton-cancelar {
+    width: 100%;
+    height: 44px;
+    background: transparent;
+    color: #64748b;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 500;
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    cursor: pointer;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+      background: #f8fafc;
+    }
+  }
+}
+
+.quilates-selector {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.quilates-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  -webkit-tap-highlight-color: transparent;
+
+  &__sub {
+    font-size: 10px;
+    font-weight: 400;
+    color: #94a3b8;
+  }
+
+  &--active {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    color: #92400e;
+
+    .quilates-btn__sub {
+      color: #d97706;
+    }
+  }
+
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+.portfolio-summary-card {
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+
+    &--loading { opacity: 0.6; }
+  }
+
+  &__divider {
+    height: 1px;
+    background: #fde68a;
+    margin: 10px 0;
+  }
+
+  &__ganancia {
+    font-size: 14px;
+    font-weight: 600;
+
+    &--positivo { color: #16a34a; }
+    &--negativo { color: #dc2626; }
+  }
+}
+
+.gold-price-badge {
+  margin-left: auto;
+  background: #fef3c7;
+  color: #d97706;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+
+.valor-actual-pill {
+  background: #f0fdf4;
+  color: #16a34a;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
+.ganancia-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 8px;
+
+  &--positivo {
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+  }
+
+  &--negativo {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+  }
+}
+
+.gold-update-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 16px 12px;
+  font-size: 11px;
+  font-weight: 400;
+  color: #94a3b8;
+
+  .pi-clock { font-size: 11px; }
+
+  &__requests {
+    margin-left: auto;
+    background: #fef3c7;
+    color: #d97706;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 2px 7px;
+  }
+}

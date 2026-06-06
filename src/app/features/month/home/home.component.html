@@ -9,6 +9,12 @@
 
       <div class="month-title">
         <span class="month-name">{{ mesNombre() }}</span>
+        @if (monthOffset() !== 0) {
+          <button class="today-button" (click)="goToToday()">
+            <i class="pi pi-replay today-button__icon"></i>
+            Hoy
+          </button>
+        }
       </div>
 
       <button class="month-nav-button" (click)="navigateToNextMonth()" aria-label="Mes siguiente">
@@ -82,23 +88,23 @@
       <div class="donut-wrapper">
         <svg
           class="donut-svg"
-          viewBox="0 0 100 100"
+          viewBox="0 0 140 140"
           aria-hidden="true"
         >
           <circle
-            cx="50"
-            cy="50"
+            cx="70"
+            cy="70"
             r="45"
             fill="none"
             stroke="#f1f5f9"
             stroke-width="10"
           />
 
-          <g transform="rotate(-90 50 50)">
+          <g transform="rotate(-90 70 70)">
             @for (segment of donutSegments(); track segment.label) {
               <circle
-                cx="50"
-                cy="50"
+                cx="70"
+                cy="70"
                 r="45"
                 fill="none"
                 [attr.stroke]="segment.color"
@@ -110,8 +116,36 @@
             }
           </g>
 
-          <text x="50" y="47" class="donut-center-label">Total</text>
-          <text x="50" y="58" class="donut-center-value">{{ totalGastos() }}€</text>
+          @for (segment of donutSegments(); track segment.label) {
+            @if (segment.callout) {
+              <line
+                [attr.x1]="segment.callout.x1"
+                [attr.y1]="segment.callout.y1"
+                [attr.x2]="segment.callout.x2"
+                [attr.y2]="segment.callout.y2"
+                [attr.stroke]="segment.color"
+                stroke-width="0.8"
+              />
+              <line
+                [attr.x1]="segment.callout.x2"
+                [attr.y1]="segment.callout.y2"
+                [attr.x2]="segment.callout.x3"
+                [attr.y2]="segment.callout.y2"
+                [attr.stroke]="segment.color"
+                stroke-width="0.8"
+              />
+              <text
+                [attr.x]="segment.callout.tx"
+                [attr.y]="segment.callout.ty"
+                [attr.fill]="segment.color"
+                [attr.text-anchor]="segment.callout.anchor"
+                class="donut-callout-text"
+              >{{ segment.percentage }}%</text>
+            }
+          }
+
+          <text x="70" y="66" class="donut-center-label">Total</text>
+          <text x="70" y="77" class="donut-center-value">{{ totalGastos() | currency:'EUR':'symbol':'1.0-0':'es' }}</text>
         </svg>
 
         <ul class="donut-legend">
@@ -131,7 +165,7 @@
       <h2 class="section-title">Por sección</h2>
 
       @for (seccion of secciones(); track seccion.nombre) {
-        <div class="budget-row">
+        <div class="budget-row" (click)="navigateToSection(seccion.nombre)" style="cursor: pointer;">
           <div class="budget-row__top">
             <div class="budget-row__name">
               <span class="budget-row__icon" [style.color]="seccion.color">

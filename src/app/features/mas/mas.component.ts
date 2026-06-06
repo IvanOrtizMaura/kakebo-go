@@ -77,6 +77,14 @@ export class MasComponent {
         disabled: false
       },
       {
+        label: 'Inversiones',
+        summary: 'Seguimiento de tu cartera',
+        icon: 'pi-chart-line',
+        color: '#f59e0b',
+        route: '/inversiones',
+        disabled: false
+      },
+      {
         label: 'Análisis IA',
         summary: 'Consejos personalizados con IA',
         icon: 'pi-sparkles',

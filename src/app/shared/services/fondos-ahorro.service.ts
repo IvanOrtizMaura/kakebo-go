@@ -3,8 +3,8 @@ import { Auth } from '@angular/fire/auth';
 import {
   Firestore,
   collection,
-  collectionData,
   doc,
+  getDocs,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -37,23 +37,15 @@ export class FondosAhorroService {
   }
 
   async getActive(userId: string): Promise<FondoAhorro[]> {
-    return new Promise((resolve, reject) => {
-      const q = query(this.fondosCol(), where('is_active', '==', true), orderBy('createdAt'));
-      const sub = collectionData(q, { idField: 'id' }).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as FondoAhorro[]); },
-        error: reject
-      });
-    });
+    const q = query(this.fondosCol(), where('is_active', '==', true), orderBy('createdAt'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as FondoAhorro));
   }
 
   async getArchived(userId: string): Promise<FondoAhorro[]> {
-    return new Promise((resolve, reject) => {
-      const q = query(this.fondosCol(), where('is_active', '==', false), orderBy('createdAt'));
-      const sub = collectionData(q, { idField: 'id' }).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as FondoAhorro[]); },
-        error: reject
-      });
-    });
+    const q = query(this.fondosCol(), where('is_active', '==', false), orderBy('createdAt'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as FondoAhorro));
   }
 
   async create(fondo: Omit<FondoAhorro, 'id'>): Promise<FondoAhorro> {
@@ -81,13 +73,9 @@ export class FondosAhorroService {
   }
 
   async getMonthlyByMonth(monthId: string): Promise<FondoAhorroMonthly[]> {
-    return new Promise((resolve, reject) => {
-      const q = query(this.monthlyCol(), where('month_id', '==', monthId));
-      const sub = collectionData(q, { idField: 'id' }).subscribe({
-        next: v => { sub.unsubscribe(); resolve(v as FondoAhorroMonthly[]); },
-        error: reject
-      });
-    });
+    const q = query(this.monthlyCol(), where('month_id', '==', monthId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as FondoAhorroMonthly));
   }
 
   async upsertMonthly(item: Omit<FondoAhorroMonthly, 'id'>): Promise<void> {

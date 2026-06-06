@@ -1,0 +1,190 @@
+:host {
+  display: block;
+}
+
+.hub-page {
+  min-height: 100dvh;
+  background: #ffffff;
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  color: #0f172a;
+}
+
+.hub-content {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 0 0 calc(80px + 72px + env(safe-area-inset-bottom, 0px)) 0;
+}
+
+// ─── Header ─────────────────────────────────────────────────────────────────
+
+.hub-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 16px 16px;
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  z-index: 10;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active {
+    background: #e2e8f0;
+    color: #0f172a;
+  }
+}
+
+.hub-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.hub-subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  color: #94a3b8;
+  margin: 0 16px 24px;
+  line-height: 1.4;
+}
+
+// ─── Category grid ───────────────────────────────────────────────────────────
+
+.category-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 16px;
+}
+
+// ─── Category card ───────────────────────────────────────────────────────────
+
+.category-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 18px 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+
+  &:active {
+    background: #f8fafc;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+
+  &--oro {
+    border-left: 3px solid #f59e0b;
+  }
+
+  &--pensiones {
+    border-left: 3px solid #6366f1;
+    opacity: 0.85;
+  }
+
+  &__icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    &--oro {
+      background: #fffbeb;
+    }
+
+    &--pensiones {
+      background: #eef2ff;
+    }
+  }
+
+  &__icon {
+    font-size: 22px;
+
+    .category-card--oro & {
+      color: #f59e0b;
+    }
+
+    .category-card--pensiones & {
+      color: #6366f1;
+    }
+  }
+
+  &__body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  &__name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.2;
+  }
+
+  &__summary {
+    font-size: 12px;
+    font-weight: 400;
+    color: #64748b;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  &__chevron {
+    font-size: 12px;
+    color: #cbd5e1;
+    flex-shrink: 0;
+  }
+}
+
+// ─── Badge próximamente ──────────────────────────────────────────────────────
+
+.badge-proximamente {
+  background: #f1f5f9;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 3px 8px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
