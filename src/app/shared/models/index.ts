@@ -47,10 +47,14 @@ export interface Gasto {
   month_id: string;
   user_id: string;
   name: string;
+  nombre?: string;
   presupuestado: number;
+  importe?: number;
   real: number;
   tipo: 'fijos' | 'variables';
+  categoria?: string;
   order_index: number;
+  pagado?: boolean;
 }
 
 export interface Ahorro {
@@ -145,6 +149,7 @@ export interface InversionOro {
   gramos: number;
   pureza: number;
   precio_compra: number;
+  fechaCompra?: Date;
   created_at: string;
 }
 

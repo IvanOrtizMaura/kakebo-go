@@ -173,6 +173,18 @@
         />
       </div>
 
+      <div class="dialog-form__campo">
+        <label class="dialog-form__etiqueta" for="inversion-fecha-compra">Fecha de compra</label>
+        <p-calendar
+          inputId="inversion-fecha-compra"
+          [ngModel]="fechaCompraNuevaInversion()"
+          (ngModelChange)="updateFechaCompra($event)"
+          dateFormat="dd/mm/yy"
+          [showIcon]="true"
+          [appendTo]="'body'"
+        />
+      </div>
+
       <div class="dialog-form__acciones">
         <button
           class="dialog-form__boton-guardar"
