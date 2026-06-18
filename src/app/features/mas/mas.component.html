@@ -1,6 +1,5 @@
 <div class="mas-page">
   <div class="mas-content">
-
     <header class="mas-header">
       <h1 class="mas-title">Menú</h1>
     </header>
@@ -11,7 +10,10 @@
       <div class="menu-list">
         @for (item of monthSection.items; track item.route; let last = $last) {
           <a [routerLink]="item.route" class="menu-item">
-            <span class="menu-item__icon-wrapper" [style.background]="item.color + '1a'">
+            <span
+              class="menu-item__icon-wrapper"
+              [style.background]="item.color + '1a'"
+            >
               <i class="pi {{ item.icon }}" [style.color]="item.color"></i>
             </span>
             <span class="menu-item__text">
@@ -31,10 +33,17 @@
       <h2 class="menu-section__heading">General</h2>
 
       <div class="menu-list">
-        @for (item of generalSection.items; track item.label; let last = $last) {
+        @for (
+          item of generalSection.items;
+          track item.label;
+          let last = $last
+        ) {
           @if (item.disabled) {
             <div class="menu-item menu-item--disabled">
-              <span class="menu-item__icon-wrapper" [style.background]="item.color + '1a'">
+              <span
+                class="menu-item__icon-wrapper"
+                [style.background]="item.color + '1a'"
+              >
                 <i class="pi {{ item.icon }}" [style.color]="item.color"></i>
               </span>
               <span class="menu-item__text">
@@ -45,7 +54,10 @@
             </div>
           } @else {
             <a [routerLink]="item.route" class="menu-item">
-              <span class="menu-item__icon-wrapper" [style.background]="item.color + '1a'">
+              <span
+                class="menu-item__icon-wrapper"
+                [style.background]="item.color + '1a'"
+              >
                 <i class="pi {{ item.icon }}" [style.color]="item.color"></i>
               </span>
               <span class="menu-item__text">
@@ -61,7 +73,6 @@
         }
       </div>
     </section>
-
   </div>
 
   <app-bottom-nav />
