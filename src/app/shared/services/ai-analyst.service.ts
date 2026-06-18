@@ -4,7 +4,8 @@ import { Firestore, collection, getDocs, query, orderBy, where } from '@angular/
 import { Month } from '../models';
 import { environment } from '../../../environments/environment';
 import { UserProfileService } from '../../core/auth/user-profile.service';
-import { Ahorro, DeudaSection, Factura, Gasto, Ingreso } from '../models';
+import { Ahorro, Deuda, DeudaSection, Factura, FondoAhorro, Gasto, Ingreso, InversionOro } from '../models';
+import { AportacionPension } from './pensiones.service';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -170,35 +171,91 @@ export class AiAnalystService {
         .filter(Boolean)
         .join('\n\n');
 
-      console.log('[AI] contexto generado:', monthlySections || '(vacío)');
+      // ── Fetch user-level (non-monthly) data in parallel ───────────────────
+      const fetchUserCol = async <T>(sub: string, constraints: Parameters<typeof query>[1][] = []): Promise<T[]> => {
+        const ref = collection(this.firestore, 'users', uid, sub);
+        const snap = await getDocs(constraints.length ? query(ref, ...constraints) : ref);
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }) as T);
+      };
 
+      const [inversiones, deudasMaestras, fondosAhorro, pensiones] = await Promise.all([
+        fetchUserCol<InversionOro>('inversiones'),
+        fetchUserCol<Deuda>('deudas', [where('is_active', '==', true)]),
+        fetchUserCol<FondoAhorro>('fondos_ahorro', [where('is_active', '==', true)]),
+        fetchUserCol<AportacionPension>('pensiones_aportaciones'),
+      ]);
+
+      // ── Build general data section ─────────────────────────────────────────
+      const generalLines: string[] = ['DATOS GENERALES (patrimonio y compromisos):'];
+
+      if (inversiones.length > 0) {
+        const totalInvertido = inversiones.reduce((s, i) => s + (i.precio_compra || 0), 0);
+        const totalGramos = inversiones.reduce((s, i) => s + (i.gramos || 0), 0);
+        generalLines.push(`\nInversiones en oro (${inversiones.length} posiciones | ${totalGramos.toFixed(1)}g | comprado por ${this.formatEuros(totalInvertido)}):`);
+        inversiones.forEach(i => {
+          const quilates = i.pureza >= 1 ? `${i.pureza / 10}k` : `${(i.pureza * 1000).toFixed(0)}‰`;
+          generalLines.push(`  - ${i.name}: ${i.gramos}g | pureza ${quilates} | precio compra ${this.formatEuros(i.precio_compra)}`);
+        });
+      }
+
+      if (deudasMaestras.length > 0) {
+        const totalRestante = deudasMaestras.reduce((s, d) => s + (d.amount_remaining || 0), 0);
+        generalLines.push(`\nDeudas activas (${deudasMaestras.length} | restante total: ${this.formatEuros(totalRestante)}):`);
+        deudasMaestras.forEach(d => {
+          generalLines.push(`  - ${d.name}: total ${this.formatEuros(d.total_amount)} | pago mensual ${this.formatEuros(d.monthly_payment)} | restante ${this.formatEuros(d.amount_remaining)} | interés ${d.interest_rate}%`);
+        });
+      }
+
+      if (fondosAhorro.length > 0) {
+        const totalObjetivo = fondosAhorro.reduce((s, f) => s + (f.total_amount || 0), 0);
+        generalLines.push(`\nFondos de ahorro activos (${fondosAhorro.length} | objetivo total: ${this.formatEuros(totalObjetivo)}):`);
+        fondosAhorro.forEach(f => {
+          generalLines.push(`  - ${f.name}: objetivo ${this.formatEuros(f.total_amount)} | aportación mensual ${this.formatEuros(f.monthly_amount)} | ${f.num_months} meses`);
+        });
+      }
+
+      if (pensiones.length > 0) {
+        const totalPension = pensiones.reduce((s, p) => s + (p.importe || 0), 0);
+        generalLines.push(`\nAportaciones a pensión (${pensiones.length} aportaciones | total acumulado: ${this.formatEuros(totalPension)}):`);
+        const lastFive = pensiones.slice(0, 5);
+        lastFive.forEach(p => {
+          const fecha = p.fecha instanceof Date ? p.fecha.toLocaleDateString('es-ES') : String(p.fecha).split('T')[0];
+          const nota = p.nota ? ` | ${p.nota}` : '';
+          generalLines.push(`  - ${fecha}: ${this.formatEuros(p.importe)}${nota}`);
+        });
+        if (pensiones.length > 5) generalLines.push(`  ... y ${pensiones.length - 5} más`);
+      }
+
+      const generalSection = generalLines.length > 1 ? generalLines.join('\n') : '';
+
+      // ── Build profile context ──────────────────────────────────────────────
       let profileContext = '';
-      if (uid) {
-        const profile = await this.userProfileService.getProfile(uid);
-        if (profile) {
-          profileContext = [
-            '\nPERFIL DEL USUARIO:',
-            `- Ingreso neto mensual esperado: ${this.formatEuros(profile.monthly_net_income)}`,
-            `- Objetivo de ahorro: ${profile.savings_percentage}%`,
-            `- Tiene deuda de alto interés: ${profile.has_high_interest_debt ? 'Sí' : 'No'}`,
-            '',
-          ].join('\n');
-        }
+      const profile = await this.userProfileService.getProfile(uid);
+      if (profile) {
+        profileContext = [
+          '\nPERFIL DEL USUARIO:',
+          `- Ingreso neto mensual esperado: ${this.formatEuros(profile.monthly_net_income)}`,
+          `- Objetivo de ahorro: ${profile.savings_percentage}%`,
+          `- Tiene deuda de alto interés: ${profile.has_high_interest_debt ? 'Sí' : 'No'}`,
+          `- Tiene pareja: ${profile.has_partner ? 'Sí' : 'No'}`,
+          '',
+        ].join('\n');
       }
 
       this.cachedContext = [
         'Eres un asesor financiero personal experto en el método Kakebo japonés de control de gastos.',
-        'Ayudas al usuario a entender sus finanzas, identificar gastos innecesarios y mejorar sus hábitos económicos.',
+        'Tienes acceso completo a las finanzas del usuario: ingresos, gastos, facturas, ahorros, deudas, inversiones, fondos de ahorro y pensiones.',
         profileContext,
-        `DATOS FINANCIEROS AÑO ${year}:`,
-        monthlySections || 'No hay datos registrados para este año todavía.',
+        generalSection,
+        `\nDATOS MENSUALES AÑO ${year}:`,
+        monthlySections || 'No hay datos mensuales registrados para este año todavía.',
         '',
         'INSTRUCCIONES:',
         '- Responde siempre en español, de forma conversacional y directa.',
         '- Los "gastos hormiga" son pequeños gastos variables que se repiten y acumulan (cafés, snacks, suscripciones menores, compras impulsivas). Cuando el usuario pregunte, identifícalos en los gastos variables y calcula su total.',
         '- Señala con ⚠️ las partidas donde el gasto real supera al presupuestado.',
+        '- Para preguntas sobre inversiones, deudas, fondos de ahorro o pensiones, usa los datos de la sección DATOS GENERALES.',
         '- Da consejos prácticos y accionables, no solo observaciones.',
-        '- Si no hay datos suficientes, indícalo y sugiere qué datos registrar.',
       ].join('\n');
 
       this.cachedContextYear = year;
