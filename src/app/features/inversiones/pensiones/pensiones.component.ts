@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
-import { CalendarModule } from 'primeng/calendar';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
@@ -95,7 +94,6 @@ function calculateCurrentPlanYear(): number {
     ButtonModule,
     InputTextModule,
     InputNumberModule,
-    CalendarModule,
     BottomNavComponent
   ],
   templateUrl: './pensiones.component.html',
@@ -114,8 +112,14 @@ export class PensionesComponent implements OnInit, OnDestroy {
   readonly showAllAportaciones = signal(false);
   readonly dialogVisible = signal(false);
   readonly newFecha = signal<Date>(new Date());
+  readonly newFechaStr = computed(() => {
+    const d = this.newFecha();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   readonly newImporte = signal<number | null>(null);
   readonly newNota = signal<string>('');
+  readonly guardando = signal(false);
+  readonly saveError = signal<string | null>(null);
   readonly currentPlanYear = calculateCurrentPlanYear();
 
   readonly currentProjection = computed(() => OVB_PROJECTION[this.currentPlanYear - 1]);
@@ -178,15 +182,26 @@ export class PensionesComponent implements OnInit, OnDestroy {
     });
   }
 
+  setFechaFromStr(value: string): void {
+    if (value) {
+      this.newFecha.set(new Date(value + 'T12:00:00'));
+    } else {
+      this.newFecha.set(new Date());
+    }
+  }
+
   openDialog(): void {
     this.newFecha.set(new Date());
     this.newImporte.set(null);
     this.newNota.set('');
+    this.saveError.set(null);
     this.dialogVisible.set(true);
   }
 
   closeDialog(): void {
+    if (this.guardando()) return;
     this.dialogVisible.set(false);
+    this.saveError.set(null);
   }
 
   async saveAportacion(): Promise<void> {
@@ -194,19 +209,27 @@ export class PensionesComponent implements OnInit, OnDestroy {
     const importe = this.newImporte();
     const fecha = this.newFecha();
 
-    if (!user || importe === null || importe <= 0) {
-      return;
+    if (!user || importe === null || importe <= 0 || this.guardando()) return;
+
+    this.guardando.set(true);
+    this.saveError.set(null);
+
+    try {
+      const nota = this.newNota().trim();
+      await this.pensionesService.add({
+        fecha,
+        importe,
+        ...(nota ? { nota } : {}),
+      });
+      await this.createPaidExpense(user.uid, fecha, 'Pensión OVB', importe);
+      this.loadAportaciones();
+      this.closeDialog();
+    } catch (error) {
+      console.error('[Pensiones] saveAportacion error:', error);
+      this.saveError.set('Error al guardar. Por favor inténtalo de nuevo.');
+    } finally {
+      this.guardando.set(false);
     }
-
-    await this.pensionesService.add({
-      fecha,
-      importe,
-      nota: this.newNota().trim() || undefined
-    });
-    await this.createPaidExpense(user.uid, fecha, 'Pensión OVB', importe);
-
-    this.loadAportaciones();
-    this.closeDialog();
   }
 
   async deleteAportacion(id: string): Promise<void> {

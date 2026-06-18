@@ -83,6 +83,10 @@ export class OroComponent {
   readonly purezaNuevaInversion = signal<number | null>(null);
   readonly precioCompraNuevaInversion = signal<number | null>(null);
   readonly fechaCompraNuevaInversion = signal<Date>(new Date());
+  readonly fechaCompraStr = computed(() => {
+    const d = this.fechaCompraNuevaInversion();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   readonly guardandoInversion = signal(false);
 
   readonly quilatesOpciones = [

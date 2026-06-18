@@ -1,72 +1,79 @@
 <div class="pensiones-container">
-  <div class="header">
-    <button class="back-button" type="button" (click)="navigateBack()">
-      ← Inversiones
+  <header class="page-header">
+    <button class="back-button" type="button" (click)="navigateBack()" aria-label="Volver">
+      <i class="pi pi-arrow-left"></i>
     </button>
-    <h1>Pensiones</h1>
-  </div>
+    <div class="header-titles">
+      <h1>Pensiones OVB</h1>
+      <span class="subtitle">Plan de jubilación a 22 años</span>
+      <span class="gold-accent" aria-hidden="true"></span>
+    </div>
+  </header>
 
   @if (isLoading()) {
     <div class="loading-state">Cargando plan y aportaciones...</div>
   } @else {
-    <div class="plan-card">
-      <div class="plan-header">
-        <div class="plan-icon">🛡️</div>
-        <div class="plan-info">
-          <h2>OVB — Seguro Personalizado</h2>
-          <span class="plan-ref">Ref: SECUPF000000000194478</span>
-        </div>
-        <div class="plan-year-badge">Año {{ currentPlanYear }} de 22</div>
+    <section class="card progress-card">
+      <div class="progress-row">
+        <span class="progress-label">PROGRESO DEL PLAN</span>
+        <span class="progress-year">Año {{ currentPlanYear }} / 22</span>
       </div>
-      <div class="plan-progress">
-        <div class="progress-bar">
-          <div class="progress-fill" [style.width.%]="planProgress()"></div>
-        </div>
-        <span class="progress-label">Inicio: febrero 2026 · Fin previsto: febrero 2048</span>
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="planProgress()"></div>
       </div>
-    </div>
+      <span class="progress-remaining">{{ 22 - currentPlanYear }} años restantes</span>
+    </section>
 
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <span class="kpi-label">Total aportado</span>
-        <span class="kpi-value">{{ formatCurrency(totalAportado()) }}</span>
+    <section class="card figures-card">
+      <div class="figure-row">
+        <div class="figure-text">
+          <span class="figure-label">Total aportado</span>
+          <span class="figure-helper">{{ aportaciones().length }} aportaciones realizadas</span>
+        </div>
+        <span class="figure-value figure-value--indigo">{{ formatCurrency(totalAportado()) }}</span>
       </div>
-      <div class="kpi-card kpi-highlight">
-        <span class="kpi-label">Proyección moderada</span>
-        <span class="kpi-value">{{ formatCurrency(currentProjection().moderado) }}</span>
-        <span class="kpi-sublabel">Año {{ currentPlanYear }}</span>
+      <div class="figure-divider"></div>
+      <div class="figure-row">
+        <div class="figure-text">
+          <span class="figure-label">Proyección</span>
+          <span class="figure-helper">Año {{ currentPlanYear }} · escenario moderado</span>
+        </div>
+        <span class="figure-value figure-value--gold">{{ formatCurrency(currentProjection().moderado) }}</span>
       </div>
-      <div class="kpi-card">
-        <span class="kpi-label">Diferencia vs plan</span>
-        <span class="kpi-value" [class.positive]="diferencia() >= 0" [class.negative]="diferencia() < 0">
-          {{ diferencia() >= 0 ? '+' : '' }}{{ formatCurrency(diferencia()) }}
+      <div class="figure-divider"></div>
+      <div class="figure-row">
+        <div class="figure-text">
+          <span class="figure-label">Diferencia</span>
+          <span class="figure-helper">Rendimiento estimado</span>
+        </div>
+        <span
+          class="figure-value"
+          [class.figure-value--positive]="diferencia() >= 0"
+          [class.figure-value--negative]="diferencia() < 0">
+          <i class="pi" [class.pi-arrow-up]="diferencia() >= 0" [class.pi-arrow-down]="diferencia() < 0"></i>
+          {{ formatCurrency(diferencia()) }}
         </span>
-        <span class="kpi-sublabel">vs primas acumuladas</span>
       </div>
-    </div>
+    </section>
 
-    <div class="scenarios-card">
-      <h3>Fondo de ahorro proyectado — Año {{ currentPlanYear }}</h3>
-      <div class="scenarios-grid">
-        <div class="scenario desfavorable">
-          <span class="scenario-label">Desfavorable (-1.22%)</span>
-          <span class="scenario-value">{{ formatCurrency(currentProjection().desfavorable) }}</span>
-        </div>
-        <div class="scenario moderado highlighted">
-          <span class="scenario-label">Moderado (10.46%)</span>
-          <span class="scenario-value">{{ formatCurrency(currentProjection().moderado) }}</span>
-        </div>
-        <div class="scenario favorable">
-          <span class="scenario-label">Favorable (15.9%)</span>
-          <span class="scenario-value">{{ formatCurrency(currentProjection().favorable) }}</span>
+    <section class="card chart-card">
+      <div class="chart-header">
+        <h3>Proyección OVB</h3>
+        <div class="scenario-chips" role="tablist" aria-label="Escenario">
+          <span class="chip" role="tab" aria-selected="false">Desfavorable</span>
+          <span class="chip chip--selected" role="tab" aria-selected="true">Moderado</span>
+          <span class="chip" role="tab" aria-selected="false">Favorable</span>
         </div>
       </div>
-    </div>
-
-    <div class="chart-card">
-      <h3>Evolución proyectada</h3>
       <div class="chart-wrapper">
-        <svg [attr.viewBox]="'0 0 900 300'" class="chart-svg" preserveAspectRatio="xMidYMid meet">
+        <svg viewBox="0 0 900 300" class="chart-svg" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="moderadoAreaFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#C5A059" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#C5A059" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
           @for (tick of chartData().yAxis; track tick.y) {
             <text [attr.x]="60" [attr.y]="tick.y + 4" text-anchor="end" class="axis-label">{{ tick.label }}</text>
             <line [attr.x1]="70" [attr.y1]="tick.y" [attr.x2]="880" [attr.y2]="tick.y" class="grid-line"/>
@@ -76,102 +83,155 @@
             <text [attr.x]="tick.x" [attr.y]="295" text-anchor="middle" class="axis-label">{{ tick.label }}</text>
           }
 
-          <line [attr.x1]="chartData().currentYearX" [attr.y1]="20" [attr.x2]="chartData().currentYearX" [attr.y2]="260" class="current-year-line"/>
+          <polygon
+            [attr.points]="chartData().moderadoPath + ' 880,260 70,260'"
+            class="moderado-area"
+            fill="url(#moderadoAreaFill)"/>
+
+          <line
+            [attr.x1]="chartData().currentYearX"
+            y1="20"
+            [attr.x2]="chartData().currentYearX"
+            y2="260"
+            class="current-year-line"/>
+
           <polyline [attr.points]="chartData().favorablePath" class="line-favorable"/>
           <polyline [attr.points]="chartData().moderadoPath" class="line-moderado"/>
           <polyline [attr.points]="chartData().primasPath" class="line-primas"/>
 
-          <line x1="70" y1="15" x2="90" y2="15" class="line-primas"/>
-          <text x="95" y="19" class="legend-label">Aportado real</text>
-          <line x1="200" y1="15" x2="220" y2="15" class="line-moderado"/>
-          <text x="225" y="19" class="legend-label">Moderado</text>
-          <line x1="310" y1="15" x2="330" y2="15" class="line-favorable"/>
-          <text x="335" y="19" class="legend-label">Favorable</text>
+          <circle [attr.cx]="chartData().currentYearX" cy="20" r="4" class="today-marker"/>
+          <g [attr.transform]="'translate(' + chartData().currentYearX + ', 12)'">
+            <rect x="-22" y="-10" width="44" height="18" rx="9" class="today-pill"/>
+            <text x="0" y="3" text-anchor="middle" class="today-pill-text">Hoy</text>
+          </g>
         </svg>
       </div>
-    </div>
 
-    <div class="aportaciones-section">
-      <div class="section-header">
-        <h3>Aportaciones</h3>
+      <ul class="chart-legend">
+        <li><span class="legend-dot legend-dot--indigo"></span>Aportado</li>
+        <li><span class="legend-dot legend-dot--gold"></span>Moderado</li>
+        <li><span class="legend-dot legend-dot--green"></span>Favorable</li>
+        <li><span class="legend-dot legend-dot--red"></span>Desfavorable</li>
+      </ul>
+    </section>
+
+    <section class="card aportaciones-card">
+      <div class="aportaciones-header">
+        <h3>Aportaciones recientes</h3>
         @if (aportaciones().length > 5) {
-          <button class="link-button" type="button" (click)="showAllAportaciones.set(!showAllAportaciones())">
-            {{ showAllAportaciones() ? 'Ver menos' : 'Ver todas (' + aportaciones().length + ')' }}
+          <button
+            class="link-button"
+            type="button"
+            (click)="showAllAportaciones.set(!showAllAportaciones())">
+            {{ showAllAportaciones() ? 'Ver menos' : 'Ver todas' }} <i class="pi pi-chevron-right"></i>
           </button>
         }
       </div>
+
       @if (displayedAportaciones().length === 0) {
         <div class="empty-state">
           <p>No hay aportaciones registradas.</p>
-          <p>Añade tu primera aportación con el botón +</p>
+          <p>Añade tu primera aportación con el botón inferior.</p>
         </div>
       } @else {
-        <div class="aportaciones-list">
+        <ul class="aportaciones-list">
           @for (aportacion of displayedAportaciones(); track aportacion.id) {
-            <div class="aportacion-item">
-              <div class="aportacion-date">{{ aportacion.fecha | date:'dd MMM yyyy' : '' : 'es-ES' }}</div>
-              <div class="aportacion-importe">{{ formatCurrency(aportacion.importe) }}</div>
-              @if (aportacion.nota) {
-                <div class="aportacion-nota">{{ aportacion.nota }}</div>
-              }
-              <button class="delete-button" type="button" (click)="deleteAportacion(aportacion.id)" title="Eliminar">
-                🗑️
+            <li class="aportacion-item">
+              <span class="aportacion-icon" aria-hidden="true">
+                <i class="pi pi-euro"></i>
+              </span>
+              <div class="aportacion-text">
+                <span class="aportacion-date">{{ aportacion.fecha | date:'dd MMM yyyy' : '' : 'es-ES' }}</span>
+                @if (aportacion.nota) {
+                  <span class="aportacion-nota">{{ aportacion.nota }}</span>
+                }
+              </div>
+              <span class="aportacion-importe">+{{ formatCurrency(aportacion.importe) }}</span>
+              <button
+                class="delete-button"
+                type="button"
+                (click)="deleteAportacion(aportacion.id)"
+                aria-label="Eliminar aportación">
+                <i class="pi pi-times"></i>
               </button>
-            </div>
+            </li>
           }
-        </div>
+        </ul>
       }
-    </div>
-  }
+    </section>
 
-  <button class="fab" type="button" (click)="openDialog()" title="Añadir aportación">+</button>
+    <button class="add-button" type="button" (click)="openDialog()">
+      <i class="pi pi-plus"></i>
+      <span>Añadir aportación</span>
+    </button>
+  }
 
   <p-dialog
     [visible]="dialogVisible()"
     (visibleChange)="dialogVisible.set($event)"
-    header="Nueva aportación"
     [modal]="true"
-    [closable]="true"
+    [closable]="false"
     [draggable]="false"
     [resizable]="false"
+    [showHeader]="false"
+    position="bottom"
+    [dismissableMask]="true"
     styleClass="pension-dialog">
-    <div class="dialog-form">
+    <div class="dialog-content">
+      <span class="dialog-handle" aria-hidden="true"></span>
+      <h2 class="dialog-title">Nueva aportación</h2>
+
+      @if (saveError()) {
+        <div class="save-error">{{ saveError() }}</div>
+      }
+
       <div class="form-field">
-        <label>Fecha</label>
-        <p-calendar
-          [ngModel]="newFecha()"
-          (ngModelChange)="newFecha.set($event)"
-          dateFormat="dd/mm/yy"
-          [showIcon]="true"
-          [appendTo]="'body'">
-        </p-calendar>
+        <label for="aportacion-fecha">FECHA</label>
+        <input
+          id="aportacion-fecha"
+          type="date"
+          class="date-input"
+          [ngModel]="newFechaStr()"
+          (ngModelChange)="setFechaFromStr($event)">
       </div>
+
       <div class="form-field">
-        <label>Importe (€)</label>
+        <label for="aportacion-importe">IMPORTE (€)</label>
         <p-inputNumber
+          inputId="aportacion-importe"
           [ngModel]="newImporte()"
           (ngModelChange)="newImporte.set($event)"
           mode="currency"
           currency="EUR"
           locale="es-ES"
-          placeholder="90.00 €">
+          [minFractionDigits]="2"
+          placeholder="0,00 €">
         </p-inputNumber>
       </div>
+
       <div class="form-field">
-        <label>Nota (opcional)</label>
+        <label for="aportacion-nota">NOTA (OPCIONAL)</label>
         <input
+          id="aportacion-nota"
           pInputText
           [ngModel]="newNota()"
           (ngModelChange)="newNota.set($event)"
-          placeholder="Nota opcional">
+          placeholder="Ej: Aportación mensual">
+      </div>
+
+      <div class="dialog-footer">
+        <button class="btn-cancel" type="button" (click)="closeDialog()" [disabled]="guardando()">
+          Cancelar
+        </button>
+        <button
+          class="btn-save"
+          type="button"
+          (click)="saveAportacion()"
+          [disabled]="!newImporte() || guardando()">
+          {{ guardando() ? 'Guardando...' : 'Guardar' }}
+        </button>
       </div>
     </div>
-    <ng-template pTemplate="footer">
-      <div class="dialog-footer">
-        <button class="btn-cancel" type="button" (click)="closeDialog()">Cancelar</button>
-        <button class="btn-save" type="button" (click)="saveAportacion()" [disabled]="!newImporte()">Guardar</button>
-      </div>
-    </ng-template>
   </p-dialog>
 </div>
 
