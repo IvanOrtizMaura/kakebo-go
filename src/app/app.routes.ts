@@ -63,6 +63,11 @@ export const routes: Routes = [
     canActivate: [authGuard, onboardingGuard]
   },
   {
+    path: 'ai-analyst',
+    loadComponent: () => import('./features/mas/ai-analyst/ai-analyst.component').then(m => m.AiAnalystComponent),
+    canActivate: [authGuard, onboardingGuard],
+  },
+  {
     path: 'inversiones',
     loadComponent: () => import('./features/inversiones/hub/hub.component').then(m => m.InversionesHubComponent),
     canActivate: [authGuard, onboardingGuard]

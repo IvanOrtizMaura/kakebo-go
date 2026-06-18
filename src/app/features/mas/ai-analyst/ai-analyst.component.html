@@ -1,0 +1,99 @@
+<div class="ai-analyst-page">
+
+  <header class="ai-header">
+    <button class="ai-header__back" (click)="goBack()" aria-label="Volver">
+      <i class="pi pi-arrow-left"></i>
+    </button>
+    <div class="ai-header__title">
+      <i class="pi pi-sparkles"></i>
+      <span>Análisis IA</span>
+    </div>
+    @if (messages().length > 0) {
+      <button class="ai-header__clear" (click)="clearChat()" aria-label="Limpiar conversación">
+        <i class="pi pi-refresh"></i>
+      </button>
+    } @else {
+      <div class="ai-header__spacer"></div>
+    }
+  </header>
+
+  <div class="messages-container" #messagesContainer>
+
+    @if (messages().length === 0 && !isLoadingContext()) {
+      <div class="empty-state">
+        <div class="empty-state__icon">
+          <i class="pi pi-sparkles"></i>
+        </div>
+        <h2 class="empty-state__title">Hola, soy tu asesor financiero IA</h2>
+        <p class="empty-state__subtitle">Analizo tus datos de {{ currentYear }} y te ayudo a entender tus finanzas.</p>
+        <div class="empty-state__hints">
+          <span class="hint-chip">¿Cuáles son mis gastos hormiga?</span>
+          <span class="hint-chip">¿En qué mes gasté más?</span>
+          <span class="hint-chip">¿Cumplo mi objetivo de ahorro?</span>
+        </div>
+      </div>
+    }
+
+    @if (isLoadingContext()) {
+      <div class="loading-context">
+        <div class="loading-context__spinner">
+          <div class="spinner-dot"></div>
+          <div class="spinner-dot"></div>
+          <div class="spinner-dot"></div>
+        </div>
+        <p class="loading-context__text">Cargando tus datos financieros de {{ currentYear }}…</p>
+      </div>
+    }
+
+    @for (message of messages(); track $index) {
+      <div class="message" [class.message--user]="message.role === 'user'" [class.message--assistant]="message.role === 'assistant'">
+        @if (message.role === 'assistant') {
+          <div class="message__avatar">
+            <i class="pi pi-sparkles"></i>
+          </div>
+        }
+        <div class="message__bubble">
+          {{ message.content }}
+        </div>
+      </div>
+    }
+
+    @if (isLoading()) {
+      <div class="message message--assistant">
+        <div class="message__avatar">
+          <i class="pi pi-sparkles"></i>
+        </div>
+        <div class="message__bubble message__bubble--typing">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+        </div>
+      </div>
+    }
+
+  </div>
+
+  <div class="input-area">
+    <div class="input-area__inner">
+      <textarea
+        class="input-area__textarea"
+        [(ngModel)]="userInput"
+        (keydown.enter)="onEnterKey($event)"
+        placeholder="Pregúntame sobre tus finanzas…"
+        [disabled]="isLoading() || isLoadingContext()"
+        rows="1"
+        aria-label="Mensaje"
+      ></textarea>
+      <button
+        class="input-area__send"
+        (click)="sendMessage()"
+        [disabled]="!userInput.trim() || isLoading() || isLoadingContext()"
+        aria-label="Enviar mensaje"
+      >
+        <i class="pi pi-send"></i>
+      </button>
+    </div>
+    <p class="input-area__hint">Intro para enviar · Shift+Intro para nueva línea</p>
+  </div>
+
+</div>

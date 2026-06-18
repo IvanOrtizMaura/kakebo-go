@@ -1,0 +1,330 @@
+.ai-analyst-page {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: var(--kakebo-crema);
+  overflow: hidden;
+}
+
+// ── Header ─────────────────────────────────────────────────────────────────
+
+.ai-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border-bottom: 1px solid var(--kakebo-borde);
+  flex-shrink: 0;
+}
+
+.ai-header__back,
+.ai-header__clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--kakebo-texto-principal);
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--kakebo-borde);
+  }
+
+  i { font-size: 1rem; }
+}
+
+.ai-header__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--kakebo-indigo);
+
+  i {
+    font-size: 1.1rem;
+    color: #8b5cf6;
+  }
+}
+
+.ai-header__spacer {
+  width: 2.25rem;
+}
+
+// ── Messages ───────────────────────────────────────────────────────────────
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  scroll-behavior: smooth;
+}
+
+// ── Empty state ────────────────────────────────────────────────────────────
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  flex: 1;
+  padding: 2rem 1.5rem;
+  gap: 0.75rem;
+}
+
+.empty-state__icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: #8b5cf61a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+
+  i {
+    font-size: 1.75rem;
+    color: #8b5cf6;
+  }
+}
+
+.empty-state__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--kakebo-texto-principal);
+  margin: 0;
+}
+
+.empty-state__subtitle {
+  font-size: 0.875rem;
+  color: var(--kakebo-texto-secundario);
+  margin: 0;
+  max-width: 24rem;
+  line-height: 1.5;
+}
+
+.empty-state__hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.hint-chip {
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--kakebo-borde);
+  background: #fff;
+  font-size: 0.8rem;
+  color: var(--kakebo-texto-secundario);
+}
+
+// ── Loading context ────────────────────────────────────────────────────────
+
+.loading-context {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 1rem;
+}
+
+.loading-context__spinner {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.loading-context__text {
+  font-size: 0.875rem;
+  color: var(--kakebo-texto-secundario);
+}
+
+// ── Message bubbles ────────────────────────────────────────────────────────
+
+.message {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  max-width: 85%;
+
+  &--user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+
+    .message__bubble {
+      background: var(--kakebo-indigo);
+      color: #fff;
+      border-radius: 1rem 1rem 0.25rem 1rem;
+    }
+  }
+
+  &--assistant {
+    align-self: flex-start;
+
+    .message__bubble {
+      background: #fff;
+      color: var(--kakebo-texto-principal);
+      border: 1px solid var(--kakebo-borde);
+      border-radius: 1rem 1rem 1rem 0.25rem;
+    }
+  }
+}
+
+.message__avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #8b5cf61a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  i {
+    font-size: 0.875rem;
+    color: #8b5cf6;
+  }
+}
+
+.message__bubble {
+  padding: 0.625rem 0.875rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+
+  &--typing {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.75rem 0.875rem;
+    min-height: 2.5rem;
+  }
+}
+
+// ── Typing animation ───────────────────────────────────────────────────────
+
+.typing-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--kakebo-texto-secundario);
+  animation: typing-bounce 1.2s infinite ease-in-out;
+
+  &:nth-child(1) { animation-delay: 0s; }
+  &:nth-child(2) { animation-delay: 0.2s; }
+  &:nth-child(3) { animation-delay: 0.4s; }
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-0.4rem); opacity: 1; }
+}
+
+// ── Loading context dots ───────────────────────────────────────────────────
+
+.spinner-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: #8b5cf6;
+  animation: typing-bounce 1.2s infinite ease-in-out;
+
+  &:nth-child(1) { animation-delay: 0s; }
+  &:nth-child(2) { animation-delay: 0.2s; }
+  &:nth-child(3) { animation-delay: 0.4s; }
+}
+
+// ── Input area ─────────────────────────────────────────────────────────────
+
+.input-area {
+  padding: 0.75rem 1rem 0.5rem;
+  background: #fff;
+  border-top: 1px solid var(--kakebo-borde);
+  flex-shrink: 0;
+}
+
+.input-area__inner {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.625rem;
+}
+
+.input-area__textarea {
+  flex: 1;
+  resize: none;
+  border: 1px solid var(--kakebo-borde);
+  border-radius: 1.25rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  line-height: 1.5;
+  color: var(--kakebo-texto-principal);
+  background: var(--kakebo-crema);
+  outline: none;
+  max-height: 8rem;
+  overflow-y: auto;
+  transition: border-color 0.15s;
+
+  &:focus {
+    border-color: #8b5cf6;
+  }
+
+  &::placeholder {
+    color: var(--kakebo-texto-secundario);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.input-area__send {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: none;
+  background: var(--kakebo-indigo);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, opacity 0.15s;
+
+  i { font-size: 0.9rem; }
+
+  &:hover:not(:disabled) {
+    background: #152c4a;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.input-area__hint {
+  font-size: 0.7rem;
+  color: var(--kakebo-texto-secundario);
+  text-align: center;
+  margin-top: 0.375rem;
+  opacity: 0.7;
+}

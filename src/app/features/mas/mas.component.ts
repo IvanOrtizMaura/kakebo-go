@@ -86,11 +86,11 @@ export class MasComponent {
       },
       {
         label: 'Análisis IA',
-        summary: 'Consejos personalizados con IA',
+        summary: 'Chatea con tu asesor financiero',
         icon: 'pi-sparkles',
         color: '#8b5cf6',
-        route: null,
-        disabled: true
+        route: '/ai-analyst',
+        disabled: false
       },
       {
         label: 'Ajustes',
