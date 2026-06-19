@@ -38,15 +38,15 @@ export const chat = onRequest(
       return;
     }
 
-    // Verify Firebase Auth token
-    const authHeader = req.headers.authorization ?? '';
-    if (!authHeader.startsWith('Bearer ')) {
+    // Verify Firebase Auth token (passed in body — hosting rewrites strip Authorization header)
+    const idToken: string = req.body?.idToken ?? '';
+    if (!idToken) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
     try {
-      await admin.auth().verifyIdToken(authHeader.slice(7));
+      await admin.auth().verifyIdToken(idToken);
     } catch {
       res.status(401).json({ error: 'Invalid token' });
       return;
