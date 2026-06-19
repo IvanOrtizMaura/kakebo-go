@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { BottomNavComponent } from '../../layout/bottom-nav/bottom-nav.component';
 
@@ -19,7 +20,7 @@ interface MenuItem {
 @Component({
   selector: 'app-mas',
   standalone: true,
-  imports: [RouterLink, BottomNavComponent],
+  imports: [NgTemplateOutlet, RouterLink, BottomNavComponent],
   templateUrl: './mas.component.html',
   styleUrl: './mas.component.scss'
 })

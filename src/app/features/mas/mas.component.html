@@ -1,3 +1,19 @@
+<ng-template #menuItemTpl let-item>
+  <a [routerLink]="item.route" class="menu-item">
+    <span
+      class="menu-item__icon-wrapper"
+      [style.background]="item.color + '1a'"
+    >
+      <i class="pi {{ item.icon }}" [style.color]="item.color"></i>
+    </span>
+    <span class="menu-item__text">
+      <span class="menu-item__label">{{ item.label }}</span>
+      <span class="menu-item__summary">{{ item.summary }}</span>
+    </span>
+    <i class="pi pi-chevron-right menu-item__arrow"></i>
+  </a>
+</ng-template>
+
 <div class="mas-page">
   <div class="mas-content">
     <header class="mas-header">
@@ -9,19 +25,7 @@
 
       <div class="menu-list">
         @for (item of monthSection.items; track item.route; let last = $last) {
-          <a [routerLink]="item.route" class="menu-item">
-            <span
-              class="menu-item__icon-wrapper"
-              [style.background]="item.color + '1a'"
-            >
-              <i class="pi {{ item.icon }}" [style.color]="item.color"></i>
-            </span>
-            <span class="menu-item__text">
-              <span class="menu-item__label">{{ item.label }}</span>
-              <span class="menu-item__summary">{{ item.summary }}</span>
-            </span>
-            <i class="pi pi-chevron-right menu-item__arrow"></i>
-          </a>
+          <ng-container *ngTemplateOutlet="menuItemTpl; context: { $implicit: item }"></ng-container>
           @if (!last) {
             <div class="menu-list__separator"></div>
           }
@@ -53,19 +57,7 @@
               <span class="badge-proximamente">Próximamente</span>
             </div>
           } @else {
-            <a [routerLink]="item.route" class="menu-item">
-              <span
-                class="menu-item__icon-wrapper"
-                [style.background]="item.color + '1a'"
-              >
-                <i class="pi {{ item.icon }}" [style.color]="item.color"></i>
-              </span>
-              <span class="menu-item__text">
-                <span class="menu-item__label">{{ item.label }}</span>
-                <span class="menu-item__summary">{{ item.summary }}</span>
-              </span>
-              <i class="pi pi-chevron-right menu-item__arrow"></i>
-            </a>
+            <ng-container *ngTemplateOutlet="menuItemTpl; context: { $implicit: item }"></ng-container>
           }
           @if (!last) {
             <div class="menu-list__separator"></div>

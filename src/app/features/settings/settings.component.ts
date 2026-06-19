@@ -8,6 +8,7 @@ import { DeudasService } from '../../shared/services/deudas.service';
 import { AhorroTemplatesService } from '../../shared/services/ahorro-templates.service';
 import { FondosAhorroService } from '../../shared/services/fondos-ahorro.service';
 import { Deuda, AhorroTemplate, UserProfile, FondoAhorro } from '../../shared/models';
+import { MONTH_NAMES } from '../../shared/constants/months';
 
 @Component({
   selector: 'app-settings',
@@ -85,7 +86,7 @@ export class SettingsComponent implements OnInit {
   profileGastosPct = 5;
   savingProfile = signal(false);
 
-  readonly meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  readonly meses = MONTH_NAMES;
 
   private userId = '';
 

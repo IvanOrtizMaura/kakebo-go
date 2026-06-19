@@ -11,11 +11,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { MonthService } from '../../../shared/services/month.service';
 import { SectionService } from '../../../shared/services/section.service';
 import { Ahorro } from '../../../shared/models';
-
-const MONTH_NAMES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-];
+import { MONTH_NAMES } from '../../../shared/constants/months';
 
 interface AhorroViewItem {
   id: string;

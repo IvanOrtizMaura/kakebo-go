@@ -12,6 +12,7 @@ import { IngresosService } from '../../../shared/services/ingresos.service';
 import { FacturasService } from '../../../shared/services/facturas.service';
 import { SectionService } from '../../../shared/services/section.service';
 import { Ingreso, Factura, Gasto, Ahorro, DeudaSection } from '../../../shared/models';
+import { MONTH_NAMES } from '../../../shared/constants/months';
 
 interface SectionBudget {
   nombre: string;
@@ -30,11 +31,6 @@ interface DonutSegment {
   percentage: number;
   callout: { x1: number; y1: number; x2: number; y2: number; x3: number; tx: number; ty: number; anchor: string } | null;
 }
-
-const MONTH_NAMES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-];
 
 const DONUT_RADIUS = 45;
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;

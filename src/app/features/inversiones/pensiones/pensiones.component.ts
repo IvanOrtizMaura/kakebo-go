@@ -13,6 +13,7 @@ import { Gasto } from '../../../shared/models';
 import { MonthService } from '../../../shared/services/month.service';
 import { AportacionPension, PensionesService } from '../../../shared/services/pensiones.service';
 import { SectionService } from '../../../shared/services/section.service';
+import { formatEuros } from '../../../shared/utils/currency';
 
 interface ProjectionRow {
   year: number;
@@ -242,7 +243,7 @@ export class PensionesComponent implements OnInit, OnDestroy {
   }
 
   formatCurrency(value: number): string {
-    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
+    return formatEuros(value);
   }
 
   private async createPaidExpense(userId: string, expenseDate: Date, name: string, amount: number): Promise<void> {

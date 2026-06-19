@@ -78,7 +78,7 @@
       <textarea
         class="input-area__textarea"
         [(ngModel)]="userInput"
-        (keydown.enter)="onEnterKey($event)"
+        (keydown.enter)="onEnterPressed($event)"
         placeholder="Pregúntame sobre tus finanzas…"
         [disabled]="isLoading() || isLoadingContext()"
         rows="1"

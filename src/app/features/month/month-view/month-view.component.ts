@@ -21,8 +21,7 @@ import { GastosTableComponent } from '../sections/gastos/gastos-table.component'
 import { FondosAhorroComponent } from '../sections/fondos-ahorro/fondos-ahorro.component';
 import { DeudasComponent } from '../sections/deudas/deudas.component';
 import { ResumenComponent } from '../sections/resumen/resumen.component';
-
-const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+import { MONTH_NAMES } from '../../../shared/constants/months';
 
 @Component({
   selector: 'app-month-view',

@@ -12,8 +12,7 @@ import {
 } from '@angular/fire/firestore';
 import { AuthService } from '../../core/auth/auth.service';
 import { MonthService } from '../../shared/services/month.service';
-
-const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+import { MONTH_NAMES } from '../../shared/constants/months';
 
 interface MonthCard {
   monthNum: number;

@@ -5,6 +5,7 @@ import { Firestore, collection, getDocs, query, where } from '@angular/fire/fire
 import { Auth } from '@angular/fire/auth';
 import { BottomNavComponent } from '../../layout/bottom-nav/bottom-nav.component';
 import { AuthService } from '../../core/auth/auth.service';
+import { MONTH_NAMES } from '../../shared/constants/months';
 
 export type EstadoMes = 'cerrado' | 'en-curso' | 'pendiente';
 
@@ -26,7 +27,6 @@ export interface BarraMes {
   indice: number;
 }
 
-const NOMBRES_MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const INICIALES_MESES = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 const ALTURA_MAXIMA_BARRA = 72;
 const COLOR_VERDE = '#22c55e';
@@ -35,7 +35,7 @@ const COLOR_GRIS = '#e2e8f0';
 const COLOR_AZUL = '#3b82f6';
 
 function buildPendingYear(): ResumenMes[] {
-  return NOMBRES_MESES.map(nombre => ({ nombre, estado: 'pendiente' as EstadoMes, ahorro: 0, presupuestado: 0, gastado: 0 }));
+  return MONTH_NAMES.map(nombre => ({ nombre, estado: 'pendiente' as EstadoMes, ahorro: 0, presupuestado: 0, gastado: 0 }));
 }
 
 @Component({
@@ -133,7 +133,7 @@ export class ResumenAnualComponent {
     const existingMonths = monthsSnap.docs.map(d => ({ id: d.id, ...(d.data() as { month: number; year: number }) }));
 
     const results: ResumenMes[] = await Promise.all(
-      NOMBRES_MESES.map(async (nombre, idx) => {
+      MONTH_NAMES.map(async (nombre, idx) => {
         const monthNumber = idx + 1; // 1-based
         const monthDoc = existingMonths.find(m => m.month === monthNumber);
 

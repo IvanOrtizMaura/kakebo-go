@@ -10,11 +10,7 @@ import { BottomNavComponent } from '../../../layout/bottom-nav/bottom-nav.compon
 import { AuthService } from '../../../core/auth/auth.service';
 import { MonthService } from '../../../shared/services/month.service';
 import { FacturasService } from '../../../shared/services/facturas.service';
-
-const MONTH_NAMES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-];
+import { MONTH_NAMES } from '../../../shared/constants/months';
 
 interface FacturaViewItem {
   id: string;

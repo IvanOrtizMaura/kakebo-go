@@ -9,9 +9,33 @@ pnpm install          # Install dependencies
 pnpm start            # Dev server at http://localhost:4200
 pnpm build            # Production build to dist/kakebo-go
 pnpm test             # Run all Karma/Jasmine tests
+pnpm run deploy       # Build + deploy to Firebase Hosting
 ng test --include=**/feature.spec.ts   # Run a single test file
 ng generate component features/my-feature --standalone  # Scaffold component
 ```
+
+## API Keys & Secrets
+
+`src/environments/environment.prod.ts` is tracked in git with **blank values**. It is marked with `git update-index --skip-worktree` so local changes are never committed accidentally.
+
+**To set up locally:**
+1. Edit `src/environments/environment.prod.ts` and fill in `openaiApiKey`
+2. Git will not track this change — you only do this once
+3. `pnpm run deploy` will pick up the key automatically
+
+**To check which files have skip-worktree:**
+```bash
+git ls-files -v | grep '^S'
+```
+
+**If you ever need to update the committed version of environment.prod.ts:**
+```bash
+git update-index --no-skip-worktree src/environments/environment.prod.ts
+# make your changes, commit, then re-enable:
+git update-index --skip-worktree src/environments/environment.prod.ts
+```
+
+**Deploy:** Firebase Hosting only — `pnpm run deploy`. Never use Vercel.
 
 ## What This App Does
 
@@ -29,7 +53,7 @@ Kakebo-go is a personal finance web app (UI in Spanish) following the Japanese K
 | UI | PrimeNG 19, PrimeIcons, SCSS |
 | Package manager | pnpm |
 | Tests | Karma + Jasmine |
-| Deploy | Firebase Hosting + Vercel (PWA, service worker) |
+| Deploy | Firebase Hosting only — `pnpm run deploy` |
 
 > Supabase is deprecated — `supabase.service.ts` is dead code.
 

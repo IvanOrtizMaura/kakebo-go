@@ -217,13 +217,10 @@
   }
 }
 
-// ── Typing animation ───────────────────────────────────────────────────────
+// ── Bounce dot animation (shared by typing + loading) ──────────────────────
 
-.typing-dot {
-  width: 0.45rem;
-  height: 0.45rem;
+%dot-base {
   border-radius: 50%;
-  background: var(--kakebo-texto-secundario);
   animation: typing-bounce 1.2s infinite ease-in-out;
 
   &:nth-child(1) { animation-delay: 0s; }
@@ -236,18 +233,18 @@
   30% { transform: translateY(-0.4rem); opacity: 1; }
 }
 
-// ── Loading context dots ───────────────────────────────────────────────────
+.typing-dot {
+  @extend %dot-base;
+  width: 0.45rem;
+  height: 0.45rem;
+  background: var(--kakebo-texto-secundario);
+}
 
 .spinner-dot {
+  @extend %dot-base;
   width: 0.6rem;
   height: 0.6rem;
-  border-radius: 50%;
   background: #8b5cf6;
-  animation: typing-bounce 1.2s infinite ease-in-out;
-
-  &:nth-child(1) { animation-delay: 0s; }
-  &:nth-child(2) { animation-delay: 0.2s; }
-  &:nth-child(3) { animation-delay: 0.4s; }
 }
 
 // ── Input area ─────────────────────────────────────────────────────────────

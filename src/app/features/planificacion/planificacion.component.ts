@@ -11,6 +11,7 @@ import { MonthService } from '../../shared/services/month.service';
 import { IngresosService } from '../../shared/services/ingresos.service';
 import { FacturasService } from '../../shared/services/facturas.service';
 import { SectionService } from '../../shared/services/section.service';
+import { MONTH_NAMES } from '../../shared/constants/months';
 
 export interface PlanItem {
   id: string;
@@ -28,11 +29,6 @@ interface PasoConfig {
   colorClass: string;
   mostrarDia: boolean;
 }
-
-const MONTH_NAMES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-];
 
 const PASOS: PasoConfig[] = [
   { numero: 1, label: 'Ingresos',  subtitulo: '¿Cuánto esperas ingresar este mes?',  placeholderNombre: 'Ej: Nómina',              colorClass: 'step--green',  mostrarDia: true  },

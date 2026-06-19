@@ -1,11 +1,16 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
-import { Firestore, collection, getDocs, query, orderBy, where } from '@angular/fire/firestore';
-import { Month } from '../models';
+import { Firestore, QueryConstraint, collection, getDocs, query, orderBy, where } from '@angular/fire/firestore';
+import { Ahorro, Deuda, DeudaSection, Factura, FondoAhorro, Gasto, Ingreso, InversionOro, Month } from '../models';
 import { environment } from '../../../environments/environment';
 import { UserProfileService } from '../../core/auth/user-profile.service';
-import { Ahorro, Deuda, DeudaSection, Factura, FondoAhorro, Gasto, Ingreso, InversionOro } from '../models';
 import { AportacionPension } from './pensiones.service';
+import { MONTH_NAMES } from '../constants/months';
+import { formatEuros } from '../utils/currency';
+
+const CHAT_FUNCTION_URL = environment.production
+  ? '/api/chat'
+  : `http://localhost:5001/${environment.firebase.projectId}/europe-west1/chat`;
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -27,11 +32,6 @@ interface MonthData {
   deudas: DeudaSection[];
 }
 
-const MONTH_NAMES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
-
 @Injectable({ providedIn: 'root' })
 export class AiAnalystService {
   private readonly auth = inject(Auth);
@@ -45,67 +45,56 @@ export class AiAnalystService {
   private cachedContext: string | null = null;
   private cachedContextYear: number | null = null;
 
-  private generateMonthIds(year: number): string[] {
-    const now = new Date();
-    const maxMonth = year === now.getFullYear() ? now.getMonth() + 1 : 12;
-    return Array.from({ length: maxMonth }, (_, i) => {
-      const month = i + 1;
-      return `${year}-${String(month).padStart(2, '0')}`;
-    });
+  private sumReal<T extends { real?: number }>(items: T[]): number {
+    return items.reduce((sum, item) => sum + (item.real || 0), 0);
   }
 
-  private formatEuros(amount: number): string {
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-    }).format(amount);
+  private overBudgetFlag(item: { real: number; presupuestado: number }): string {
+    return item.real > item.presupuestado ? ' [EXCEDE PRESUPUESTO]' : '';
   }
 
   private buildMonthSection(data: MonthData): string | null {
-    const totalIngresos = data.ingresos.reduce((sum, i) => sum + (i.real || 0), 0);
-    const totalFacturas = data.facturas.reduce((sum, f) => sum + (f.real || 0), 0);
-    const totalGastos = data.gastos.reduce((sum, g) => sum + (g.real || 0), 0);
-    const totalAhorros = data.ahorros.reduce((sum, a) => sum + (a.real || 0), 0);
-    const totalDeudas = data.deudas.reduce((sum, d) => sum + (d.real || 0), 0);
+    const totalIngresos = this.sumReal(data.ingresos);
+    const totalFacturas = this.sumReal(data.facturas);
+    const totalGastos = this.sumReal(data.gastos);
+    const totalAhorros = this.sumReal(data.ahorros);
+    const totalDeudas = this.sumReal(data.deudas);
 
     if (totalIngresos === 0 && totalFacturas === 0 && totalGastos === 0) return null;
 
     const lines: string[] = [`=== ${data.label} ===`];
 
     if (data.ingresos.length > 0) {
-      lines.push(`Ingresos: ${this.formatEuros(totalIngresos)}`);
-      data.ingresos.forEach(i => lines.push(`  - ${i.fuente}: ${this.formatEuros(i.real)}`));
+      lines.push(`Ingresos: ${formatEuros(totalIngresos)}`);
+      data.ingresos.forEach(ingreso => lines.push(`  - ${ingreso.fuente}: ${formatEuros(ingreso.real)}`));
     }
 
     if (data.facturas.length > 0) {
-      lines.push(`Facturas: ${this.formatEuros(totalFacturas)}`);
-      data.facturas.forEach(f => {
-        const flag = f.real > f.presupuestado ? ' [EXCEDE PRESUPUESTO]' : '';
-        lines.push(`  - ${f.name}: presup. ${this.formatEuros(f.presupuestado)} | real: ${this.formatEuros(f.real)}${flag}`);
+      lines.push(`Facturas: ${formatEuros(totalFacturas)}`);
+      data.facturas.forEach(factura => {
+        lines.push(`  - ${factura.name}: presup. ${formatEuros(factura.presupuestado)} | real: ${formatEuros(factura.real)}${this.overBudgetFlag(factura)}`);
       });
     }
 
     if (data.gastos.length > 0) {
-      lines.push(`Gastos: ${this.formatEuros(totalGastos)}`);
-      data.gastos.forEach(g => {
-        const flag = g.real > g.presupuestado ? ' [EXCEDE PRESUPUESTO]' : '';
-        lines.push(`  - ${g.name} (${g.tipo}): presup. ${this.formatEuros(g.presupuestado)} | real: ${this.formatEuros(g.real)}${flag}`);
+      lines.push(`Gastos: ${formatEuros(totalGastos)}`);
+      data.gastos.forEach(gasto => {
+        lines.push(`  - ${gasto.name} (${gasto.tipo}): presup. ${formatEuros(gasto.presupuestado)} | real: ${formatEuros(gasto.real)}${this.overBudgetFlag(gasto)}`);
       });
     }
 
     if (data.ahorros.length > 0) {
-      lines.push(`Ahorros: ${this.formatEuros(totalAhorros)}`);
-      data.ahorros.forEach(a => lines.push(`  - ${a.name}: ${this.formatEuros(a.real)}`));
+      lines.push(`Ahorros: ${formatEuros(totalAhorros)}`);
+      data.ahorros.forEach(ahorro => lines.push(`  - ${ahorro.name}: ${formatEuros(ahorro.real)}`));
     }
 
     if (data.deudas.length > 0) {
-      lines.push(`Deudas: ${this.formatEuros(totalDeudas)}`);
-      data.deudas.forEach(d => lines.push(`  - ${d.name}: ${this.formatEuros(d.real)}`));
+      lines.push(`Deudas: ${formatEuros(totalDeudas)}`);
+      data.deudas.forEach(deuda => lines.push(`  - ${deuda.name}: ${formatEuros(deuda.real)}`));
     }
 
     const balance = totalIngresos - totalFacturas - totalGastos - totalAhorros - totalDeudas;
-    lines.push(`Balance disponible: ${this.formatEuros(balance)}`);
+    lines.push(`Balance disponible: ${formatEuros(balance)}`);
 
     return lines.join('\n');
   }
@@ -121,26 +110,23 @@ export class AiAnalystService {
       const uid = this.auth.currentUser?.uid;
       if (!uid) throw new Error('Usuario no autenticado');
 
-      // Step 1: fetch month documents for the year (they have auto-generated Firestore IDs)
       const monthsCol = collection(this.firestore, 'users', uid, 'months');
       const monthsSnap = await getDocs(
         query(monthsCol, where('year', '==', year)),
       );
 
-      const fetchCol = async <T>(firestoreMonthId: string, sub: string): Promise<T[]> => {
-        const ref = collection(this.firestore, 'users', uid, 'months', firestoreMonthId, sub);
+      const fetchCol = async <T>(firestoreMonthId: string, subcollection: string): Promise<T[]> => {
+        const ref = collection(this.firestore, 'users', uid, 'months', firestoreMonthId, subcollection);
         const snap = await getDocs(query(ref, orderBy('order_index')));
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }) as T);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as T);
       };
 
-      // Sort months by month number in JS to avoid needing a composite index
       const sortedMonthDocs = monthsSnap.docs.sort((a, b) => {
         const aMonth = (a.data() as Month).month ?? 0;
         const bMonth = (b.data() as Month).month ?? 0;
         return aMonth - bMonth;
       });
 
-      // Step 2: for each month doc, fetch its subcollections using the real Firestore doc ID
       const monthsData = await Promise.all(
         sortedMonthDocs.map(async (monthDoc) => {
           const monthMeta = monthDoc.data() as Month;
@@ -171,11 +157,10 @@ export class AiAnalystService {
         .filter(Boolean)
         .join('\n\n');
 
-      // ── Fetch user-level (non-monthly) data in parallel ───────────────────
-      const fetchUserCol = async <T>(sub: string, constraints: Parameters<typeof query>[1][] = []): Promise<T[]> => {
-        const ref = collection(this.firestore, 'users', uid, sub);
+      const fetchUserCol = async <T>(subcollection: string, constraints: QueryConstraint[] = []): Promise<T[]> => {
+        const ref = collection(this.firestore, 'users', uid, subcollection);
         const snap = await getDocs(constraints.length ? query(ref, ...constraints) : ref);
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }) as T);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as T);
       };
 
       const [inversiones, deudasMaestras, fondosAhorro, pensiones] = await Promise.all([
@@ -185,56 +170,54 @@ export class AiAnalystService {
         fetchUserCol<AportacionPension>('pensiones_aportaciones'),
       ]);
 
-      // ── Build general data section ─────────────────────────────────────────
       const generalLines: string[] = ['DATOS GENERALES (patrimonio y compromisos):'];
 
       if (inversiones.length > 0) {
-        const totalInvertido = inversiones.reduce((s, i) => s + (i.precio_compra || 0), 0);
-        const totalGramos = inversiones.reduce((s, i) => s + (i.gramos || 0), 0);
-        generalLines.push(`\nInversiones en oro (${inversiones.length} posiciones | ${totalGramos.toFixed(1)}g | comprado por ${this.formatEuros(totalInvertido)}):`);
-        inversiones.forEach(i => {
-          const quilates = i.pureza >= 1 ? `${i.pureza / 10}k` : `${(i.pureza * 1000).toFixed(0)}‰`;
-          generalLines.push(`  - ${i.name}: ${i.gramos}g | pureza ${quilates} | precio compra ${this.formatEuros(i.precio_compra)}`);
+        const totalInvertido = inversiones.reduce((sum, inversion) => sum + (inversion.precio_compra || 0), 0);
+        const totalGramos = inversiones.reduce((sum, inversion) => sum + (inversion.gramos || 0), 0);
+        generalLines.push(`\nInversiones en oro (${inversiones.length} posiciones | ${totalGramos.toFixed(1)}g | comprado por ${formatEuros(totalInvertido)}):`);
+        inversiones.forEach(inversion => {
+          const quilates = inversion.pureza >= 1 ? `${inversion.pureza / 10}k` : `${(inversion.pureza * 1000).toFixed(0)}‰`;
+          generalLines.push(`  - ${inversion.name}: ${inversion.gramos}g | pureza ${quilates} | precio compra ${formatEuros(inversion.precio_compra)}`);
         });
       }
 
       if (deudasMaestras.length > 0) {
-        const totalRestante = deudasMaestras.reduce((s, d) => s + (d.amount_remaining || 0), 0);
-        generalLines.push(`\nDeudas activas (${deudasMaestras.length} | restante total: ${this.formatEuros(totalRestante)}):`);
-        deudasMaestras.forEach(d => {
-          generalLines.push(`  - ${d.name}: total ${this.formatEuros(d.total_amount)} | pago mensual ${this.formatEuros(d.monthly_payment)} | restante ${this.formatEuros(d.amount_remaining)} | interés ${d.interest_rate}%`);
+        const totalRestante = deudasMaestras.reduce((sum, deuda) => sum + (deuda.amount_remaining || 0), 0);
+        generalLines.push(`\nDeudas activas (${deudasMaestras.length} | restante total: ${formatEuros(totalRestante)}):`);
+        deudasMaestras.forEach(deuda => {
+          generalLines.push(`  - ${deuda.name}: total ${formatEuros(deuda.total_amount)} | pago mensual ${formatEuros(deuda.monthly_payment)} | restante ${formatEuros(deuda.amount_remaining)} | interés ${deuda.interest_rate}%`);
         });
       }
 
       if (fondosAhorro.length > 0) {
-        const totalObjetivo = fondosAhorro.reduce((s, f) => s + (f.total_amount || 0), 0);
-        generalLines.push(`\nFondos de ahorro activos (${fondosAhorro.length} | objetivo total: ${this.formatEuros(totalObjetivo)}):`);
-        fondosAhorro.forEach(f => {
-          generalLines.push(`  - ${f.name}: objetivo ${this.formatEuros(f.total_amount)} | aportación mensual ${this.formatEuros(f.monthly_amount)} | ${f.num_months} meses`);
+        const totalObjetivo = fondosAhorro.reduce((sum, fondo) => sum + (fondo.total_amount || 0), 0);
+        generalLines.push(`\nFondos de ahorro activos (${fondosAhorro.length} | objetivo total: ${formatEuros(totalObjetivo)}):`);
+        fondosAhorro.forEach(fondo => {
+          generalLines.push(`  - ${fondo.name}: objetivo ${formatEuros(fondo.total_amount)} | aportación mensual ${formatEuros(fondo.monthly_amount)} | ${fondo.num_months} meses`);
         });
       }
 
       if (pensiones.length > 0) {
-        const totalPension = pensiones.reduce((s, p) => s + (p.importe || 0), 0);
-        generalLines.push(`\nAportaciones a pensión (${pensiones.length} aportaciones | total acumulado: ${this.formatEuros(totalPension)}):`);
+        const totalPension = pensiones.reduce((sum, pension) => sum + (pension.importe || 0), 0);
+        generalLines.push(`\nAportaciones a pensión (${pensiones.length} aportaciones | total acumulado: ${formatEuros(totalPension)}):`);
         const lastFive = pensiones.slice(0, 5);
-        lastFive.forEach(p => {
-          const fecha = p.fecha instanceof Date ? p.fecha.toLocaleDateString('es-ES') : String(p.fecha).split('T')[0];
-          const nota = p.nota ? ` | ${p.nota}` : '';
-          generalLines.push(`  - ${fecha}: ${this.formatEuros(p.importe)}${nota}`);
+        lastFive.forEach(pension => {
+          const fecha = pension.fecha instanceof Date ? pension.fecha.toLocaleDateString('es-ES') : String(pension.fecha).split('T')[0];
+          const nota = pension.nota ? ` | ${pension.nota}` : '';
+          generalLines.push(`  - ${fecha}: ${formatEuros(pension.importe)}${nota}`);
         });
         if (pensiones.length > 5) generalLines.push(`  ... y ${pensiones.length - 5} más`);
       }
 
       const generalSection = generalLines.length > 1 ? generalLines.join('\n') : '';
 
-      // ── Build profile context ──────────────────────────────────────────────
       let profileContext = '';
       const profile = await this.userProfileService.getProfile(uid);
       if (profile) {
         profileContext = [
           '\nPERFIL DEL USUARIO:',
-          `- Ingreso neto mensual esperado: ${this.formatEuros(profile.monthly_net_income)}`,
+          `- Ingreso neto mensual esperado: ${formatEuros(profile.monthly_net_income)}`,
           `- Objetivo de ahorro: ${profile.savings_percentage}%`,
           `- Tiene deuda de alto interés: ${profile.has_high_interest_debt ? 'Sí' : 'No'}`,
           `- Tiene pareja: ${profile.has_partner ? 'Sí' : 'No'}`,
@@ -283,27 +266,27 @@ export class AiAnalystService {
         content: m.content,
       }));
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const idToken = await this.auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('No autenticado');
+
+      const response = await fetch(CHAT_FUNCTION_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${environment.openaiApiKey}`,
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
           messages: [{ role: 'system', content: systemPrompt }, ...history],
-          temperature: 0.7,
-          max_tokens: 1000,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
-        throw new Error(errorData?.error?.message ?? `Error ${response.status}`);
+        const errorData = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(errorData?.error ?? `Error ${response.status}`);
       }
 
-      const data = await response.json() as { choices?: { message?: { content?: string } }[] };
-      const assistantMessage = data.choices?.[0]?.message?.content ?? 'No se pudo obtener respuesta.';
+      const data = await response.json() as { content?: string };
+      const assistantMessage = data.content ?? 'No se pudo obtener respuesta.';
 
       this.messages.update(msgs => [
         ...msgs,

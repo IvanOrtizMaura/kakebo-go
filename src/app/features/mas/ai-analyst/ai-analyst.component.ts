@@ -28,8 +28,8 @@ export class AiAnalystComponent {
       this.messages();
       this.isLoading();
       setTimeout(() => {
-        const el = this.messagesContainer()?.nativeElement;
-        if (el) el.scrollTop = el.scrollHeight;
+        const scrollEl = this.messagesContainer()?.nativeElement;
+        if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
       }, 50);
     });
   }
@@ -49,7 +49,7 @@ export class AiAnalystComponent {
     await this.aiAnalystService.sendMessage(message, this.currentYear);
   }
 
-  onEnterKey(event: Event): void {
+  onEnterPressed(event: Event): void {
     const keyboardEvent = event as KeyboardEvent;
     if (keyboardEvent.shiftKey) return;
     event.preventDefault();
