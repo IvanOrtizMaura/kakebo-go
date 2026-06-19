@@ -18,7 +18,7 @@ interface OpenAIMessage {
 }
 
 export const chat = onRequest(
-  { secrets: [openaiApiKey] },
+  { secrets: [openaiApiKey], invoker: 'public' },
   async (req, res) => {
     // CORS
     const origin = req.headers.origin ?? '';
