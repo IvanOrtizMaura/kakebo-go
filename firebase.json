@@ -8,8 +8,8 @@
     "rewrites": [
       {
         "source": "/api/chat",
-        "function": {
-          "functionId": "chat",
+        "run": {
+          "serviceId": "chat",
           "region": "europe-west1"
         }
       },
