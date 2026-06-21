@@ -6,6 +6,7 @@ export function renderInlineMarkdown(text: string): string {
 
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
+  // Unordered lists: •, -, *
   html = html.replace(/((?:^[•\-\*] .+\n?)+)/gm, (block) => {
     const items = block
       .trim()
@@ -17,6 +18,20 @@ export function renderInlineMarkdown(text: string): string {
       })
       .join('');
     return `<ul>${items}</ul>`;
+  });
+
+  // Ordered lists: 1. 2. 3.
+  html = html.replace(/((?:^\d+\. .+\n?)+)/gm, (block) => {
+    const items = block
+      .trim()
+      .split('\n')
+      .filter(line => line.trim())
+      .map(line => {
+        const itemText = line.replace(/^\d+\. /, '').trim();
+        return `<li>${itemText}</li>`;
+      })
+      .join('');
+    return `<ol>${items}</ol>`;
   });
 
   html = html.replace(/\n/g, '<br>');
