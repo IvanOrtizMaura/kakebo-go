@@ -8,9 +8,14 @@ import { AportacionPension } from './pensiones.service';
 import { MONTH_NAMES } from '../constants/months';
 import { formatEuros } from '../utils/currency';
 
+// In production always use the Firebase Function proxy.
+// In dev, use the function emulator only if no openaiApiKey is set locally.
 const CHAT_FUNCTION_URL = environment.production
   ? '/api/chat'
   : `http://localhost:5001/${environment.firebase.projectId}/europe-west1/chat`;
+
+const devOpenAIKey = (environment as { openaiApiKey?: string }).openaiApiKey ?? '';
+const isDevDirectOpenAI = !environment.production && !!devOpenAIKey;
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -60,13 +65,18 @@ export class AiAnalystService {
     const totalAhorros = this.sumReal(data.ahorros);
     const totalDeudas = this.sumReal(data.deudas);
 
-    if (totalIngresos === 0 && totalFacturas === 0 && totalGastos === 0) return null;
+    const totalEsperado = data.ingresos.reduce((sum, ingreso) => sum + (ingreso.esperado || 0), 0);
+
+    if (totalIngresos === 0 && totalEsperado === 0 && totalFacturas === 0 && totalGastos === 0) return null;
 
     const lines: string[] = [`=== ${data.label} ===`];
 
     if (data.ingresos.length > 0) {
-      lines.push(`Ingresos: ${formatEuros(totalIngresos)}`);
-      data.ingresos.forEach(ingreso => lines.push(`  - ${ingreso.fuente}: ${formatEuros(ingreso.real)}`));
+      lines.push(`Ingresos (cobrado ${formatEuros(totalIngresos)} / previsto ${formatEuros(totalEsperado)}):`);
+      data.ingresos.forEach(ingreso => {
+        const estado = ingreso.depositado ? 'cobrado' : 'pendiente';
+        lines.push(`  - ${ingreso.fuente}: previsto ${formatEuros(ingreso.esperado)} | real ${formatEuros(ingreso.real)} (${estado})`);
+      });
     }
 
     if (data.facturas.length > 0) {
@@ -225,20 +235,23 @@ export class AiAnalystService {
         ].join('\n');
       }
 
+      const todayStr = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+
       this.cachedContext = [
-        'Eres un asesor financiero personal experto en el método Kakebo japonés de control de gastos.',
-        'Tienes acceso completo a las finanzas del usuario: ingresos, gastos, facturas, ahorros, deudas, inversiones, fondos de ahorro y pensiones.',
+        `Eres un asistente financiero ultra-conciso. Hoy es ${todayStr}.`,
         profileContext,
         generalSection,
         `\nDATOS MENSUALES AÑO ${year}:`,
-        monthlySections || 'No hay datos mensuales registrados para este año todavía.',
+        monthlySections || 'Sin datos para este año.',
         '',
-        'INSTRUCCIONES:',
-        '- Responde siempre en español, de forma conversacional y directa.',
-        '- Los "gastos hormiga" son pequeños gastos variables que se repiten y acumulan (cafés, snacks, suscripciones menores, compras impulsivas). Cuando el usuario pregunte, identifícalos en los gastos variables y calcula su total.',
-        '- Señala con ⚠️ las partidas donde el gasto real supera al presupuestado.',
-        '- Para preguntas sobre inversiones, deudas, fondos de ahorro o pensiones, usa los datos de la sección DATOS GENERALES.',
-        '- Da consejos prácticos y accionables, no solo observaciones.',
+        'ESTILO DE RESPUESTA — sigue esto siempre:',
+        '• Responde como un amigo que sabe de finanzas, no como un informe.',
+        '• Una sola frase cuando sea posible. Ejemplo: "Te quedan 340€ para gastar este mes."',
+        '• Si hay lista, máximo 4 ítems. Sin explicaciones extra.',
+        '• Nunca empieces con "¡Claro!", "Por supuesto", "Entendido" ni similares.',
+        '• Usa **negrita** para cifras importantes.',
+        '• ⚠️ solo cuando el gasto supera el presupuesto.',
+        '• Sin datos → una frase corta diciendo qué falta.',
       ].join('\n');
 
       this.cachedContextYear = year;
@@ -266,29 +279,56 @@ export class AiAnalystService {
         content: m.content,
       }));
 
-      const idToken = await this.auth.currentUser?.getIdToken();
-      if (!idToken) throw new Error('No autenticado');
+      let assistantContent: string;
 
-      const response = await fetch(CHAT_FUNCTION_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          idToken,
-          messages: [{ role: 'system', content: systemPrompt }, ...history],
-        }),
-      });
+      if (isDevDirectOpenAI) {
+        // Local dev with openaiApiKey in environment.ts → call OpenAI directly
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${devOpenAIKey}`,
+          },
+          // Keep in sync with functions/src/index.ts
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'system', content: systemPrompt }, ...history],
+            temperature: 0.3,
+            max_tokens: 400,
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as { error?: string };
-        throw new Error(errorData?.error ?? `Error ${response.status}`);
+        if (!response.ok) {
+          throw new Error(await this.parseRequestError(response, true));
+        }
+
+        const openaiJson = await response.json();
+        assistantContent = this.extractOpenAIContent(openaiJson);
+      } else {
+        // Production or local emulator → use Firebase Function proxy
+        const idToken = await this.auth.currentUser?.getIdToken();
+        if (!idToken) throw new Error('No autenticado');
+
+        const response = await fetch(CHAT_FUNCTION_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idToken,
+            messages: [{ role: 'system', content: systemPrompt }, ...history],
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(await this.parseRequestError(response, false));
+        }
+
+        const proxyJson = await response.json() as { content?: string };
+        assistantContent = proxyJson.content ?? 'No se pudo obtener respuesta.';
       }
-
-      const data = await response.json() as { content?: string };
-      const assistantMessage = data.content ?? 'No se pudo obtener respuesta.';
 
       this.messages.update(msgs => [
         ...msgs,
-        { role: 'assistant', content: assistantMessage, timestamp: new Date() },
+        { role: 'assistant', content: assistantContent, timestamp: new Date() },
       ]);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Error desconocido';
@@ -309,5 +349,17 @@ export class AiAnalystService {
     this.messages.set([]);
     this.cachedContext = null;
     this.cachedContextYear = null;
+  }
+
+  private async parseRequestError(response: Response, isOpenAI: boolean): Promise<string> {
+    const body = await response.json().catch(() => ({}));
+    if (isOpenAI) {
+      return (body as { error?: { message?: string } })?.error?.message ?? `Error ${response.status}`;
+    }
+    return (body as { error?: string })?.error ?? `Error ${response.status}`;
+  }
+
+  private extractOpenAIContent(json: unknown): string {
+    return (json as { choices?: { message?: { content?: string } }[] })?.choices?.[0]?.message?.content ?? 'No se pudo obtener respuesta.';
   }
 }

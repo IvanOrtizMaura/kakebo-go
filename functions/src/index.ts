@@ -66,11 +66,12 @@ export const chat = onRequest(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${openaiApiKey.value()}`,
       },
+      // Keep in sync with src/app/shared/services/ai-analyst.service.ts
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages,
-        temperature: 0.7,
-        max_tokens: 1000,
+        temperature: 0.3,
+        max_tokens: 400,
       }),
     });
 

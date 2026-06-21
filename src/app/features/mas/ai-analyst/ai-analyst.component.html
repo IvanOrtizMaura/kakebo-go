@@ -51,10 +51,10 @@
           <div class="message__avatar">
             <i class="pi pi-sparkles"></i>
           </div>
+          <div class="message__bubble message__bubble--html" [innerHTML]="renderMarkdown(message.content)"></div>
+        } @else {
+          <div class="message__bubble">{{ message.content }}</div>
         }
-        <div class="message__bubble">
-          {{ message.content }}
-        </div>
       </div>
     }
 

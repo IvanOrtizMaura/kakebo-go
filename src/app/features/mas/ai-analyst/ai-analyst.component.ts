@@ -1,7 +1,9 @@
 import { Component, inject, effect, viewChild, ElementRef, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { AiAnalystService } from '../../../shared/services/ai-analyst.service';
+import { renderInlineMarkdown } from '../../../shared/utils/markdown';
 
 @Component({
   selector: 'app-ai-analyst',
@@ -12,6 +14,7 @@ import { AiAnalystService } from '../../../shared/services/ai-analyst.service';
 })
 export class AiAnalystComponent {
   private readonly router = inject(Router);
+  private readonly sanitizer = inject(DomSanitizer);
   private readonly aiAnalystService = inject(AiAnalystService);
 
   readonly messages = this.aiAnalystService.messages;
@@ -47,6 +50,10 @@ export class AiAnalystComponent {
     if (!message || this.isLoading() || this.isLoadingContext()) return;
     this.userInput = '';
     await this.aiAnalystService.sendMessage(message, this.currentYear);
+  }
+
+  renderMarkdown(text: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(renderInlineMarkdown(text));
   }
 
   onEnterPressed(event: Event): void {

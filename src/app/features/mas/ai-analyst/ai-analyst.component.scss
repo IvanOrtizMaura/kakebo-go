@@ -215,6 +215,23 @@
     padding: 0.75rem 0.875rem;
     min-height: 2.5rem;
   }
+
+  &--html {
+    white-space: normal;
+
+    strong {
+      font-weight: 700;
+    }
+
+    ul {
+      margin: 0.3rem 0 0;
+      padding-left: 1.1rem;
+    }
+
+    li {
+      margin-bottom: 0.2rem;
+    }
+  }
 }
 
 // ── Bounce dot animation (shared by typing + loading) ──────────────────────
