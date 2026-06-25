@@ -29,11 +29,22 @@ interface DonutSegment {
   strokeDasharray: string;
   strokeDashoffset: number;
   percentage: number;
-  callout: { x1: number; y1: number; x2: number; y2: number; x3: number; tx: number; ty: number; anchor: string } | null;
+  callout: {
+    innerX: number;
+    innerY: number;
+    outerX: number;
+    outerY: number;
+    labelLineEndX: number;
+    labelTextX: number;
+    labelTextY: number;
+    anchor: string;
+  } | null;
 }
 
 const DONUT_RADIUS = 45;
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
+const DONUT_CX = 70;
+const DONUT_CY = 70;
 
 @Component({
   selector: 'app-home',
@@ -56,6 +67,10 @@ export class HomeComponent implements OnDestroy {
   private readonly baseMonthIndex = new Date().getMonth();
   readonly monthOffset = signal(this.calculateInitialOffset());
   private subs: Subscription[] = [];
+
+  readonly donutCX = DONUT_CX;
+  readonly donutCY = DONUT_CY;
+  readonly donutR = DONUT_RADIUS;
 
   readonly currentMonthIndex = computed(() => {
     const rawIndex = this.baseMonthIndex + this.monthOffset();
@@ -138,43 +153,51 @@ export class HomeComponent implements OnDestroy {
 
     if (total === 0) return [];
 
-    const CX = 70, CY = 70, R = 45, CIRCUMFERENCE = 2 * Math.PI * R;
-    let cumulativeAngle = -Math.PI / 2; // start at top
+    let cumulativeAngle = -Math.PI / 2;
 
     return items.map((section) => {
       const ratio = section.real / total;
       const segmentAngle = ratio * 2 * Math.PI;
-      const segmentLength = ratio * CIRCUMFERENCE;
+      const segmentLength = ratio * DONUT_CIRCUMFERENCE;
       const midAngle = cumulativeAngle + segmentAngle / 2;
       cumulativeAngle += segmentAngle;
 
       const percentage = Math.round(ratio * 100);
-      const showCallout = percentage >= 5;
+      const showCallout = percentage >= 8;
 
-      let callout = null;
+      let callout: DonutSegment['callout'] = null;
       if (showCallout) {
-        const innerR = R + 2;
-        const outerR = R + 13;
-        const tickLen = 8;
-        const x1 = CX + innerR * Math.cos(midAngle);
-        const y1 = CY + innerR * Math.sin(midAngle);
-        const x2 = CX + outerR * Math.cos(midAngle);
-        const y2 = CY + outerR * Math.sin(midAngle);
+        const innerRadius = DONUT_RADIUS + 6;
+        const outerRadius = DONUT_RADIUS + 18;
+        const tickLength = 10;
+        const innerX = DONUT_CX + innerRadius * Math.cos(midAngle);
+        const innerY = DONUT_CY + innerRadius * Math.sin(midAngle);
+        const outerX = DONUT_CX + outerRadius * Math.cos(midAngle);
+        const outerY = DONUT_CY + outerRadius * Math.sin(midAngle);
         const goRight = Math.cos(midAngle) >= 0;
-        const x3 = x2 + (goRight ? tickLen : -tickLen);
-        const tx = x3 + (goRight ? 1.5 : -1.5);
-        const ty = y2 + 0.5;
-        callout = { x1, y1, x2, y2, x3, tx, ty, anchor: goRight ? 'start' : 'end' };
+        const labelLineEndX = outerX + (goRight ? tickLength : -tickLength);
+        const labelTextX = labelLineEndX + (goRight ? 2 : -2);
+        const labelTextY = outerY + 0.5;
+        callout = {
+          innerX,
+          innerY,
+          outerX,
+          outerY,
+          labelLineEndX,
+          labelTextX,
+          labelTextY,
+          anchor: goRight ? 'start' : 'end',
+        };
       }
 
       return {
         label: section.nombre,
         value: section.real,
         color: section.color,
-        strokeDasharray: `${segmentLength.toFixed(2)} ${CIRCUMFERENCE.toFixed(2)}`,
-        strokeDashoffset: -(cumulativeAngle - segmentAngle - (-Math.PI / 2)) / (2 * Math.PI) * CIRCUMFERENCE,
+        strokeDasharray: `${segmentLength.toFixed(2)} ${DONUT_CIRCUMFERENCE.toFixed(2)}`,
+        strokeDashoffset: -(cumulativeAngle - segmentAngle - (-Math.PI / 2)) / (2 * Math.PI) * DONUT_CIRCUMFERENCE,
         percentage,
-        callout
+        callout,
       };
     });
   });

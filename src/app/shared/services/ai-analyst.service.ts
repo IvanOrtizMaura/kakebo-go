@@ -48,7 +48,6 @@ export class AiAnalystService {
   readonly isLoadingContext = signal(false);
 
   private cachedContext: string | null = null;
-  private cachedContextYear: number | null = null;
 
   private sumReal<T extends { real?: number }>(items: T[]): number {
     return items.reduce((sum, item) => sum + (item.real || 0), 0);
@@ -109,10 +108,8 @@ export class AiAnalystService {
     return lines.join('\n');
   }
 
-  async buildFinancialContext(year: number): Promise<string> {
-    if (this.cachedContext && this.cachedContextYear === year) {
-      return this.cachedContext;
-    }
+  async buildFinancialContext(): Promise<string> {
+    if (this.cachedContext) return this.cachedContext;
 
     this.isLoadingContext.set(true);
 
@@ -120,10 +117,9 @@ export class AiAnalystService {
       const uid = this.auth.currentUser?.uid;
       if (!uid) throw new Error('Usuario no autenticado');
 
+      // Fetch ALL months across all years
       const monthsCol = collection(this.firestore, 'users', uid, 'months');
-      const monthsSnap = await getDocs(
-        query(monthsCol, where('year', '==', year)),
-      );
+      const monthsSnap = await getDocs(monthsCol);
 
       const fetchCol = async <T>(firestoreMonthId: string, subcollection: string): Promise<T[]> => {
         const ref = collection(this.firestore, 'users', uid, 'months', firestoreMonthId, subcollection);
@@ -131,10 +127,13 @@ export class AiAnalystService {
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as T);
       };
 
+      // Sort all months by year then month
       const sortedMonthDocs = monthsSnap.docs.sort((a, b) => {
-        const aMonth = (a.data() as Month).month ?? 0;
-        const bMonth = (b.data() as Month).month ?? 0;
-        return aMonth - bMonth;
+        const aData = a.data() as Month;
+        const bData = b.data() as Month;
+        return aData.year !== bData.year
+          ? (aData.year ?? 0) - (bData.year ?? 0)
+          : (aData.month ?? 0) - (bData.month ?? 0);
       });
 
       const monthsData = await Promise.all(
@@ -152,7 +151,7 @@ export class AiAnalystService {
 
           const monthIndex = (monthMeta.month || 1) - 1;
           return {
-            label: `${MONTH_NAMES[monthIndex]} ${year}`,
+            label: `${MONTH_NAMES[monthIndex]} ${monthMeta.year}`,
             ingresos,
             facturas,
             gastos,
@@ -238,30 +237,37 @@ export class AiAnalystService {
       const todayStr = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
 
       this.cachedContext = [
-        `Eres un asistente financiero ultra-conciso. Hoy es ${todayStr}.`,
+        `Eres un asesor financiero personal experto. Hoy es ${todayStr}.`,
         profileContext,
         generalSection,
-        `\nDATOS MENSUALES AÑO ${year}:`,
-        monthlySections || 'Sin datos para este año.',
+        '\nHISTÓRICO MENSUAL (todos los años disponibles):',
+        monthlySections || 'Sin datos registrados todavía.',
         '',
-        'ESTILO DE RESPUESTA — sigue esto siempre:',
-        '• Responde como un amigo que sabe de finanzas, no como un informe.',
-        '• Una sola frase cuando sea posible. Ejemplo: "Te quedan 340€ para gastar este mes."',
-        '• Si hay lista, máximo 4 ítems. Sin explicaciones extra.',
-        '• Nunca empieces con "¡Claro!", "Por supuesto", "Entendido" ni similares.',
-        '• Usa **negrita** para cifras importantes.',
-        '• ⚠️ solo cuando el gasto supera el presupuesto.',
-        '• Sin datos → una frase corta diciendo qué falta.',
+        'BENCHMARKS ECONÓMICOS (usa estos para comparar y dar consejos):',
+        '• Regla 50/30/20: 50% necesidades (vivienda, alimentación, transporte), 30% deseos (ocio, ropa), 20% ahorro/inversión.',
+        '• Tasa de ahorro media española: ~7-8% del ingreso neto (fuente: Banco de España). El objetivo recomendado es ≥ 20%.',
+        '• Fondo de emergencia: 3-6 meses de gastos esenciales en liquidez.',
+        '• Ratio deuda/ingresos sano: pagos de deuda < 30% del ingreso neto mensual.',
+        '• Inflación media España 2024-2025: ~2-3%. El dinero sin invertir pierde poder adquisitivo.',
+        '• Inversión indexada a largo plazo (S&P500 histórico): +10% anual nominal, +7% real.',
+        '• Gastos hormiga típicos en España: 150-300€/mes (cafés, suscripciones, compras impulsivas).',
+        '• Pensión pública media España 2025: ~1.400€/mes. Complementar con ahorro privado es crítico.',
+        '',
+        'ESTILO DE RESPUESTA:',
+        '• Responde como un amigo experto en finanzas: directo, sin relleno.',
+        '• Cuando el usuario pida analizar un año o mes, compara sus datos con los benchmarks anteriores.',
+        '• Indica claramente si está bien, por encima o por debajo de la media. Usa ✅ (bien), ⚠️ (mejorable), ❌ (problema).',
+        '• Una frase por punto. Si hay lista, máximo 4 ítems.',
+        '• **Negrita** para cifras importantes.',
+        '• Nunca empieces con "¡Claro!", "Por supuesto", "Entendido".',
       ].join('\n');
-
-      this.cachedContextYear = year;
       return this.cachedContext;
     } finally {
       this.isLoadingContext.set(false);
     }
   }
 
-  async sendMessage(userMessage: string, year: number): Promise<void> {
+  async sendMessage(userMessage: string): Promise<void> {
     if (this.isLoading()) return;
 
     this.messages.update(msgs => [
@@ -272,7 +278,7 @@ export class AiAnalystService {
     this.isLoading.set(true);
 
     try {
-      const systemPrompt = await this.buildFinancialContext(year);
+      const systemPrompt = await this.buildFinancialContext();
 
       const history: OpenAIMessage[] = this.messages().map(m => ({
         role: m.role,
@@ -352,7 +358,6 @@ export class AiAnalystService {
   clearConversation(): void {
     this.messages.set([]);
     this.cachedContext = null;
-    this.cachedContextYear = null;
   }
 
   private async parseRequestError(response: Response, isOpenAI: boolean): Promise<string> {

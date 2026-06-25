@@ -87,12 +87,12 @@ describe('AiAnalystComponent.sendMessage', () => {
     expect(captured).toEqual(['']);
   });
 
-  it('calls aiAnalystService.sendMessage with trimmed input and currentYear', async () => {
+  it('calls aiAnalystService.sendMessage with trimmed input', async () => {
     component.userInput = '  ¿cuánto gasté?  ';
 
     await component.sendMessage();
 
-    expect(aiServiceStub.sendMessage).toHaveBeenCalledOnceWith('¿cuánto gasté?', component.currentYear);
+    expect(aiServiceStub.sendMessage).toHaveBeenCalledOnceWith('¿cuánto gasté?');
   });
 });
 

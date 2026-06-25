@@ -19,7 +19,6 @@ interface AiAnalystServicePrivate {
     deudas: DeudaSection[];
   }): string | null;
   cachedContext: string | null;
-  cachedContextYear: number | null;
 }
 
 function makeIngreso(overrides: Partial<Ingreso> = {}): Ingreso {
@@ -250,12 +249,10 @@ describe('AiAnalystService', () => {
 
     it('clears the cached financial context so the next build is fresh', () => {
       servicePrivate.cachedContext = 'cached value';
-      servicePrivate.cachedContextYear = 2026;
 
       service.clearConversation();
 
       expect(servicePrivate.cachedContext).toBeNull();
-      expect(servicePrivate.cachedContextYear).toBeNull();
     });
   });
 
@@ -277,7 +274,7 @@ describe('AiAnalystService', () => {
         new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), { status: 200 }),
       );
 
-      await service.sendMessage('', 2026);
+      await service.sendMessage('');
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       // User message IS appended even when empty — confirming the missing guard.
@@ -288,7 +285,7 @@ describe('AiAnalystService', () => {
       const fetchSpy = spyOn(window, 'fetch');
       service.isLoading.set(true);
 
-      await service.sendMessage('hola', 2026);
+      await service.sendMessage('hola');
 
       expect(fetchSpy).not.toHaveBeenCalled();
       expect(service.messages()).toEqual([]);
@@ -303,7 +300,7 @@ describe('AiAnalystService', () => {
         ),
       );
 
-      await service.sendMessage('¿Cuánto gasté?', 2026);
+      await service.sendMessage('¿Cuánto gasté?');
 
       const msgs = service.messages();
       expect(msgs.length).toBe(2);
@@ -318,7 +315,7 @@ describe('AiAnalystService', () => {
         new Response(JSON.stringify({ error: { message: 'rate limited' } }), { status: 429 }),
       );
 
-      await service.sendMessage('hola', 2026);
+      await service.sendMessage('hola');
 
       const msgs = service.messages();
       expect(msgs.length).toBe(2);
@@ -333,7 +330,7 @@ describe('AiAnalystService', () => {
         new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), { status: 200 }),
       );
 
-      await service.sendMessage('hola', 2026);
+      await service.sendMessage('hola');
 
       expect(service.isLoading()).toBeFalse();
     });
@@ -341,7 +338,7 @@ describe('AiAnalystService', () => {
     it('resets isLoading to false after error', async () => {
       spyOn(window, 'fetch').and.resolveTo(new Response('boom', { status: 500 }));
 
-      await service.sendMessage('hola', 2026);
+      await service.sendMessage('hola');
 
       expect(service.isLoading()).toBeFalse();
     });
@@ -362,21 +359,21 @@ describe('AiAnalystService', () => {
     });
 
     it('returns the cached context on second call with the same year (no second Firestore fetch)', async () => {
-      const first = await service.buildFinancialContext(2026);
+      const first = await service.buildFinancialContext();
       const callsAfterFirst = getDocsSpy.calls.count();
 
-      const second = await service.buildFinancialContext(2026);
+      const second = await service.buildFinancialContext();
 
       expect(second).toBe(first);
       expect(getDocsSpy.calls.count()).toBe(callsAfterFirst);
     });
 
     it('re-fetches from Firestore after clearConversation', async () => {
-      await service.buildFinancialContext(2026);
+      await service.buildFinancialContext();
       const callsBeforeClear = getDocsSpy.calls.count();
 
       service.clearConversation();
-      await service.buildFinancialContext(2026);
+      await service.buildFinancialContext();
 
       expect(getDocsSpy.calls.count()).toBeGreaterThan(callsBeforeClear);
     });
@@ -400,7 +397,7 @@ describe('AiAnalystService', () => {
         ),
       );
 
-      await service.sendMessage('¿cuánto gasté?', 2026);
+      await service.sendMessage('¿cuánto gasté?');
 
       // Verify the direct-OpenAI URL was used (not the proxy).
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -418,7 +415,7 @@ describe('AiAnalystService', () => {
         new Response(JSON.stringify({ choices: [{ message: {} }] }), { status: 200 }),
       );
 
-      await service.sendMessage('hola', 2026);
+      await service.sendMessage('hola');
 
       const last = service.messages().at(-1);
       expect(last?.role).toBe('assistant');
@@ -430,7 +427,7 @@ describe('AiAnalystService', () => {
         new Response(JSON.stringify({ error: { message: 'invalid api key' } }), { status: 401 }),
       );
 
-      await service.sendMessage('hola', 2026);
+      await service.sendMessage('hola');
 
       const msgs = service.messages();
       const last = msgs[msgs.length - 1];
@@ -442,7 +439,7 @@ describe('AiAnalystService', () => {
     it('catch block uses generic "Error <status>" when response body has no error.message', async () => {
       spyOn(window, 'fetch').and.resolveTo(new Response('not json', { status: 503 }));
 
-      await service.sendMessage('hola', 2026);
+      await service.sendMessage('hola');
 
       const last = service.messages().at(-1);
       expect(last?.role).toBe('assistant');
@@ -491,7 +488,7 @@ describe('AiAnalystService', () => {
         return Promise.resolve(makeSnap([]));
       });
 
-      const context = await service.buildFinancialContext(2026);
+      const context = await service.buildFinancialContext();
 
       expect(context).toContain('Enero 2026');
       expect(context).toContain('previsto');
@@ -511,7 +508,7 @@ describe('AiAnalystService', () => {
         return Promise.resolve(makeSnap([]));
       });
 
-      const context = await service.buildFinancialContext(2026);
+      const context = await service.buildFinancialContext();
 
       expect(context).not.toContain('=== Febrero 2026 ===');
       expect(context).toContain('Sin datos para este año.');
@@ -576,7 +573,7 @@ describe('AiAnalystService', () => {
       // Simulate a network/auth failure regardless of which branch runs.
       spyOn(window, 'fetch').and.rejectWith(new Error('No autenticado'));
 
-      await service.sendMessage('hola', 2026);
+      await service.sendMessage('hola');
 
       const msgs = service.messages();
       const last = msgs[msgs.length - 1];
@@ -596,7 +593,7 @@ describe('AiAnalystService', () => {
         return new Response(JSON.stringify(body), { status: 200 });
       });
 
-      await service.sendMessage('hola proxy', 2026);
+      await service.sendMessage('hola proxy');
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       const calledUrl = String(fetchSpy.calls.mostRecent().args[0]);
@@ -616,7 +613,7 @@ describe('AiAnalystService', () => {
         new Response(JSON.stringify({ error: 'token inválido' }), { status: 401 }),
       );
 
-      await service.sendMessage('hola', 2026);
+      await service.sendMessage('hola');
 
       const msgs = service.messages();
       const last = msgs[msgs.length - 1];
@@ -626,6 +623,124 @@ describe('AiAnalystService', () => {
       // input flow + an error indicator. In dev-branch this falls back to
       // "Error 401" because parseRequestError reads body.error.message.
       expect(last.content.length).toBeGreaterThan(0);
+    });
+  });
+
+  // ---------- buildFinancialContext() — multi-year ----------
+  // The service now fetches ALL months across all years. These tests verify the
+  // resulting context aggregates and labels months from every year correctly.
+  describe('buildFinancialContext() — multi-year', () => {
+    function makeSnap(docs: { id: string; data: () => unknown }[]) {
+      return { docs } as unknown as Awaited<ReturnType<typeof firestoreModule.getDocs>>;
+    }
+
+    beforeEach(() => {
+      spyOn(firestoreModule, 'collection').and.returnValue({} as ReturnType<typeof firestoreModule.collection>);
+      spyOn(firestoreModule, 'query').and.returnValue({} as ReturnType<typeof firestoreModule.query>);
+      spyOn(firestoreModule, 'where').and.returnValue({} as ReturnType<typeof firestoreModule.where>);
+      spyOn(firestoreModule, 'orderBy').and.returnValue({} as ReturnType<typeof firestoreModule.orderBy>);
+    });
+
+    // Mocks getDocs so that the first call (months collection) returns
+    // `monthDocs` and every subsequent call returns a single ingreso doc with
+    // real=100 (so every month survives the buildMonthSection filter).
+    function mockGetDocsWithMonths(monthDocs: { id: string; data: () => unknown }[]) {
+      let call = 0;
+      (spyOn(firestoreModule, 'getDocs') as jasmine.Spy).and.callFake(() => {
+        call += 1;
+        if (call === 1) return Promise.resolve(makeSnap(monthDocs));
+        // After the months snap, the service issues N×5 subcollection reads
+        // (one Promise.all per month). The first read in each batch is
+        // `ingresos`; for simplicity we return a single ingreso for ALL
+        // subcollection calls — empty collections (facturas/gastos/...) just
+        // populate with the same shape and still serialize. Only ingresos
+        // affects the filter logic via real>0.
+        return Promise.resolve(makeSnap([
+          { id: 'i1', data: () => makeIngreso({ id: 'i1', fuente: 'Salario', esperado: 100, real: 100, depositado: true }) },
+        ]));
+      });
+    }
+
+    it('A: includes sections for every year present, in ascending order', async () => {
+      mockGetDocsWithMonths([
+        { id: '2025-06', data: () => ({ id: '2025-06', user_id: 'u', year: 2025, month: 6 }) },
+        { id: '2024-03', data: () => ({ id: '2024-03', user_id: 'u', year: 2024, month: 3 }) },
+        { id: '2026-01', data: () => ({ id: '2026-01', user_id: 'u', year: 2026, month: 1 }) },
+      ]);
+
+      const context = await service.buildFinancialContext();
+
+      const idx2024 = context.indexOf('2024');
+      const idx2025 = context.indexOf('Junio 2025');
+      const idx2026 = context.indexOf('Enero 2026');
+      expect(idx2024).toBeGreaterThan(-1);
+      expect(idx2025).toBeGreaterThan(-1);
+      expect(idx2026).toBeGreaterThan(-1);
+      // 2024 < 2025 < 2026 in the rendered context
+      expect(idx2024).toBeLessThan(idx2025);
+      expect(idx2025).toBeLessThan(idx2026);
+    });
+
+    it('B: uses monthMeta.year from the doc data (not a hardcoded year) when labeling sections', async () => {
+      mockGetDocsWithMonths([
+        { id: 'docA', data: () => ({ id: 'docA', user_id: 'u', year: 2025, month: 3 }) },
+      ]);
+
+      const context = await service.buildFinancialContext();
+
+      expect(context).toContain('Marzo 2025');
+    });
+
+    it('C: includes the "Regla 50/30/20" benchmark block in the prompt', async () => {
+      mockGetDocsWithMonths([
+        { id: 'docA', data: () => ({ id: 'docA', user_id: 'u', year: 2025, month: 1 }) },
+      ]);
+
+      const context = await service.buildFinancialContext();
+
+      expect(context).toContain('Regla 50/30/20');
+    });
+  });
+
+  // ---------- buildFinancialContext() — sort order ----------
+  describe('buildFinancialContext() — sort order', () => {
+    function makeSnap(docs: { id: string; data: () => unknown }[]) {
+      return { docs } as unknown as Awaited<ReturnType<typeof firestoreModule.getDocs>>;
+    }
+
+    beforeEach(() => {
+      spyOn(firestoreModule, 'collection').and.returnValue({} as ReturnType<typeof firestoreModule.collection>);
+      spyOn(firestoreModule, 'query').and.returnValue({} as ReturnType<typeof firestoreModule.query>);
+      spyOn(firestoreModule, 'where').and.returnValue({} as ReturnType<typeof firestoreModule.where>);
+      spyOn(firestoreModule, 'orderBy').and.returnValue({} as ReturnType<typeof firestoreModule.orderBy>);
+    });
+
+    it('sorts months ascending across years then by month within each year', async () => {
+      const monthDocs = [
+        { id: '2026-01', data: () => ({ id: '2026-01', user_id: 'u', year: 2026, month: 1 }) },
+        { id: '2024-12', data: () => ({ id: '2024-12', user_id: 'u', year: 2024, month: 12 }) },
+        { id: '2025-06', data: () => ({ id: '2025-06', user_id: 'u', year: 2025, month: 6 }) },
+        { id: '2024-03', data: () => ({ id: '2024-03', user_id: 'u', year: 2024, month: 3 }) },
+      ];
+      let call = 0;
+      (spyOn(firestoreModule, 'getDocs') as jasmine.Spy).and.callFake(() => {
+        call += 1;
+        if (call === 1) return Promise.resolve(makeSnap(monthDocs));
+        // Return one ingreso for every subcollection read so all four months
+        // pass buildMonthSection's filter and appear in the output.
+        return Promise.resolve(makeSnap([
+          { id: 'i1', data: () => makeIngreso({ id: 'i1', fuente: 'Salario', esperado: 100, real: 100, depositado: true }) },
+        ]));
+      });
+
+      const context = await service.buildFinancialContext();
+
+      const labels = ['Marzo 2024', 'Diciembre 2024', 'Junio 2025', 'Enero 2026'];
+      const positions = labels.map(l => context.indexOf(l));
+      positions.forEach((p, i) => expect(p).withContext(`"${labels[i]}" must appear`).toBeGreaterThan(-1));
+      for (let i = 1; i < positions.length; i++) {
+        expect(positions[i]).withContext(`"${labels[i]}" must appear after "${labels[i - 1]}"`).toBeGreaterThan(positions[i - 1]);
+      }
     });
   });
 });

@@ -88,24 +88,24 @@
       <div class="donut-wrapper">
         <svg
           class="donut-svg"
-          viewBox="0 0 140 140"
+          viewBox="-40 -10 200 160"
           aria-hidden="true"
         >
           <circle
-            cx="70"
-            cy="70"
-            r="45"
+            [attr.cx]="donutCX"
+            [attr.cy]="donutCY"
+            [attr.r]="donutR"
             fill="none"
             stroke="#f1f5f9"
             stroke-width="10"
           />
 
-          <g transform="rotate(-90 70 70)">
+          <g [attr.transform]="'rotate(-90 ' + donutCX + ' ' + donutCY + ')'">
             @for (segment of donutSegments(); track segment.label) {
               <circle
-                cx="70"
-                cy="70"
-                r="45"
+                [attr.cx]="donutCX"
+                [attr.cy]="donutCY"
+                [attr.r]="donutR"
                 fill="none"
                 [attr.stroke]="segment.color"
                 stroke-width="10"
@@ -119,24 +119,24 @@
           @for (segment of donutSegments(); track segment.label) {
             @if (segment.callout) {
               <line
-                [attr.x1]="segment.callout.x1"
-                [attr.y1]="segment.callout.y1"
-                [attr.x2]="segment.callout.x2"
-                [attr.y2]="segment.callout.y2"
+                [attr.x1]="segment.callout.innerX"
+                [attr.y1]="segment.callout.innerY"
+                [attr.x2]="segment.callout.outerX"
+                [attr.y2]="segment.callout.outerY"
                 [attr.stroke]="segment.color"
                 stroke-width="0.8"
               />
               <line
-                [attr.x1]="segment.callout.x2"
-                [attr.y1]="segment.callout.y2"
-                [attr.x2]="segment.callout.x3"
-                [attr.y2]="segment.callout.y2"
+                [attr.x1]="segment.callout.outerX"
+                [attr.y1]="segment.callout.outerY"
+                [attr.x2]="segment.callout.labelLineEndX"
+                [attr.y2]="segment.callout.outerY"
                 [attr.stroke]="segment.color"
                 stroke-width="0.8"
               />
               <text
-                [attr.x]="segment.callout.tx"
-                [attr.y]="segment.callout.ty"
+                [attr.x]="segment.callout.labelTextX"
+                [attr.y]="segment.callout.labelTextY"
                 [attr.fill]="segment.color"
                 [attr.text-anchor]="segment.callout.anchor"
                 class="donut-callout-text"

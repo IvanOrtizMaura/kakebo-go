@@ -21,7 +21,6 @@ export class AiAnalystComponent {
   readonly isLoading = this.aiAnalystService.isLoading;
   readonly isLoadingContext = this.aiAnalystService.isLoadingContext;
 
-  readonly currentYear = new Date().getFullYear();
   userInput = '';
 
   private readonly messagesContainer = viewChild<ElementRef<HTMLElement>>('messagesContainer');
@@ -49,7 +48,7 @@ export class AiAnalystComponent {
     const message = this.userInput.trim();
     if (!message || this.isLoading() || this.isLoadingContext()) return;
     this.userInput = '';
-    await this.aiAnalystService.sendMessage(message, this.currentYear);
+    await this.aiAnalystService.sendMessage(message);
   }
 
   renderMarkdown(text: string): SafeHtml {

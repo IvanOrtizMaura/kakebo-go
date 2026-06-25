@@ -353,14 +353,17 @@
 
 .donut-wrapper {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 20px;
+  width: 100%;
 }
 
 .donut-svg {
-  width: 160px;
-  min-width: 160px;
-  height: 160px;
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  aspect-ratio: 180 / 160;
+  display: block;
 
   .donut-center-label {
     font-family: 'DM Sans', system-ui, sans-serif;
@@ -382,24 +385,27 @@
 
   .donut-callout-text {
     font-family: 'DM Sans', system-ui, sans-serif;
-    font-size: 8.5px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
     dominant-baseline: middle;
   }
 }
 
 .donut-legend {
-  flex: 1;
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding: 0;
+  margin: 16px 0 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
 }
 
 .donut-legend__item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .donut-legend__dot {
@@ -414,12 +420,16 @@
   font-size: 13px;
   font-weight: 500;
   color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .donut-legend__value {
   font-size: 13px;
   font-weight: 600;
   color: #64748b;
+  flex-shrink: 0;
 }
 
 // ─── Sections with progress bars ─────────────────────────────────────────────
