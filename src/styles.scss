@@ -26,6 +26,26 @@ html, body {
   overflow-x: hidden;
 }
 
+/* Prevent iOS zoom on inputs and double-tap zoom */
+input, textarea, select {
+  font-size: 16px !important;
+}
+
+* {
+  touch-action: manipulation;
+}
+
+/* iOS safe area — notch/Dynamic Island top, home indicator bottom */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Pages that scroll need bottom clearance for nav bar + safe area */
+.page-with-bottom-nav {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+}
+
 a {
   color: var(--kakebo-indigo);
   text-decoration: none;

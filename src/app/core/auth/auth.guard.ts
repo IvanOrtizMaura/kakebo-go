@@ -8,7 +8,6 @@ export const authGuard: CanActivateFn = async () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  // Espera a que Firebase procese el redirect de Google antes de evaluar auth
   await authService.redirectHandled;
 
   const user = await new Promise(resolve => {

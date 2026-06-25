@@ -31,6 +31,7 @@ regla_ahorro?: {
 ```
 
 Nueva colección (o embedded en template):
+
 ```
 users/{uid}/reglas_ingreso/{id}
   etiqueta: string

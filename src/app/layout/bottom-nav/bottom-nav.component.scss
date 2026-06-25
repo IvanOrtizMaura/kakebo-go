@@ -9,7 +9,7 @@
   background: #ffffff;
   border-top: 1px solid #e2e8f0;
   box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: 0;
 
   &::before {
     content: '';

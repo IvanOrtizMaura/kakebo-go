@@ -306,7 +306,11 @@ export class AiAnalystService {
         assistantContent = this.extractOpenAIContent(openaiJson);
       } else {
         // Production or local emulator → use Firebase Function proxy
-        const idToken = await this.auth.currentUser?.getIdToken();
+        let idToken = await this.auth.currentUser?.getIdToken();
+        if (!idToken) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          idToken = await this.auth.currentUser?.getIdToken();
+        }
         if (!idToken) throw new Error('No autenticado');
 
         const response = await fetch(CHAT_FUNCTION_URL, {

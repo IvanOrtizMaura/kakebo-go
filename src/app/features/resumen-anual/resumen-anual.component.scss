@@ -33,7 +33,7 @@ $font: 'DM Sans', system-ui, -apple-system, sans-serif;
   align-items: center;
   padding: 20px 0 16px;
   position: sticky;
-  top: 0;
+  top: env(safe-area-inset-top, 0px);
   background: $color-fondo;
   z-index: 10;
 
