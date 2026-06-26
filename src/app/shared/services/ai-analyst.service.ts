@@ -49,8 +49,12 @@ export class AiAnalystService {
 
   private cachedContext: string | null = null;
 
+  private sumField<T>(items: T[], picker: (item: T) => number | undefined): number {
+    return items.reduce((sum, item) => sum + (picker(item) || 0), 0);
+  }
+
   private sumReal<T extends { real?: number }>(items: T[]): number {
-    return items.reduce((sum, item) => sum + (item.real || 0), 0);
+    return this.sumField(items, item => item.real);
   }
 
   private overBudgetFlag(item: { real: number; presupuestado: number }): string {
@@ -64,7 +68,7 @@ export class AiAnalystService {
     const totalAhorros = this.sumReal(data.ahorros);
     const totalDeudas = this.sumReal(data.deudas);
 
-    const totalEsperado = data.ingresos.reduce((sum, ingreso) => sum + (ingreso.esperado || 0), 0);
+    const totalEsperado = this.sumField(data.ingresos, ingreso => ingreso.esperado);
 
     if (totalIngresos === 0 && totalEsperado === 0 && totalFacturas === 0 && totalGastos === 0) return null;
 
@@ -72,9 +76,28 @@ export class AiAnalystService {
 
     if (data.ingresos.length > 0) {
       lines.push(`Ingresos (cobrado ${formatEuros(totalIngresos)} / previsto ${formatEuros(totalEsperado)}):`);
+
+      // Group by source name so duplicate entries (e.g. two "Memodreams" payments) are aggregated
+      const byFuente = new Map<string, { esperado: number; real: number; depositado: boolean }>();
       data.ingresos.forEach(ingreso => {
-        const estado = ingreso.depositado ? 'cobrado' : 'pendiente';
-        lines.push(`  - ${ingreso.fuente}: previsto ${formatEuros(ingreso.esperado)} | real ${formatEuros(ingreso.real)} (${estado})`);
+        const key = ingreso.fuente?.toLowerCase().trim() ?? '';
+        const existing = byFuente.get(key);
+        if (existing) {
+          existing.esperado += ingreso.esperado || 0;
+          existing.real += ingreso.real || 0;
+          existing.depositado = existing.depositado && !!ingreso.depositado;
+        } else {
+          byFuente.set(key, {
+            esperado: ingreso.esperado || 0,
+            real: ingreso.real || 0,
+            depositado: !!ingreso.depositado,
+          });
+        }
+      });
+
+      byFuente.forEach((values, fuente) => {
+        const estado = values.depositado ? 'cobrado' : 'pendiente';
+        lines.push(`  - ${fuente}: previsto ${formatEuros(values.esperado)} | real ${formatEuros(values.real)} (${estado})`);
       });
     }
 
@@ -124,16 +147,16 @@ export class AiAnalystService {
       const fetchCol = async <T>(firestoreMonthId: string, subcollection: string): Promise<T[]> => {
         const ref = collection(this.firestore, 'users', uid, 'months', firestoreMonthId, subcollection);
         const snap = await getDocs(query(ref, orderBy('order_index')));
-        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as T);
+        return snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }) as T);
       };
 
       // Sort all months by year then month
       const sortedMonthDocs = monthsSnap.docs.sort((a, b) => {
-        const aData = a.data() as Month;
-        const bData = b.data() as Month;
-        return aData.year !== bData.year
-          ? (aData.year ?? 0) - (bData.year ?? 0)
-          : (aData.month ?? 0) - (bData.month ?? 0);
+        const monthA = a.data() as Month;
+        const monthB = b.data() as Month;
+        return monthA.year !== monthB.year
+          ? (monthA.year ?? 0) - (monthB.year ?? 0)
+          : (monthA.month ?? 0) - (monthB.month ?? 0);
       });
 
       const monthsData = await Promise.all(
@@ -169,7 +192,7 @@ export class AiAnalystService {
       const fetchUserCol = async <T>(subcollection: string, constraints: QueryConstraint[] = []): Promise<T[]> => {
         const ref = collection(this.firestore, 'users', uid, subcollection);
         const snap = await getDocs(constraints.length ? query(ref, ...constraints) : ref);
-        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as T);
+        return snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }) as T);
       };
 
       const [inversiones, deudasMaestras, fondosAhorro, pensiones] = await Promise.all([
@@ -182,7 +205,7 @@ export class AiAnalystService {
       const generalLines: string[] = ['DATOS GENERALES (patrimonio y compromisos):'];
 
       if (inversiones.length > 0) {
-        const totalInvertido = inversiones.reduce((sum, inversion) => sum + (inversion.precio_compra || 0), 0);
+        const totalInvertido = this.sumField(inversiones, inversion => inversion.precio_compra);
         const totalGramos = inversiones.reduce((sum, inversion) => sum + (inversion.gramos || 0), 0);
         generalLines.push(`\nInversiones en oro (${inversiones.length} posiciones | ${totalGramos.toFixed(1)}g | comprado por ${formatEuros(totalInvertido)}):`);
         inversiones.forEach(inversion => {
@@ -192,7 +215,7 @@ export class AiAnalystService {
       }
 
       if (deudasMaestras.length > 0) {
-        const totalRestante = deudasMaestras.reduce((sum, deuda) => sum + (deuda.amount_remaining || 0), 0);
+        const totalRestante = this.sumField(deudasMaestras, deuda => deuda.amount_remaining);
         generalLines.push(`\nDeudas activas (${deudasMaestras.length} | restante total: ${formatEuros(totalRestante)}):`);
         deudasMaestras.forEach(deuda => {
           generalLines.push(`  - ${deuda.name}: total ${formatEuros(deuda.total_amount)} | pago mensual ${formatEuros(deuda.monthly_payment)} | restante ${formatEuros(deuda.amount_remaining)} | interés ${deuda.interest_rate}%`);
@@ -200,7 +223,7 @@ export class AiAnalystService {
       }
 
       if (fondosAhorro.length > 0) {
-        const totalObjetivo = fondosAhorro.reduce((sum, fondo) => sum + (fondo.total_amount || 0), 0);
+        const totalObjetivo = this.sumField(fondosAhorro, fondo => fondo.total_amount);
         generalLines.push(`\nFondos de ahorro activos (${fondosAhorro.length} | objetivo total: ${formatEuros(totalObjetivo)}):`);
         fondosAhorro.forEach(fondo => {
           generalLines.push(`  - ${fondo.name}: objetivo ${formatEuros(fondo.total_amount)} | aportación mensual ${formatEuros(fondo.monthly_amount)} | ${fondo.num_months} meses`);
@@ -208,7 +231,7 @@ export class AiAnalystService {
       }
 
       if (pensiones.length > 0) {
-        const totalPension = pensiones.reduce((sum, pension) => sum + (pension.importe || 0), 0);
+        const totalPension = this.sumField(pensiones, pension => pension.importe);
         generalLines.push(`\nAportaciones a pensión (${pensiones.length} aportaciones | total acumulado: ${formatEuros(totalPension)}):`);
         const lastFive = pensiones.slice(0, 5);
         lastFive.forEach(pension => {

@@ -5,10 +5,10 @@ import * as firestoreModule from '@angular/fire/firestore';
 
 import { UserProfileService } from '../../core/auth/user-profile.service';
 import { AiAnalystService } from './ai-analyst.service';
-import { Ahorro, DeudaSection, Factura, Gasto, Ingreso } from '../models';
+import { Ahorro, DeudaSection, Factura, Gasto, Ingreso, UserProfile } from '../models';
 import { formatEuros } from '../utils/currency';
 
-// Type-only access to the private `buildMonthSection` method.
+// Type-only access to the private `buildMonthSection` and `sumField` methods.
 interface AiAnalystServicePrivate {
   buildMonthSection(data: {
     label: string;
@@ -18,6 +18,7 @@ interface AiAnalystServicePrivate {
     ahorros: Ahorro[];
     deudas: DeudaSection[];
   }): string | null;
+  sumField<T>(items: T[], picker: (item: T) => number | undefined): number;
   cachedContext: string | null;
 }
 
@@ -511,7 +512,7 @@ describe('AiAnalystService', () => {
       const context = await service.buildFinancialContext();
 
       expect(context).not.toContain('=== Febrero 2026 ===');
-      expect(context).toContain('Sin datos para este año.');
+      expect(context).toContain('Sin datos registrados todavía.');
     });
   });
 
@@ -741,6 +742,268 @@ describe('AiAnalystService', () => {
       for (let i = 1; i < positions.length; i++) {
         expect(positions[i]).withContext(`"${labels[i]}" must appear after "${labels[i - 1]}"`).toBeGreaterThan(positions[i - 1]);
       }
+    });
+  });
+
+  // ---------- buildMonthSection — income source aggregation (byFuente) ----------
+  describe('buildMonthSection — income source aggregation', () => {
+    const baseMonth = {
+      label: 'Abril 2026',
+      ingresos: [] as Ingreso[],
+      facturas: [] as Factura[],
+      gastos: [] as Gasto[],
+      ahorros: [] as Ahorro[],
+      deudas: [] as DeudaSection[],
+    };
+
+    function countLinesContaining(result: string | null, needle: string): number {
+      if (!result) return 0;
+      return result.split('\n').filter(line => line.includes(needle)).length;
+    }
+
+    it('aggregates two ingresos with the same fuente into a single line with summed esperado and real', () => {
+      const result = servicePrivate.buildMonthSection({
+        ...baseMonth,
+        ingresos: [
+          makeIngreso({ id: 'i1', fuente: 'Memodreams', esperado: 30, real: 30, depositado: true }),
+          makeIngreso({ id: 'i2', fuente: 'Memodreams', esperado: 30, real: 30, depositado: true }),
+        ],
+      });
+
+      // One aggregated line — not two separate ones
+      expect(countLinesContaining(result, 'memodreams')).toBe(1);
+      expect(result).toContain('memodreams');
+      expect(result).toContain(`previsto ${formatEuros(60)}`);
+      expect(result).toContain(`real ${formatEuros(60)}`);
+    });
+
+    it('marks aggregated entry as "cobrado" when ALL ingresos are depositado=true', () => {
+      const result = servicePrivate.buildMonthSection({
+        ...baseMonth,
+        ingresos: [
+          makeIngreso({ id: 'i1', fuente: 'Memodreams', esperado: 30, real: 30, depositado: true }),
+          makeIngreso({ id: 'i2', fuente: 'Memodreams', esperado: 30, real: 30, depositado: true }),
+        ],
+      });
+
+      const memoLine = result?.split('\n').find(line => line.includes('memodreams'));
+      expect(memoLine).toContain('(cobrado)');
+      expect(memoLine).not.toContain('(pendiente)');
+    });
+
+    it('marks aggregated entry as "pendiente" when ANY ingreso has depositado=false (AND logic)', () => {
+      const result = servicePrivate.buildMonthSection({
+        ...baseMonth,
+        ingresos: [
+          makeIngreso({ id: 'i1', fuente: 'Memodreams', esperado: 30, real: 30, depositado: true }),
+          makeIngreso({ id: 'i2', fuente: 'Memodreams', esperado: 30, real: 30, depositado: false }),
+        ],
+      });
+
+      const memoLine = result?.split('\n').find(line => line.includes('memodreams'));
+      expect(memoLine).toContain('(pendiente)');
+      expect(memoLine).not.toContain('(cobrado)');
+    });
+
+    it('merges entries with case-insensitive fuente keys (e.g. "MEMODREAMS" and "memodreams")', () => {
+      const result = servicePrivate.buildMonthSection({
+        ...baseMonth,
+        ingresos: [
+          makeIngreso({ id: 'i1', fuente: 'MEMODREAMS', esperado: 30, real: 30, depositado: true }),
+          makeIngreso({ id: 'i2', fuente: 'memodreams', esperado: 30, real: 30, depositado: true }),
+        ],
+      });
+
+      // Still a single aggregated line — and lowercased
+      expect(countLinesContaining(result, 'memodreams')).toBe(1);
+      expect(result).toContain(`previsto ${formatEuros(60)}`);
+      expect(result).toContain(`real ${formatEuros(60)}`);
+    });
+  });
+
+  // ---------- buildFinancialContext — patrimonio sections ----------
+  describe('buildFinancialContext — patrimonio sections', () => {
+    function makeSnap(docs: { id: string; data: () => unknown }[]) {
+      return { docs } as unknown as Awaited<ReturnType<typeof firestoreModule.getDocs>>;
+    }
+
+    // The order of getDocs() calls in buildFinancialContext is:
+    //   1. months collection (we return [] — no monthly sections)
+    //   2-5. inversiones / deudasMaestras / fondosAhorro / pensiones (Promise.all
+    //        preserves order)
+    // We use callFake to map each sequential call index to the desired snapshot.
+    function mockGetDocsSequence(snapshots: { id: string; data: () => unknown }[][]) {
+      let call = 0;
+      (spyOn(firestoreModule, 'getDocs') as jasmine.Spy).and.callFake(() => {
+        const snap = snapshots[call] ?? [];
+        call += 1;
+        return Promise.resolve(makeSnap(snap));
+      });
+    }
+
+    beforeEach(() => {
+      spyOn(firestoreModule, 'collection').and.returnValue({} as ReturnType<typeof firestoreModule.collection>);
+      spyOn(firestoreModule, 'query').and.returnValue({} as ReturnType<typeof firestoreModule.query>);
+      spyOn(firestoreModule, 'where').and.returnValue({} as ReturnType<typeof firestoreModule.where>);
+      spyOn(firestoreModule, 'orderBy').and.returnValue({} as ReturnType<typeof firestoreModule.orderBy>);
+    });
+
+    // 2a. Inversiones
+    it('renders an inversion line with name, gramos, and formatted euro price', async () => {
+      mockGetDocsSequence([
+        /* 1: months */ [],
+        /* 2: inversiones */ [
+          { id: 'inv1', data: () => ({ id: 'inv1', user_id: 'u', name: 'Oro 1oz', gramos: 31.1, pureza: 999, precio_compra: 1800, created_at: '' }) },
+        ],
+        /* 3: deudas */ [],
+        /* 4: fondos */ [],
+        /* 5: pensiones */ [],
+      ]);
+
+      const context = await service.buildFinancialContext();
+
+      expect(context).toContain('1oz');
+      expect(context).toContain('31.1g');
+      expect(context).toContain('1.800');
+    });
+
+    it('formats pureza ≥ 1 as quilates (pureza/10 + "k")', async () => {
+      mockGetDocsSequence([
+        [],
+        [
+          { id: 'inv1', data: () => ({ id: 'inv1', user_id: 'u', name: 'Lingote', gramos: 10, pureza: 240, precio_compra: 500, created_at: '' }) },
+        ],
+        [], [], [],
+      ]);
+
+      const context = await service.buildFinancialContext();
+
+      expect(context).toContain('24k');
+    });
+
+    it('formats pureza < 1 as milesimas (pureza*1000 + "‰")', async () => {
+      mockGetDocsSequence([
+        [],
+        [
+          { id: 'inv1', data: () => ({ id: 'inv1', user_id: 'u', name: 'Moneda', gramos: 5, pureza: 0.999, precio_compra: 300, created_at: '' }) },
+        ],
+        [], [], [],
+      ]);
+
+      const context = await service.buildFinancialContext();
+
+      expect(context).toContain('999‰');
+    });
+
+    // 2b. Pensiones lastFive slice
+    it('shows only the first 5 pension entries and appends "y N más" when there are more than 5', async () => {
+      const sevenPensiones = Array.from({ length: 7 }, (_, i) => ({
+        id: `p${i + 1}`,
+        data: () => ({
+          id: `p${i + 1}`,
+          fecha: new Date(2026, 0, i + 1),
+          importe: 100 + i,
+          nota: `nota-${i + 1}`,
+        }),
+      }));
+
+      mockGetDocsSequence([
+        /* 1: months */ [],
+        /* 2: inversiones */ [],
+        /* 3: deudas */ [],
+        /* 4: fondos */ [],
+        /* 5: pensiones */ sevenPensiones,
+      ]);
+
+      const context = await service.buildFinancialContext();
+
+      expect(context).toContain('y 2 más');
+      // Only the first 5 notes should appear; nota-6 and nota-7 must not.
+      expect(context).toContain('nota-1');
+      expect(context).toContain('nota-5');
+      expect(context).not.toContain('nota-6');
+      expect(context).not.toContain('nota-7');
+    });
+
+    // 2c. Pension date formatting
+    it('formats a Date fecha via toLocaleDateString("es-ES")', async () => {
+      const fecha = new Date(2025, 2, 15); // 15 March 2025
+      mockGetDocsSequence([
+        [], [], [], [],
+        [
+          { id: 'p1', data: () => ({ id: 'p1', fecha, importe: 100 }) },
+        ],
+      ]);
+
+      const context = await service.buildFinancialContext();
+
+      expect(context).toContain(fecha.toLocaleDateString('es-ES'));
+    });
+
+    it('formats an ISO string fecha by splitting on "T" (keeps YYYY-MM-DD)', async () => {
+      mockGetDocsSequence([
+        [], [], [], [],
+        [
+          { id: 'p1', data: () => ({ id: 'p1', fecha: '2025-03-15T00:00:00.000Z', importe: 100 }) },
+        ],
+      ]);
+
+      const context = await service.buildFinancialContext();
+
+      expect(context).toContain('2025-03-15');
+    });
+
+    // 2d. Profile context
+    it('renders the profile block with formatted income, savings %, and Yes/No flags', async () => {
+      const profile: UserProfile = {
+        id: 'profile-1',
+        monthly_net_income: 2000,
+        fixed_expenses_description: '',
+        savings_percentage: 20,
+        has_high_interest_debt: false,
+        has_partner: true,
+        onboarding_completed: true,
+        ingreso_oficial: 0,
+        pareja_ahorro_pct: 0,
+        pareja_gastos_pct: 0,
+      };
+      userProfileStub.getProfile.and.resolveTo(profile);
+
+      mockGetDocsSequence([[], [], [], [], []]);
+
+      const context = await service.buildFinancialContext();
+
+      expect(context).toContain('PERFIL DEL USUARIO');
+      expect(context).toContain(formatEuros(2000));
+      expect(context).toContain('20%');
+      // has_partner=true → "Sí"
+      expect(context).toContain('Tiene pareja: Sí');
+      // has_high_interest_debt=false → "No"
+      expect(context).toContain('Tiene deuda de alto interés: No');
+    });
+  });
+
+  // ---------- AiAnalystService — sumField ----------
+  describe('AiAnalystService — sumField', () => {
+    it('sums a list using the picker function', () => {
+      const total = servicePrivate.sumField(
+        [{ val: 1 }, { val: 2 }, { val: 3 }],
+        x => x.val,
+      );
+      expect(total).toBe(6);
+    });
+
+    it('treats undefined picker results as 0', () => {
+      const total = servicePrivate.sumField(
+        [{ val: undefined as number | undefined }, { val: 5 }],
+        x => x.val,
+      );
+      expect(total).toBe(5);
+    });
+
+    it('returns 0 for an empty array', () => {
+      const total = servicePrivate.sumField<number>([], x => x);
+      expect(total).toBe(0);
     });
   });
 });
