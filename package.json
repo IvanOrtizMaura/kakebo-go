@@ -22,6 +22,7 @@
     "@angular/service-worker": "^19.2.20",
     "@primeng/themes": "^19.1.4",
     "@primeuix/themes": "^2.0.3",
+    "@supabase/supabase-js": "^2.110.8",
     "firebase": "^12.13.0",
     "primeicons": "^7.0.0",
     "primeng": "^19.1.4",

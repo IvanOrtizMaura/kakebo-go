@@ -1,0 +1,381 @@
+<div class="desktop-shell">
+  <aside class="sidebar">
+    <div class="brand-block">
+      <div class="brand-tile">€</div>
+      <div class="brand-copy">
+        <p class="brand-title">Finanzas</p>
+        <p class="brand-subtitle">Presupuesto doméstico</p>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <p class="section-label">{{ selectedYear() }}</p>
+      <ul class="month-list">
+        @for (month of sidebarMonths(); track month.index) {
+          <li
+            class="month-row"
+            [class.active]="month.isActive"
+            (click)="selectMonth(month.index)">
+            <span class="month-name">{{ month.name }}</span>
+            <span class="data-dot" [class.filled]="month.hasData"></span>
+          </li>
+        }
+      </ul>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="footer-row disabled">
+        <span class="footer-label">Inversiones</span>
+        <span class="soon-pill">PRÓXIMAMENTE</span>
+      </div>
+      <button type="button" class="footer-row" (click)="goToSettings()">
+        <span class="footer-label">Configuración</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main-area">
+    <header class="topbar">
+      <div class="topbar-title">
+        <p class="topbar-caption">{{ selectedYear() }} · Resumen mensual</p>
+        <h1 class="topbar-heading">{{ currentMonthName() }}</h1>
+      </div>
+      <div class="topbar-actions">
+        <div class="search-field">
+          <i class="pi pi-search"></i>
+          <input
+            type="text"
+            placeholder="Buscar movimiento"
+            [ngModel]="searchTerm()"
+            (ngModelChange)="searchTerm.set($event)" />
+        </div>
+        <button type="button" class="primary-button" (click)="openAddMovementDialog()">
+          <i class="pi pi-plus"></i>
+          <span>Añadir movimiento</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="content">
+      @if (hasMonthData()) {
+        <section class="kpi-row">
+          @for (kpi of kpiCards(); track kpi.label) {
+            <article class="kpi-card" [class.accent]="kpi.variant === 'accent'">
+              <p class="kpi-label">{{ kpi.label }}</p>
+              @if (kpi.isCurrency) {
+                <p class="kpi-value">{{ kpi.value | currency:'EUR':'symbol':'1.0-0':'es' }}</p>
+              } @else {
+                <p class="kpi-value">
+                  {{ diasParaCobrar() === null ? '—' : diasParaCobrar() }}
+                  @if (diasParaCobrar() !== null) {
+                    <span class="kpi-suffix">{{ kpi.suffix }}</span>
+                  }
+                </p>
+              }
+            </article>
+          }
+        </section>
+
+        <section class="three-card-row">
+          <article class="dashboard-card">
+            <header class="card-header">
+              <h2 class="card-title">Distribución del presupuesto</h2>
+            </header>
+            @if (donutSegments().length > 0) {
+              <div class="donut-wrapper">
+                <svg viewBox="0 0 186 186" class="donut-svg" aria-label="Distribución del presupuesto">
+                  <circle
+                    [attr.cx]="donutCX"
+                    [attr.cy]="donutCY"
+                    [attr.r]="donutR"
+                    fill="transparent"
+                    stroke="rgb(240,242,244)"
+                    [attr.stroke-width]="donutStrokeWidth"></circle>
+                  <g [attr.transform]="'rotate(-90 ' + donutCX + ' ' + donutCY + ')'">
+                    @for (segment of donutSegments(); track segment.label) {
+                      <circle
+                        [attr.cx]="donutCX"
+                        [attr.cy]="donutCY"
+                        [attr.r]="donutR"
+                        fill="transparent"
+                        [attr.stroke]="segment.color"
+                        [attr.stroke-width]="donutStrokeWidth"
+                        [attr.stroke-dasharray]="segment.strokeDasharray"
+                        [attr.stroke-dashoffset]="segment.strokeDashoffset"></circle>
+                    }
+                  </g>
+                </svg>
+              </div>
+              <ul class="donut-legend">
+                @for (segment of donutSegments(); track segment.label) {
+                  <li class="legend-item">
+                    <span class="legend-dot" [style.background]="segment.color"></span>
+                    <span class="legend-label">{{ segment.label }}</span>
+                    <span class="legend-value">{{ segment.value | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="empty-inline">Todavía sin distribución</p>
+            }
+          </article>
+
+          <article class="dashboard-card">
+            <header class="card-header">
+              <h2 class="card-title">Resumen del presupuesto</h2>
+            </header>
+            <table class="summary-table">
+              <thead>
+                <tr>
+                  <th>Fuente</th>
+                  <th class="align-right">Presupuesto</th>
+                  <th class="align-right">Real</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of resumenPresupuesto().rows; track row.fuente) {
+                  <tr>
+                    <td>{{ row.fuente }}</td>
+                    <td class="align-right">{{ row.presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                    <td class="align-right">{{ row.real | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                  </tr>
+                }
+                <tr class="totals-row">
+                  <td>Total</td>
+                  <td class="align-right">{{ resumenPresupuesto().totalPresupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                  <td class="align-right">{{ resumenPresupuesto().totalReal | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="dashboard-card">
+            <header class="card-header">
+              <h2 class="card-title">Objetivo de ahorro</h2>
+            </header>
+            <div class="ring-wrapper">
+              <svg viewBox="0 0 150 150" class="ring-svg" aria-label="Progreso de ahorro">
+                <circle
+                  [attr.cx]="ringCX"
+                  [attr.cy]="ringCY"
+                  [attr.r]="ringR"
+                  fill="transparent"
+                  stroke="rgb(240,242,244)"
+                  stroke-width="10"></circle>
+                <circle
+                  [attr.cx]="ringCX"
+                  [attr.cy]="ringCY"
+                  [attr.r]="ringR"
+                  fill="transparent"
+                  stroke="rgb(96,168,68)"
+                  stroke-width="10"
+                  stroke-linecap="round"
+                  [attr.stroke-dasharray]="ringCircumference"
+                  [attr.stroke-dashoffset]="ahorroObjetivo().dashOffset"
+                  [attr.transform]="'rotate(-90 ' + ringCX + ' ' + ringCY + ')'"></circle>
+                <text
+                  [attr.x]="ringCX"
+                  [attr.y]="ringCY - 2"
+                  text-anchor="middle"
+                  class="ring-percentage">{{ ahorroObjetivo().percentage }}%</text>
+                <text
+                  [attr.x]="ringCX"
+                  [attr.y]="ringCY + 16"
+                  text-anchor="middle"
+                  class="ring-caption">completado</text>
+              </svg>
+            </div>
+            <div class="ring-footer">
+              <div class="ring-metric">
+                <span class="metric-label">Ahorrado</span>
+                <span class="metric-value">{{ ahorroObjetivo().real | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+              </div>
+              <div class="ring-metric">
+                <span class="metric-label">Objetivo</span>
+                <span class="metric-value">{{ ahorroObjetivo().presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="dashboard-card full-width">
+          <header class="card-header">
+            <h2 class="card-title">Ingresos</h2>
+          </header>
+          <table class="ingresos-table">
+            <thead>
+              <tr>
+                <th>Fuente</th>
+                <th>Día de paga</th>
+                <th class="align-right">Esperado</th>
+                <th class="align-right">Real</th>
+                <th class="align-right">Depositado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (ingreso of filteredIngresos(); track ingreso.id) {
+                <tr>
+                  <td>{{ ingreso.fuente }}</td>
+                  <td>{{ ingreso.dia_de_paga || '—' }}</td>
+                  <td class="align-right">{{ ingreso.esperado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                  <td class="align-right">{{ ingreso.real | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                  <td class="align-right">
+                    <span class="deposit-pill" [class.deposited]="ingreso.depositado">
+                      {{ ingreso.depositado ? 'Sí' : 'Pendiente' }}
+                    </span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="empty-cell">No hay ingresos registrados</td>
+                </tr>
+              }
+              <tr class="totals-row">
+                <td>Total</td>
+                <td></td>
+                <td class="align-right">{{ totalIngresosEsperado() | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                <td class="align-right">{{ totalIngresos() | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="category-grid">
+          @for (table of categoryTables(); track table.key) {
+            <article class="dashboard-card category-card">
+              <header class="category-header">
+                <div class="category-title-block">
+                  <span class="category-dot" [style.background]="table.color"></span>
+                  <h3 class="category-title">{{ table.title }}</h3>
+                </div>
+                <span class="category-total">{{ table.totalReal | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+              </header>
+              <table class="category-table">
+                <thead>
+                  <tr>
+                    <th>Descripción</th>
+                    <th class="align-right">Presup.</th>
+                    <th class="align-right">Real</th>
+                    <th class="align-right">Dif.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of table.rows; track row.id) {
+                    <tr>
+                      <td>{{ row.name }}</td>
+                      <td class="align-right">{{ row.presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                      <td class="align-right">{{ row.real | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                      <td
+                        class="align-right"
+                        [class.positive]="row.diferencia >= 0"
+                        [class.negative]="row.diferencia < 0">
+                        {{ row.diferencia | currency:'EUR':'symbol':'1.0-0':'es' }}
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="4" class="empty-cell">Sin movimientos</td>
+                    </tr>
+                  }
+                  <tr class="totals-row" [style.background]="table.tintBackground">
+                    <td>Total</td>
+                    <td class="align-right">{{ table.totalPresupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                    <td class="align-right">{{ table.totalReal | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                    <td class="align-right">{{ (table.totalPresupuestado - table.totalReal) | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+          }
+
+          <article class="dashboard-card deudas-placeholder">
+            <div class="placeholder-content">
+              <span class="category-dot" [style.background]="'rgb(200,72,68)'"></span>
+              <h3 class="category-title">Deudas</h3>
+              <span class="soon-pill">PRÓXIMAMENTE</span>
+              <p class="placeholder-copy">La gestión de deudas llegará en una próxima versión del panel.</p>
+            </div>
+          </article>
+        </section>
+      } @else {
+        <section class="empty-state">
+          <div class="empty-tile">€</div>
+          <h2 class="empty-title">Sin datos para {{ currentMonthName() }}</h2>
+          <p class="empty-copy">
+            Todavía no hay movimientos registrados en {{ currentMonthName() }}. Empieza el mes desde cero o copia la
+            estructura del mes anterior para no perder tiempo replicando categorías.
+          </p>
+          <div class="empty-actions">
+            <button type="button" class="primary-button" (click)="startCurrentMonth()">Empezar {{ currentMonthName() }}</button>
+            <button type="button" class="secondary-button" (click)="copyFromPreviousMonth()">Copiar del mes anterior</button>
+          </div>
+        </section>
+      }
+    </section>
+  </main>
+</div>
+
+<p-dialog
+  [visible]="addMovementDialogVisible()"
+  (visibleChange)="addMovementDialogVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '460px' }"
+  [dismissableMask]="true"
+  [closable]="true"
+  [showHeader]="false"
+  styleClass="movement-dialog">
+  <div class="dialog-body">
+    <header class="dialog-header">
+      <h2 class="dialog-title">Añadir movimiento</h2>
+      <p class="dialog-subtitle">Registra un movimiento manualmente en la tabla que quieras.</p>
+    </header>
+
+    <div class="dialog-field">
+      <label for="destination">Tabla de destino</label>
+      <p-select
+        inputId="destination"
+        [options]="destinationOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Selecciona una tabla"
+        [ngModel]="newMovementDestination()"
+        (ngModelChange)="newMovementDestination.set($event)"
+        appendTo="body"
+        styleClass="dialog-select"></p-select>
+    </div>
+
+    <div class="dialog-field">
+      <label for="description">Descripción</label>
+      <input
+        id="description"
+        type="text"
+        placeholder="Ej. Nómina, Alquiler, Supermercado"
+        [ngModel]="newMovementDescription()"
+        (ngModelChange)="newMovementDescription.set($event)" />
+    </div>
+
+    <div class="dialog-field">
+      <label for="amount">Cantidad (€)</label>
+      <input
+        id="amount"
+        type="number"
+        min="0"
+        step="0.01"
+        placeholder="0,00"
+        [ngModel]="newMovementAmount()"
+        (ngModelChange)="newMovementAmount.set($event)" />
+    </div>
+
+    <footer class="dialog-footer">
+      <button type="button" class="ghost-button" (click)="closeAddMovementDialog()">Cancelar</button>
+      <button
+        type="button"
+        class="primary-button"
+        [disabled]="!canSubmitMovement()"
+        (click)="submitNewMovement()">
+        Añadir movimiento
+      </button>
+    </footer>
+  </div>
+</p-dialog>
