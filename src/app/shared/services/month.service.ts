@@ -83,7 +83,7 @@ export class MonthService {
 
   // ─── Métodos privados de inicialización ───────────────────────────────────
 
-  private async findMonth(userId: string, year: number, month: number): Promise<Month | null> {
+  async findMonth(userId: string, year: number, month: number): Promise<Month | null> {
     const q = query(
       this.monthsCol(),
       where('year', '==', year),

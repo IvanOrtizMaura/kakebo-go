@@ -730,6 +730,48 @@
   padding: 16px 0;
 }
 
+.action-col {
+  width: 40px;
+  padding-right: 6px !important;
+  padding-left: 6px !important;
+}
+
+.delete-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+  padding: 0;
+  font-family: inherit;
+
+  i {
+    font-size: 12px;
+  }
+
+  &:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+  }
+}
+
+.table-row:hover .delete-btn {
+  opacity: 1;
+}
+
+@media (max-width: 1280px) {
+  .delete-btn {
+    opacity: 1;
+  }
+}
+
 .deudas-placeholder {
   border: 1px dashed var(--desktop-border-strong);
   background: transparent;

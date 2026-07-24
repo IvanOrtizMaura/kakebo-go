@@ -51,6 +51,19 @@
             [ngModel]="searchTerm()"
             (ngModelChange)="searchTerm.set($event)" />
         </div>
+        <button
+          type="button"
+          class="secondary-button"
+          [disabled]="isCopying()"
+          (click)="copyFromPreviousMonth()">
+          @if (isCopying()) {
+            <i class="pi pi-spin pi-spinner"></i>
+            <span>Copiando…</span>
+          } @else {
+            <i class="pi pi-copy"></i>
+            <span>Copiar mes anterior</span>
+          }
+        </button>
         <button type="button" class="primary-button" (click)="openAddMovementDialog()">
           <i class="pi pi-plus"></i>
           <span>Añadir movimiento</span>
@@ -212,11 +225,12 @@
                 <th class="align-right">Esperado</th>
                 <th class="align-right">Real</th>
                 <th class="align-right">Depositado</th>
+                <th class="align-right action-col"></th>
               </tr>
             </thead>
             <tbody>
               @for (ingreso of filteredIngresos(); track ingreso.id) {
-                <tr>
+                <tr class="table-row">
                   <td>{{ ingreso.fuente }}</td>
                   <td>{{ ingreso.dia_de_paga || '—' }}</td>
                   <td class="align-right">{{ ingreso.esperado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
@@ -226,10 +240,19 @@
                       {{ ingreso.depositado ? 'Sí' : 'Pendiente' }}
                     </span>
                   </td>
+                  <td class="align-right action-col">
+                    <button
+                      type="button"
+                      class="delete-btn"
+                      aria-label="Eliminar ingreso"
+                      (click)="deleteIngreso(ingreso.id)">
+                      <i class="pi pi-trash"></i>
+                    </button>
+                  </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="5" class="empty-cell">No hay ingresos registrados</td>
+                  <td colspan="6" class="empty-cell">No hay ingresos registrados</td>
                 </tr>
               }
               <tr class="totals-row">
@@ -237,6 +260,7 @@
                 <td></td>
                 <td class="align-right">{{ totalIngresosEsperado() | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
                 <td class="align-right">{{ totalIngresos() | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                <td></td>
                 <td></td>
               </tr>
             </tbody>
@@ -260,11 +284,14 @@
                     <th class="align-right">Presup.</th>
                     <th class="align-right">Real</th>
                     <th class="align-right">Dif.</th>
+                    @if (isDeletableCategory(table.key)) {
+                      <th class="align-right action-col"></th>
+                    }
                   </tr>
                 </thead>
                 <tbody>
                   @for (row of table.rows; track row.id) {
-                    <tr>
+                    <tr class="table-row">
                       <td>{{ row.name }}</td>
                       <td class="align-right">{{ row.presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
                       <td class="align-right">{{ row.real | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
@@ -274,10 +301,21 @@
                         [class.negative]="row.diferencia < 0">
                         {{ row.diferencia | currency:'EUR':'symbol':'1.0-0':'es' }}
                       </td>
+                      @if (isDeletableCategory(table.key)) {
+                        <td class="align-right action-col">
+                          <button
+                            type="button"
+                            class="delete-btn"
+                            aria-label="Eliminar fila"
+                            (click)="deleteCategoryRow(table.key, row.id)">
+                            <i class="pi pi-trash"></i>
+                          </button>
+                        </td>
+                      }
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="4" class="empty-cell">Sin movimientos</td>
+                      <td [attr.colspan]="isDeletableCategory(table.key) ? 5 : 4" class="empty-cell">Sin movimientos</td>
                     </tr>
                   }
                   <tr class="totals-row" [style.background]="table.tintBackground">
@@ -285,6 +323,9 @@
                     <td class="align-right">{{ table.totalPresupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
                     <td class="align-right">{{ table.totalReal | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
                     <td class="align-right">{{ (table.totalPresupuestado - table.totalReal) | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                    @if (isDeletableCategory(table.key)) {
+                      <td></td>
+                    }
                   </tr>
                 </tbody>
               </table>

@@ -148,6 +148,7 @@ export class DesktopComponent implements OnDestroy {
   private readonly resolvedMonthId = signal<string | null>(null);
   readonly monthExists = signal<boolean>(false);
   readonly monthLoading = signal<boolean>(false);
+  readonly isCopying = signal<boolean>(false);
 
   readonly currentMonthName = computed(() => MONTH_NAMES[this.selectedMonthIndex()]);
 
@@ -636,8 +637,96 @@ export class DesktopComponent implements OnDestroy {
 
   async copyFromPreviousMonth(): Promise<void> {
     const user = this.authService.currentUser;
-    if (!user) return;
-    await this.loadMonthData(user.uid, this.selectedYear(), this.selectedMonthIndex() + 1);
+    if (!user || this.isCopying()) return;
+    this.isCopying.set(true);
+    try {
+      const previousMonthIndex = this.selectedMonthIndex() === 0 ? 11 : this.selectedMonthIndex() - 1;
+      const previousYear = this.selectedMonthIndex() === 0 ? this.selectedYear() - 1 : this.selectedYear();
+
+      const previousMonth = await this.monthService.findMonth(user.uid, previousYear, previousMonthIndex + 1);
+      if (!previousMonth) return;
+
+      const currentMonth = await this.monthService.getOrCreateMonth(
+        user.uid,
+        this.selectedYear(),
+        this.selectedMonthIndex() + 1
+      );
+
+      await Promise.all([
+        this.copySectionFromPrevious('gastos', previousMonth.id, currentMonth.id, user.uid),
+        this.copySectionFromPrevious('ahorros', previousMonth.id, currentMonth.id, user.uid),
+        this.copySectionFromPrevious('pareja', previousMonth.id, currentMonth.id, user.uid),
+        this.copySectionFromPrevious('deudas', previousMonth.id, currentMonth.id, user.uid)
+      ]);
+
+      await this.loadMonthData(user.uid, this.selectedYear(), this.selectedMonthIndex() + 1);
+    } catch (error) {
+      console.error('Error copiando mes anterior:', error);
+    } finally {
+      this.isCopying.set(false);
+    }
+  }
+
+  private async copySectionFromPrevious(
+    section: 'gastos' | 'ahorros' | 'pareja' | 'deudas',
+    previousMonthId: string,
+    currentMonthId: string,
+    userId: string
+  ): Promise<void> {
+    const previousRows = await this.sectionService[section].getByMonth(previousMonthId);
+    const currentRows = await this.sectionService[section].getByMonth(currentMonthId);
+    const currentRowNames = new Set(currentRows.map(row => row['name'] as string));
+
+    for (const row of previousRows) {
+      const name = row['name'] as string;
+      if (currentRowNames.has(name)) continue;
+      const copy: Record<string, unknown> = { ...row };
+      delete copy['id'];
+      copy['month_id'] = currentMonthId;
+      copy['user_id'] = userId;
+      copy['real'] = 0;
+      await this.sectionService[section].add(copy);
+    }
+  }
+
+  async deleteIngreso(id: string): Promise<void> {
+    const monthId = this.resolvedMonthId();
+    if (!monthId) return;
+    try {
+      await this.ingresosService.remove(id, monthId);
+    } catch (error) {
+      console.error('Error eliminando ingreso:', error);
+    }
+  }
+
+  async deleteCategoryRow(categoryKey: string, id: string): Promise<void> {
+    const monthId = this.resolvedMonthId();
+    if (!monthId) return;
+    try {
+      switch (categoryKey) {
+        case 'facturas':
+          await this.facturasService.remove(id, monthId);
+          break;
+        case 'gastos':
+          await this.sectionService.gastos.remove(id, monthId);
+          break;
+        case 'ahorros':
+          await this.sectionService.ahorros.remove(id, monthId);
+          break;
+        case 'pareja':
+          await this.sectionService.pareja.remove(id, monthId);
+          break;
+      }
+    } catch (error) {
+      console.error('Error eliminando fila:', error);
+    }
+  }
+
+  isDeletableCategory(categoryKey: string): boolean {
+    return categoryKey === 'facturas' ||
+      categoryKey === 'gastos' ||
+      categoryKey === 'ahorros' ||
+      categoryKey === 'pareja';
   }
 
   goToInvestments(): void {
