@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="240" viewBox="0 0 440 120">
+  <g transform="translate(12 28) scale(1)">
+    <rect x="8" y="6" width="48" height="52" rx="8" fill="rgb(229,240,246)"></rect>
+    <rect x="8" y="6" width="8" height="52" rx="4" fill="rgb(0,64,102)"></rect>
+    <rect x="22" y="18" width="26" height="4" rx="2" fill="rgb(0,107,170)"></rect>
+    <rect x="22" y="28" width="18" height="4" rx="2" fill="rgb(128,181,213)"></rect>
+    <path d="M22 42h16m0 0-5-5m5 5-5 5" fill="none" stroke="rgb(247,148,29)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+  </g>
+  <text x="86" y="60" font-family="Open Sans, Helvetica, Arial, sans-serif" font-size="34" letter-spacing="0.2" fill="rgb(26,40,46)"><tspan font-weight="800">Kakebo</tspan><tspan font-weight="600" fill="rgb(0,107,170)">Go</tspan></text>
+  <text x="88" y="82" font-family="Inter, Helvetica, Arial, sans-serif" font-size="11" font-weight="600" letter-spacing="2.2" fill="rgb(86,104,112)">PRESUPUESTO DOMÉSTICO</text>
+</svg>
