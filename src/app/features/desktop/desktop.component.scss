@@ -51,13 +51,18 @@
   height: 44px;
   border-radius: 10px;
   background: linear-gradient(135deg, var(--desktop-primary) 0%, rgb(90, 168, 214) 100%);
-  color: #ffffff;
-  font-size: 22px;
-  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 12px rgba(0, 107, 170, 0.25);
+  overflow: hidden;
+  padding: 4px;
+
+  .brand-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
 }
 
 .brand-copy {
