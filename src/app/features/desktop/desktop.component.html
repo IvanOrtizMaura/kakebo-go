@@ -51,19 +51,6 @@
             [ngModel]="searchTerm()"
             (ngModelChange)="searchTerm.set($event)" />
         </div>
-        <button
-          type="button"
-          class="secondary-button"
-          [disabled]="isCopying()"
-          (click)="copyFromPreviousMonth()">
-          @if (isCopying()) {
-            <i class="pi pi-spin pi-spinner"></i>
-            <span>Copiando…</span>
-          } @else {
-            <i class="pi pi-copy"></i>
-            <span>Copiar mes anterior</span>
-          }
-        </button>
         <button type="button" class="primary-button" (click)="openAddMovementDialog()">
           <i class="pi pi-plus"></i>
           <span>Añadir movimiento</span>
@@ -230,7 +217,10 @@
             </thead>
             <tbody>
               @for (ingreso of filteredIngresos(); track ingreso.id) {
-                <tr class="table-row">
+                <tr
+                  class="table-row"
+                  style="cursor:pointer"
+                  (click)="openEditDialog('ingreso', ingreso)">
                   <td>{{ ingreso.fuente }}</td>
                   <td>{{ ingreso.dia_de_paga || '—' }}</td>
                   <td class="align-right">{{ ingreso.esperado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
@@ -245,7 +235,7 @@
                       type="button"
                       class="delete-btn"
                       aria-label="Eliminar ingreso"
-                      (click)="deleteIngreso(ingreso.id)">
+                      (click)="deleteIngreso(ingreso.id); $event.stopPropagation()">
                       <i class="pi pi-trash"></i>
                     </button>
                   </td>
@@ -291,7 +281,10 @@
                 </thead>
                 <tbody>
                   @for (row of table.rows; track row.id) {
-                    <tr class="table-row">
+                    <tr
+                      class="table-row"
+                      [style.cursor]="isEditableCategory(table.key) ? 'pointer' : 'default'"
+                      (click)="onCategoryRowClick(table.key, row)">
                       <td>{{ row.name }}</td>
                       <td class="align-right">{{ row.presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
                       <td class="align-right">{{ row.real | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
@@ -307,7 +300,7 @@
                             type="button"
                             class="delete-btn"
                             aria-label="Eliminar fila"
-                            (click)="deleteCategoryRow(table.key, row.id)">
+                            (click)="deleteCategoryRow(table.key, row.id); $event.stopPropagation()">
                             <i class="pi pi-trash"></i>
                           </button>
                         </td>
@@ -343,20 +336,230 @@
         </section>
       } @else {
         <section class="empty-state">
-          <div class="empty-tile">€</div>
+          <div class="empty-tile">
+            <img src="/kakebogo-mark.svg" alt="KakeboGo" class="empty-logo">
+          </div>
           <h2 class="empty-title">Sin datos para {{ currentMonthName() }}</h2>
           <p class="empty-copy">
             Todavía no hay movimientos registrados en {{ currentMonthName() }}. Empieza el mes desde cero o copia la
             estructura del mes anterior para no perder tiempo replicando categorías.
           </p>
+          @if (copyMessage()) {
+            <p class="copy-message" [class.copy-message--error]="copyMessage()!.type === 'error'">
+              {{ copyMessage()!.text }}
+            </p>
+          }
           <div class="empty-actions">
             <button type="button" class="primary-button" (click)="startCurrentMonth()">Empezar {{ currentMonthName() }}</button>
-            <button type="button" class="secondary-button" (click)="copyFromPreviousMonth()">Copiar del mes anterior</button>
+            <button type="button" class="secondary-button" [disabled]="isCopying()" (click)="copyFromPreviousMonth()">
+              @if (isCopying()) {
+                <i class="pi pi-spin pi-spinner"></i> Copiando…
+              } @else {
+                Copiar del mes anterior
+              }
+            </button>
           </div>
         </section>
       }
     </section>
   </main>
+
+  @if (editDialog(); as dialog) {
+    <div class="edit-overlay" (click)="closeEditDialog()">
+      <div class="edit-dialog" (click)="$event.stopPropagation()">
+        <header class="edit-dialog__header">
+          <h3 class="edit-dialog__title">Editar movimiento</h3>
+          <button type="button" class="edit-dialog__close" aria-label="Cerrar" (click)="closeEditDialog()">
+            <i class="pi pi-times"></i>
+          </button>
+        </header>
+        <form class="edit-dialog__body" (ngSubmit)="saveEditFromForm()">
+          @switch (dialog.type) {
+            @case ('ingreso') {
+              <div class="edit-field">
+                <label for="edit-fuente">Fuente</label>
+                <input
+                  id="edit-fuente"
+                  type="text"
+                  [ngModel]="editFormValues()['fuente']"
+                  (ngModelChange)="updateEditField('fuente', $event)"
+                  name="fuente" />
+              </div>
+              <div class="edit-field">
+                <label for="edit-dia-paga">Día de paga</label>
+                <input
+                  id="edit-dia-paga"
+                  type="date"
+                  [ngModel]="editFormValues()['dia_de_paga']"
+                  (ngModelChange)="updateEditField('dia_de_paga', $event)"
+                  name="dia_de_paga" />
+              </div>
+              <div class="edit-field">
+                <label for="edit-esperado">Esperado (€)</label>
+                <input
+                  id="edit-esperado"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="editFormValues()['esperado']"
+                  (ngModelChange)="updateEditField('esperado', $event)"
+                  name="esperado" />
+              </div>
+              <div class="edit-field">
+                <label for="edit-real">Real (€)</label>
+                <input
+                  id="edit-real"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="editFormValues()['real']"
+                  (ngModelChange)="updateEditField('real', $event)"
+                  name="real" />
+              </div>
+              <div class="edit-field edit-field--checkbox">
+                <input
+                  id="edit-depositado"
+                  type="checkbox"
+                  [ngModel]="editFormValues()['depositado']"
+                  (ngModelChange)="updateEditField('depositado', $event)"
+                  name="depositado" />
+                <label for="edit-depositado">Depositado</label>
+              </div>
+            }
+            @case ('factura') {
+              <div class="edit-field">
+                <label for="edit-name">Nombre</label>
+                <input
+                  id="edit-name"
+                  type="text"
+                  [ngModel]="editFormValues()['name']"
+                  (ngModelChange)="updateEditField('name', $event)"
+                  name="name" />
+              </div>
+              <div class="edit-field">
+                <label for="edit-fecha">Fecha</label>
+                <input
+                  id="edit-fecha"
+                  type="date"
+                  [ngModel]="editFormValues()['fecha']"
+                  (ngModelChange)="updateEditField('fecha', $event)"
+                  name="fecha" />
+              </div>
+              <div class="edit-field">
+                <label for="edit-presupuestado">Presupuestado (€)</label>
+                <input
+                  id="edit-presupuestado"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="editFormValues()['presupuestado']"
+                  (ngModelChange)="updateEditField('presupuestado', $event)"
+                  name="presupuestado" />
+              </div>
+              <div class="edit-field">
+                <label for="edit-real">Real (€)</label>
+                <input
+                  id="edit-real"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="editFormValues()['real']"
+                  (ngModelChange)="updateEditField('real', $event)"
+                  name="real" />
+              </div>
+              <div class="edit-field edit-field--checkbox">
+                <input
+                  id="edit-recurring"
+                  type="checkbox"
+                  [ngModel]="editFormValues()['is_recurring']"
+                  (ngModelChange)="updateEditField('is_recurring', $event)"
+                  name="is_recurring" />
+                <label for="edit-recurring">Recurrente</label>
+              </div>
+            }
+            @case ('gasto') {
+              <div class="edit-field">
+                <label for="edit-name">Nombre</label>
+                <input
+                  id="edit-name"
+                  type="text"
+                  [ngModel]="editFormValues()['name']"
+                  (ngModelChange)="updateEditField('name', $event)"
+                  name="name" />
+              </div>
+              <div class="edit-field">
+                <label for="edit-presupuestado">Presupuestado (€)</label>
+                <input
+                  id="edit-presupuestado"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="editFormValues()['presupuestado']"
+                  (ngModelChange)="updateEditField('presupuestado', $event)"
+                  name="presupuestado" />
+              </div>
+              <div class="edit-field">
+                <label for="edit-real">Real (€)</label>
+                <input
+                  id="edit-real"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="editFormValues()['real']"
+                  (ngModelChange)="updateEditField('real', $event)"
+                  name="real" />
+              </div>
+              <div class="edit-field">
+                <label for="edit-tipo">Tipo</label>
+                <select
+                  id="edit-tipo"
+                  [ngModel]="editFormValues()['tipo']"
+                  (ngModelChange)="updateEditField('tipo', $event)"
+                  name="tipo">
+                  <option value="fijos">Fijos</option>
+                  <option value="variables">Variables</option>
+                </select>
+              </div>
+            }
+            @default {
+              <div class="edit-field">
+                <label for="edit-name">Nombre</label>
+                <input
+                  id="edit-name"
+                  type="text"
+                  [ngModel]="editFormValues()['name']"
+                  (ngModelChange)="updateEditField('name', $event)"
+                  name="name" />
+              </div>
+              <div class="edit-field">
+                <label for="edit-presupuestado">Presupuestado (€)</label>
+                <input
+                  id="edit-presupuestado"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="editFormValues()['presupuestado']"
+                  (ngModelChange)="updateEditField('presupuestado', $event)"
+                  name="presupuestado" />
+              </div>
+              <div class="edit-field">
+                <label for="edit-real">Real (€)</label>
+                <input
+                  id="edit-real"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="editFormValues()['real']"
+                  (ngModelChange)="updateEditField('real', $event)"
+                  name="real" />
+              </div>
+            }
+          }
+          <footer class="edit-dialog__footer">
+            <button type="button" class="ghost-button" (click)="closeEditDialog()" [disabled]="editSaving()">Cancelar</button>
+            <button type="submit" class="primary-button" [disabled]="editSaving()">
+              @if (editSaving()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              <span>Guardar</span>
+            </button>
+          </footer>
+        </form>
+      </div>
+    </div>
+  }
 </div>
 
 <p-dialog

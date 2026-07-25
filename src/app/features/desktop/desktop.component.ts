@@ -99,6 +99,13 @@ interface DestinationOption {
   value: DestinationTable;
 }
 
+type EditDialogType = 'ingreso' | 'factura' | 'gasto' | 'ahorro' | 'pareja' | 'deuda';
+
+interface EditDialogState {
+  type: EditDialogType;
+  row: Record<string, unknown>;
+}
+
 @Component({
   selector: 'app-desktop',
   standalone: true,
@@ -149,6 +156,7 @@ export class DesktopComponent implements OnDestroy {
   readonly monthExists = signal<boolean>(false);
   readonly monthLoading = signal<boolean>(false);
   readonly isCopying = signal<boolean>(false);
+  readonly copyMessage = signal<{ text: string; type: 'success' | 'error' } | null>(null);
 
   readonly currentMonthName = computed(() => MONTH_NAMES[this.selectedMonthIndex()]);
 
@@ -415,6 +423,10 @@ export class DesktopComponent implements OnDestroy {
     return !!destination && description.length > 0 && amount !== null && amount > 0;
   });
 
+  readonly editDialog = signal<EditDialogState | null>(null);
+  readonly editSaving = signal(false);
+  readonly editFormValues = signal<Record<string, unknown>>({});
+
   constructor() {
     const user = this.authService.currentUser;
     if (user) {
@@ -635,16 +647,32 @@ export class DesktopComponent implements OnDestroy {
     await this.loadMonthData(user.uid, this.selectedYear(), this.selectedMonthIndex() + 1);
   }
 
+  private showCopyMessage(text: string, type: 'success' | 'error'): void {
+    this.copyMessage.set({ text, type });
+    setTimeout(() => this.copyMessage.set(null), 3500);
+  }
+
   async copyFromPreviousMonth(): Promise<void> {
     const user = this.authService.currentUser;
     if (!user || this.isCopying()) return;
     this.isCopying.set(true);
     try {
-      const previousMonthIndex = this.selectedMonthIndex() === 0 ? 11 : this.selectedMonthIndex() - 1;
-      const previousYear = this.selectedMonthIndex() === 0 ? this.selectedYear() - 1 : this.selectedYear();
+      // Search backwards for the most recent month with data
+      let previousMonth = null;
+      for (let offset = 1; offset <= 12; offset++) {
+        const targetMonth = this.selectedMonthIndex() + 1 - offset;
+        const targetYear = targetMonth <= 0
+          ? this.selectedYear() - 1
+          : this.selectedYear();
+        const normalizedMonth = targetMonth <= 0 ? targetMonth + 12 : targetMonth;
+        const candidate = await this.monthService.findMonth(user.uid, targetYear, normalizedMonth);
+        if (candidate) { previousMonth = candidate; break; }
+      }
 
-      const previousMonth = await this.monthService.findMonth(user.uid, previousYear, previousMonthIndex + 1);
-      if (!previousMonth) return;
+      if (!previousMonth) {
+        this.showCopyMessage('No hay meses anteriores con datos para copiar.', 'error');
+        return;
+      }
 
       const currentMonth = await this.monthService.getOrCreateMonth(
         user.uid,
@@ -660,8 +688,10 @@ export class DesktopComponent implements OnDestroy {
       ]);
 
       await this.loadMonthData(user.uid, this.selectedYear(), this.selectedMonthIndex() + 1);
+      this.showCopyMessage('✅ Mes copiado correctamente.', 'success');
     } catch (error) {
       console.error('Error copiando mes anterior:', error);
+      this.showCopyMessage('Error al copiar el mes. Inténtalo de nuevo.', 'error');
     } finally {
       this.isCopying.set(false);
     }
@@ -727,6 +757,198 @@ export class DesktopComponent implements OnDestroy {
       categoryKey === 'gastos' ||
       categoryKey === 'ahorros' ||
       categoryKey === 'pareja';
+  }
+
+  isEditableCategory(categoryKey: string): boolean {
+    return this.isDeletableCategory(categoryKey);
+  }
+
+  onCategoryRowClick(categoryKey: string, row: CategoryRow): void {
+    if (!this.isEditableCategory(categoryKey)) return;
+    const sourceRow = this.findSourceRow(categoryKey, row.id);
+    if (!sourceRow) return;
+    switch (categoryKey) {
+      case 'facturas':
+        this.openEditDialog('factura', sourceRow);
+        break;
+      case 'gastos':
+        this.openEditDialog('gasto', sourceRow);
+        break;
+      case 'ahorros':
+        this.openEditDialog('ahorro', sourceRow);
+        break;
+      case 'pareja':
+        this.openEditDialog('pareja', sourceRow);
+        break;
+    }
+  }
+
+  private findSourceRow(categoryKey: string, id: string): Record<string, unknown> | null {
+    switch (categoryKey) {
+      case 'facturas': {
+        const found = this.facturasData().find(item => item.id === id);
+        return found ? (found as unknown as Record<string, unknown>) : null;
+      }
+      case 'gastos': {
+        const found = this.gastosData().find(item => item.id === id);
+        return found ? (found as unknown as Record<string, unknown>) : null;
+      }
+      case 'ahorros': {
+        const found = this.ahorrosData().find(item => item.id === id);
+        return found ? (found as unknown as Record<string, unknown>) : null;
+      }
+      case 'pareja': {
+        const found = this.parejaData().find(item => item.id === id);
+        return found ? (found as unknown as Record<string, unknown>) : null;
+      }
+      default:
+        return null;
+    }
+  }
+
+  openEditDialog(type: EditDialogType, row: object): void {
+    const normalized = row as Record<string, unknown>;
+    this.editDialog.set({ type, row: normalized });
+    this.editFormValues.set(this.buildInitialEditValues(type, normalized));
+  }
+
+  closeEditDialog(): void {
+    this.editDialog.set(null);
+    this.editFormValues.set({});
+  }
+
+  updateEditField(field: string, value: unknown): void {
+    this.editFormValues.update(current => ({ ...current, [field]: value }));
+  }
+
+  private buildInitialEditValues(type: EditDialogType, row: Record<string, unknown>): Record<string, unknown> {
+    switch (type) {
+      case 'ingreso':
+        return {
+          fuente: (row['fuente'] as string) ?? '',
+          dia_de_paga: (row['dia_de_paga'] as string) ?? '',
+          esperado: (row['esperado'] as number) ?? 0,
+          real: (row['real'] as number) ?? 0,
+          depositado: (row['depositado'] as boolean) ?? false
+        };
+      case 'factura':
+        return {
+          name: (row['name'] as string) ?? '',
+          fecha: (row['fecha'] as string) ?? '',
+          presupuestado: (row['presupuestado'] as number) ?? 0,
+          real: (row['real'] as number) ?? 0,
+          is_recurring: (row['is_recurring'] as boolean) ?? false
+        };
+      case 'gasto':
+        return {
+          name: (row['name'] as string) ?? '',
+          presupuestado: (row['presupuestado'] as number) ?? 0,
+          real: (row['real'] as number) ?? 0,
+          tipo: (row['tipo'] as string) ?? 'variables'
+        };
+      case 'ahorro':
+      case 'pareja':
+      case 'deuda':
+      default:
+        return {
+          name: (row['name'] as string) ?? '',
+          presupuestado: (row['presupuestado'] as number) ?? 0,
+          real: (row['real'] as number) ?? 0
+        };
+    }
+  }
+
+  async saveEditFromForm(): Promise<void> {
+    await this.saveEdit(this.editFormValues());
+  }
+
+  async saveEdit(values: Record<string, unknown>): Promise<void> {
+    const dialogState = this.editDialog();
+    const monthId = this.resolvedMonthId();
+    const user = this.authService.currentUser;
+    if (!dialogState || !monthId || !user) return;
+
+    const rowId = dialogState.row['id'] as string;
+    if (!rowId) return;
+
+    const changes = this.normalizeEditValues(dialogState.type, values);
+
+    this.editSaving.set(true);
+    try {
+      switch (dialogState.type) {
+        case 'ingreso':
+          await this.ingresosService.update(rowId, monthId, changes as Partial<Ingreso>);
+          break;
+        case 'factura':
+          await this.facturasService.update(rowId, monthId, changes as Partial<Factura>);
+          break;
+        case 'gasto':
+          await this.sectionService.gastos.update(rowId, changes, monthId);
+          break;
+        case 'ahorro':
+          await this.sectionService.ahorros.update(rowId, changes, monthId);
+          break;
+        case 'pareja':
+          await this.sectionService.pareja.update(rowId, changes, monthId);
+          break;
+        case 'deuda':
+          await this.sectionService.deudas.update(rowId, changes, monthId);
+          break;
+      }
+      await this.loadMonthData(user.uid, this.selectedYear(), this.selectedMonthIndex() + 1);
+      this.closeEditDialog();
+    } catch (error) {
+      console.error('Error actualizando movimiento:', error);
+    } finally {
+      this.editSaving.set(false);
+    }
+  }
+
+  private normalizeEditValues(type: EditDialogType, values: Record<string, unknown>): Record<string, unknown> {
+    const numberOrZero = (value: unknown): number => {
+      if (value === '' || value === null || value === undefined) return 0;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+    const stringOrNull = (value: unknown): string | null => {
+      if (value === '' || value === null || value === undefined) return null;
+      return String(value);
+    };
+
+    switch (type) {
+      case 'ingreso':
+        return {
+          fuente: String(values['fuente'] ?? ''),
+          dia_de_paga: stringOrNull(values['dia_de_paga']),
+          esperado: numberOrZero(values['esperado']),
+          real: numberOrZero(values['real']),
+          depositado: Boolean(values['depositado'])
+        };
+      case 'factura':
+        return {
+          name: String(values['name'] ?? ''),
+          fecha: stringOrNull(values['fecha']),
+          presupuestado: numberOrZero(values['presupuestado']),
+          real: numberOrZero(values['real']),
+          is_recurring: Boolean(values['is_recurring'])
+        };
+      case 'gasto':
+        return {
+          name: String(values['name'] ?? ''),
+          presupuestado: numberOrZero(values['presupuestado']),
+          real: numberOrZero(values['real']),
+          tipo: (values['tipo'] as 'fijos' | 'variables') ?? 'variables'
+        };
+      case 'ahorro':
+      case 'pareja':
+      case 'deuda':
+      default:
+        return {
+          name: String(values['name'] ?? ''),
+          presupuestado: numberOrZero(values['presupuestado']),
+          real: numberOrZero(values['real'])
+        };
+    }
   }
 
   goToInvestments(): void {

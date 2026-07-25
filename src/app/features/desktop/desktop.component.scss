@@ -810,13 +810,28 @@
   height: 60px;
   border-radius: 14px;
   background: linear-gradient(135deg, var(--desktop-primary) 0%, rgb(90, 168, 214) 100%);
-  color: #ffffff;
-  font-size: 28px;
-  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 8px 20px rgba(0, 107, 170, 0.25);
+  overflow: hidden;
+  padding: 6px;
+
+  .empty-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+.copy-message {
+  font-size: 13.5px;
+  color: var(--desktop-positive);
+  font-weight: 500;
+
+  &--error {
+    color: var(--desktop-negative);
+  }
 }
 
 .empty-title {
@@ -937,5 +952,126 @@
     font-size: 15px;
     color: var(--desktop-text-secondary);
     font-family: 'DM Sans', system-ui, sans-serif;
+  }
+}
+
+.edit-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-dialog {
+  background: #fff;
+  border-radius: 12px;
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--desktop-border);
+  }
+
+  &__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--desktop-navy);
+  }
+
+  &__close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+    color: var(--desktop-text-secondary);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      background: rgb(244, 246, 248);
+    }
+  }
+
+  &__body {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &__footer {
+    padding: 16px 24px 20px;
+    border-top: 1px solid var(--desktop-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin: 0 -24px -20px;
+  }
+}
+
+.edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--desktop-text-secondary);
+  }
+
+  input[type='text'],
+  input[type='number'],
+  input[type='date'],
+  select {
+    padding: 9px 12px;
+    border: 1px solid var(--desktop-border);
+    border-radius: 8px;
+    font-family: inherit;
+    color: var(--desktop-text-primary);
+    background: var(--desktop-background);
+    outline: none;
+    font-size: 16px !important;
+
+    &:focus {
+      border-color: var(--desktop-primary);
+    }
+  }
+
+  &--checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+
+    input[type='checkbox'] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--desktop-primary);
+      cursor: pointer;
+    }
+
+    label {
+      font-size: 14px;
+      text-transform: none;
+      letter-spacing: 0;
+      cursor: pointer;
+      color: var(--desktop-text-primary);
+    }
   }
 }
