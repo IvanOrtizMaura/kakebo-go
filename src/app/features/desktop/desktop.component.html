@@ -26,10 +26,9 @@
     </div>
 
     <div class="sidebar-footer">
-      <div class="footer-row disabled">
+      <button type="button" class="footer-row" (click)="goToInversionesOro()">
         <span class="footer-label">Inversiones</span>
-        <span class="soon-pill">PRÓXIMAMENTE</span>
-      </div>
+      </button>
       <button type="button" class="footer-row" (click)="goToSettings()">
         <span class="footer-label">Configuración</span>
       </button>
@@ -574,7 +573,29 @@
   <div class="dialog-body">
     <header class="dialog-header">
       <h2 class="dialog-title">Añadir movimiento</h2>
-      <p class="dialog-subtitle">Registra un movimiento manualmente en la tabla que quieras.</p>
+      <div class="dialog-mode-toggle">
+        <button
+          type="button"
+          class="mode-btn"
+          [class.mode-btn--active]="newMovementMode() === 'real'"
+          (click)="newMovementMode.set('real')">
+          ✅ Registrar real
+        </button>
+        <button
+          type="button"
+          class="mode-btn"
+          [class.mode-btn--active]="newMovementMode() === 'plan'"
+          (click)="newMovementMode.set('plan')">
+          📋 Planificar
+        </button>
+      </div>
+      <p class="dialog-subtitle">
+        @if (newMovementMode() === 'real') {
+          Registra algo que ya ha ocurrido — se guarda como gasto/ingreso real.
+        } @else {
+          Planifica el mes — se guarda como presupuesto previsto, sin marcar como realizado.
+        }
+      </p>
     </header>
 
     <div class="dialog-field">
@@ -591,18 +612,37 @@
         styleClass="dialog-select"></p-select>
     </div>
 
-    <div class="dialog-field">
-      <label for="description">Descripción</label>
-      <input
-        id="description"
-        type="text"
-        placeholder="Ej. Nómina, Alquiler, Supermercado"
-        [ngModel]="newMovementDescription()"
-        (ngModelChange)="newMovementDescription.set($event)" />
-    </div>
+    @if (newMovementDestination() === 'fondos') {
+      <div class="dialog-field">
+        <label>Fondo de ahorro</label>
+        @if (activeFondoOptions().length === 0) {
+          <p class="dialog-hint">⚠️ No tienes fondos activos. Créalos en <strong>Configuración</strong>.</p>
+        } @else {
+          <p-select
+            [options]="activeFondoOptions()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Selecciona un fondo"
+            [ngModel]="newMovementFondoId()"
+            (ngModelChange)="newMovementFondoId.set($event)"
+            appendTo="body"
+            styleClass="dialog-select"></p-select>
+        }
+      </div>
+    } @else {
+      <div class="dialog-field">
+        <label for="description">Descripción</label>
+        <input
+          id="description"
+          type="text"
+          placeholder="Ej. Nómina, Alquiler, Supermercado"
+          [ngModel]="newMovementDescription()"
+          (ngModelChange)="newMovementDescription.set($event)" />
+      </div>
+    }
 
     <div class="dialog-field">
-      <label for="amount">Cantidad (€)</label>
+      <label for="amount">{{ newMovementMode() === 'plan' ? 'Presupuesto (€)' : 'Cantidad real (€)' }}</label>
       <input
         id="amount"
         type="number"

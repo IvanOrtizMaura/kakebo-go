@@ -77,6 +77,11 @@ export const routes: Routes = [
     canActivate: [authGuard, onboardingGuard]
   },
   {
+    path: 'desktop/inversiones/oro',
+    loadComponent: () => import('./features/desktop/inversiones-oro/inversiones-oro.component').then(m => m.InversionesOroComponent),
+    canActivate: [authGuard, onboardingGuard],
+  },
+  {
     path: 'inversiones',
     loadComponent: () => import('./features/inversiones/hub/hub.component').then(m => m.InversionesHubComponent),
     canActivate: [authGuard, onboardingGuard]

@@ -397,7 +397,7 @@ export class DesktopComponent implements OnDestroy {
       tintBackground: palette.tint,
       totalPresupuestado,
       totalReal,
-      rows
+      rows: [...rows].sort((a, b) => b.presupuestado - a.presupuestado)
     };
   }
 
@@ -406,6 +406,12 @@ export class DesktopComponent implements OnDestroy {
   readonly newMovementDestination = signal<DestinationTable | null>(null);
   readonly newMovementDescription = signal('');
   readonly newMovementAmount = signal<number | null>(null);
+  readonly newMovementMode = signal<'real' | 'plan'>('real');
+  readonly newMovementFondoId = signal<string | null>(null);
+
+  readonly activeFondoOptions = computed(() =>
+    this.fondosActive().map(f => ({ label: f.name, value: f.id }))
+  );
 
   readonly destinationOptions: DestinationOption[] = [
     { label: 'Ingresos', value: 'ingresos' },
@@ -418,9 +424,10 @@ export class DesktopComponent implements OnDestroy {
 
   readonly canSubmitMovement = computed(() => {
     const destination = this.newMovementDestination();
-    const description = this.newMovementDescription().trim();
     const amount = this.newMovementAmount();
-    return !!destination && description.length > 0 && amount !== null && amount > 0;
+    if (!destination || amount === null || amount <= 0) return false;
+    if (destination === 'fondos') return !!this.newMovementFondoId();
+    return this.newMovementDescription().trim().length > 0;
   });
 
   readonly editDialog = signal<EditDialogState | null>(null);
@@ -541,6 +548,8 @@ export class DesktopComponent implements OnDestroy {
     this.newMovementDestination.set(null);
     this.newMovementDescription.set('');
     this.newMovementAmount.set(null);
+    this.newMovementMode.set('real');
+    this.newMovementFondoId.set(null);
     this.addMovementDialogVisible.set(true);
   }
 
@@ -558,6 +567,9 @@ export class DesktopComponent implements OnDestroy {
     const destination = this.newMovementDestination() as DestinationTable;
     const description = this.newMovementDescription().trim();
     const amount = this.newMovementAmount() as number;
+    const isPlan = this.newMovementMode() === 'plan';
+    const realVal = isPlan ? 0 : amount;
+    const presupuestoVal = amount;
 
     try {
       switch (destination) {
@@ -566,10 +578,10 @@ export class DesktopComponent implements OnDestroy {
             month_id: monthId,
             user_id: user.uid,
             fuente: description,
-            esperado: 0,
-            real: amount,
+            esperado: presupuestoVal,
+            real: realVal,
             dia_de_paga: null,
-            depositado: true,
+            depositado: !isPlan,
             order_index: this.ingresosData().length
           });
           break;
@@ -579,8 +591,8 @@ export class DesktopComponent implements OnDestroy {
             user_id: user.uid,
             name: description,
             fecha: null,
-            presupuestado: 0,
-            real: amount,
+            presupuestado: presupuestoVal,
+            real: realVal,
             is_recurring: false,
             order_index: this.facturasData().length
           });
@@ -590,8 +602,8 @@ export class DesktopComponent implements OnDestroy {
             month_id: monthId,
             user_id: user.uid,
             name: description,
-            presupuestado: 0,
-            real: amount,
+            presupuestado: presupuestoVal,
+            real: realVal,
             tipo: 'variables',
             order_index: this.gastosData().length
           });
@@ -601,8 +613,8 @@ export class DesktopComponent implements OnDestroy {
             month_id: monthId,
             user_id: user.uid,
             name: description,
-            presupuestado: 0,
-            real: amount,
+            presupuestado: presupuestoVal,
+            real: realVal,
             order_index: this.ahorrosData().length
           });
           break;
@@ -611,24 +623,24 @@ export class DesktopComponent implements OnDestroy {
             month_id: monthId,
             user_id: user.uid,
             name: description,
-            presupuestado: 0,
-            real: amount,
+            presupuestado: presupuestoVal,
+            real: realVal,
             order_index: this.parejaData().length
           });
           break;
         case 'fondos': {
-          const activeFondos = this.fondosActive();
-          const target = activeFondos.find(fondo => fondo.name === description) ?? activeFondos[0];
+          const fondoId = this.newMovementFondoId();
+          const target = this.fondosActive().find(f => f.id === fondoId);
           if (!target) {
-            console.warn('No hay fondos de ahorro activos para asociar el movimiento');
+            console.warn('Selecciona un fondo de ahorro.');
             return;
           }
           await this.fondosAhorroService.upsertMonthly({
             fondo_id: target.id,
             month_id: monthId,
             user_id: user.uid,
-            presupuestado: target.monthly_amount,
-            real: amount
+            presupuestado: isPlan ? amount : (target.monthly_amount ?? 0),
+            real: realVal
           });
           const refreshed = await this.fondosAhorroService.getMonthlyByMonth(monthId);
           this.fondosMonthly.set(refreshed);
@@ -953,6 +965,10 @@ export class DesktopComponent implements OnDestroy {
 
   goToInvestments(): void {
     this.router.navigate(['/inversiones']);
+  }
+
+  goToInversionesOro(): void {
+    this.router.navigate(['/desktop/inversiones/oro']);
   }
 
   goToSettings(): void {

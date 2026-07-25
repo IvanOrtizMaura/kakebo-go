@@ -885,6 +885,38 @@
   color: var(--desktop-text-secondary);
 }
 
+.dialog-mode-toggle {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1.5px solid var(--desktop-border);
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--desktop-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &--active {
+    border-color: var(--desktop-primary);
+    background: var(--desktop-primary-soft);
+    color: var(--desktop-primary);
+    font-weight: 600;
+  }
+
+  &:hover:not(&--active) {
+    border-color: var(--desktop-border-strong);
+    color: var(--desktop-text-primary);
+  }
+}
+
 .dialog-field {
   display: flex;
   flex-direction: column;

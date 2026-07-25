@@ -1,0 +1,387 @@
+<div class="oro-shell">
+  <aside class="sidebar">
+    <div class="brand-block">
+      <div class="brand-tile">
+        <img src="/kakebogo-mark.svg" alt="KakeboGo" class="brand-logo">
+      </div>
+      <div class="brand-copy">
+        <p class="brand-title">KakeboGo</p>
+        <p class="brand-subtitle">Presupuesto doméstico</p>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <p class="section-label">Inversiones</p>
+      <ul class="nav-list">
+        <li class="nav-row active">
+          <span class="nav-name">Oro</span>
+          <span class="gold-dot"></span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-footer">
+      <button type="button" class="footer-row" (click)="goToDashboard()">
+        <span class="footer-label">← Volver al dashboard</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main-area">
+    <header class="topbar">
+      <div class="topbar-title">
+        <p class="topbar-caption">Inversiones · Metales preciosos</p>
+        <h1 class="topbar-heading">Oro</h1>
+      </div>
+      <div class="topbar-actions">
+        <div class="search-field">
+          <i class="pi pi-search"></i>
+          <input
+            type="text"
+            placeholder="Buscar compra"
+            [ngModel]="searchTerm()"
+            (ngModelChange)="searchTerm.set($event)" />
+        </div>
+        <button type="button" class="primary-button" (click)="openCompraDialog()">
+          <i class="pi pi-plus"></i>
+          <span>Registrar compra</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="content">
+      <section class="kpi-row">
+        <article class="kpi-card">
+          <p class="kpi-label">Oro acumulado</p>
+          <p class="kpi-value">
+            {{ totalGrams() | number:'1.2-2':'es' }}
+            <span class="kpi-suffix">g</span>
+          </p>
+          <p class="kpi-caption">{{ totalPurchases() }} {{ totalPurchases() === 1 ? 'compra' : 'compras' }}</p>
+        </article>
+
+        <article class="kpi-card">
+          <p class="kpi-label">Total invertido</p>
+          <p class="kpi-value">{{ totalInvertido() | currency:'EUR':'symbol':'1.0-0':'es' }}</p>
+          <p class="kpi-caption">
+            Media {{ avgPricePerGram() | currency:'EUR':'symbol':'1.2-2':'es' }} / g
+          </p>
+        </article>
+
+        <article class="kpi-card">
+          <p class="kpi-label">Valor actual</p>
+          @if (valorActual() !== null) {
+            <p class="kpi-value">{{ valorActual() | currency:'EUR':'symbol':'1.0-0':'es' }}</p>
+            <p class="kpi-caption">
+              Spot {{ spotPrice() | currency:'EUR':'symbol':'1.2-2':'es' }} / g
+              @if (spotUpdatedLabel()) {
+                · {{ spotUpdatedLabel() }}
+              }
+            </p>
+          } @else {
+            <p class="kpi-value muted">—</p>
+            <p class="kpi-caption">Precio no disponible</p>
+          }
+        </article>
+
+        <article class="kpi-card" [class.kpi-card--positive]="(gananciaLatente() ?? 0) >= 0" [class.kpi-card--negative]="(gananciaLatente() ?? 0) < 0">
+          <p class="kpi-label">Ganancia latente</p>
+          @if (gananciaLatente() !== null) {
+            <p class="kpi-value">
+              {{ (gananciaLatente() ?? 0) >= 0 ? '+' : '' }}{{ gananciaLatente() | currency:'EUR':'symbol':'1.0-0':'es' }}
+            </p>
+            <p class="kpi-caption">
+              {{ gananciaPercent() >= 0 ? '+' : '' }}{{ gananciaPercent() | number:'1.1-1':'es' }}%
+            </p>
+          } @else {
+            <p class="kpi-value muted">—</p>
+            <p class="kpi-caption">Sin datos</p>
+          }
+        </article>
+      </section>
+
+      <section class="two-col-row">
+        <article class="dashboard-card chart-card">
+          <header class="card-header">
+            <h2 class="card-title">Precio del oro · últimos 12 meses</h2>
+          </header>
+
+          @if (hasEnoughHistory()) {
+            <div class="chart-wrapper">
+              <svg [attr.viewBox]="'0 0 ' + chartWidth + ' ' + chartHeight" class="chart-svg" preserveAspectRatio="none">
+                @for (tick of yAxisLabels(); track tick.value) {
+                  <line
+                    x1="44"
+                    [attr.x2]="chartWidth - 20"
+                    [attr.y1]="tick.y"
+                    [attr.y2]="tick.y"
+                    stroke="rgb(240, 242, 244)"
+                    stroke-width="1"></line>
+                  <text
+                    x="38"
+                    [attr.y]="tick.y + 3"
+                    text-anchor="end"
+                    class="chart-axis-label">
+                    {{ tick.value | number:'1.0-0':'es' }}
+                  </text>
+                }
+
+                <path
+                  [attr.d]="chartAreaPath()"
+                  fill="rgba(247, 148, 29, 0.15)"
+                  stroke="none"></path>
+
+                <polyline
+                  [attr.points]="chartPolyline()"
+                  fill="none"
+                  stroke="rgb(247, 148, 29)"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"></polyline>
+
+                @if (lastChartPoint(); as lastPoint) {
+                  <circle
+                    [attr.cx]="lastPoint.x"
+                    [attr.cy]="lastPoint.y"
+                    r="5"
+                    fill="rgb(247, 148, 29)"
+                    stroke="#ffffff"
+                    stroke-width="2"></circle>
+                }
+
+                @for (xLabel of xAxisLabels(); track xLabel.label) {
+                  <text
+                    [attr.x]="xLabel.x"
+                    [attr.y]="chartHeight - 10"
+                    text-anchor="middle"
+                    class="chart-axis-label">
+                    {{ xLabel.label }}
+                  </text>
+                }
+              </svg>
+            </div>
+          } @else {
+            <div class="chart-placeholder">
+              <i class="pi pi-chart-line"></i>
+              <p>Acumulando datos…</p>
+              <span>El histórico se completará mes a mes con cada consulta del precio.</span>
+            </div>
+          }
+
+          <div class="chart-stats">
+            <div class="chart-stat">
+              <span class="stat-label">Spot hoy</span>
+              <span class="stat-value">
+                @if (spotPrice() !== null) {
+                  {{ spotPrice() | currency:'EUR':'symbol':'1.2-2':'es' }} / g
+                } @else {
+                  —
+                }
+              </span>
+            </div>
+            <div class="chart-stat">
+              <span class="stat-label">Tu precio medio</span>
+              <span class="stat-value">
+                @if (avgPricePerGram() > 0) {
+                  {{ avgPricePerGram() | currency:'EUR':'symbol':'1.2-2':'es' }} / g
+                } @else {
+                  —
+                }
+              </span>
+            </div>
+            <div class="chart-stat">
+              <span class="stat-label">Resultado</span>
+              <span
+                class="stat-value"
+                [class.stat-value--positive]="resultadoTotal() >= 0 && totalInvertido() > 0"
+                [class.stat-value--negative]="resultadoTotal() < 0">
+                @if (totalInvertido() > 0) {
+                  {{ resultadoTotal() >= 0 ? '+' : '' }}{{ resultadoTotal() | currency:'EUR':'symbol':'1.0-0':'es' }}
+                } @else {
+                  —
+                }
+              </span>
+            </div>
+          </div>
+        </article>
+
+        <article class="dashboard-card reparto-card">
+          <header class="card-header">
+            <h2 class="card-title">Reparto por formato</h2>
+          </header>
+
+          @if (repartoFormato().length > 0) {
+            <ul class="reparto-list">
+              @for (item of repartoFormato(); track item.formato) {
+                <li class="reparto-item">
+                  <div class="reparto-item__head">
+                    <span class="reparto-dot" [style.background]="item.color"></span>
+                    <span class="reparto-name">{{ item.formato }}</span>
+                    <span class="reparto-percent">{{ item.percentage | number:'1.0-0':'es' }}%</span>
+                  </div>
+                  <div class="reparto-bar">
+                    <div
+                      class="reparto-bar__fill"
+                      [style.width.%]="item.percentage"
+                      [style.background]="item.color"></div>
+                  </div>
+                  <div class="reparto-item__foot">
+                    <span class="reparto-grams">{{ item.totalGrams | number:'1.2-2':'es' }} g</span>
+                    <span class="reparto-value">
+                      @if (spotPrice() !== null) {
+                        {{ item.currentValue | currency:'EUR':'symbol':'1.0-0':'es' }}
+                      } @else {
+                        —
+                      }
+                    </span>
+                  </div>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="empty-inline">Todavía sin compras</p>
+          }
+        </article>
+      </section>
+
+      <section class="dashboard-card full-width">
+        <header class="card-header">
+          <h2 class="card-title">Compras de oro</h2>
+        </header>
+        <table class="compras-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Formato</th>
+              <th>Pieza</th>
+              <th class="align-right">Peso</th>
+              <th class="align-right">Precio / g</th>
+              <th class="align-right">Invertido</th>
+              <th class="align-right">Valor hoy</th>
+              <th class="align-right">Resultado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of tableRows(); track row.id) {
+              <tr class="table-row">
+                <td>{{ row.fechaLabel }}</td>
+                <td>
+                  <span [class]="formatoBadgeClass(row.formato)">{{ row.formato }}</span>
+                </td>
+                <td>{{ row.pieza }}</td>
+                <td class="align-right">{{ row.peso | number:'1.2-2':'es' }} g</td>
+                <td class="align-right">{{ row.precioG | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                <td class="align-right">{{ row.invertido | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                <td class="align-right">
+                  @if (spotPrice() !== null) {
+                    {{ row.valorHoy | currency:'EUR':'symbol':'1.0-0':'es' }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td
+                  class="align-right"
+                  [class.positive]="row.resultado >= 0 && spotPrice() !== null"
+                  [class.negative]="row.resultado < 0 && spotPrice() !== null">
+                  @if (spotPrice() !== null) {
+                    {{ row.resultado >= 0 ? '+' : '' }}{{ row.resultado | currency:'EUR':'symbol':'1.0-0':'es' }}
+                  } @else {
+                    —
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="empty-cell">Todavía no has registrado compras de oro.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    </section>
+  </main>
+
+  @if (dialogVisible()) {
+    <div class="edit-overlay" (click)="closeCompraDialog()">
+      <div class="edit-dialog" (click)="$event.stopPropagation()">
+        <header class="edit-dialog__header">
+          <h3 class="edit-dialog__title">Registrar compra</h3>
+          <button type="button" class="edit-dialog__close" aria-label="Cerrar" (click)="closeCompraDialog()">
+            <i class="pi pi-times"></i>
+          </button>
+        </header>
+        <form class="edit-dialog__body" (ngSubmit)="submitCompra()">
+          <div class="edit-field">
+            <label for="compra-fecha">Fecha</label>
+            <input
+              id="compra-fecha"
+              type="date"
+              [ngModel]="newCompraFecha()"
+              (ngModelChange)="newCompraFecha.set($event)"
+              name="fecha" />
+          </div>
+
+          <div class="edit-field">
+            <label for="compra-formato">Formato</label>
+            <select
+              id="compra-formato"
+              [ngModel]="newCompraFormato()"
+              (ngModelChange)="newCompraFormato.set($event)"
+              name="formato">
+              @for (option of formatoOptions; track option) {
+                <option [value]="option">{{ option }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="edit-field">
+            <label for="compra-pieza">Pieza</label>
+            <input
+              id="compra-pieza"
+              type="text"
+              placeholder="Ej. Valcambi 50g"
+              [ngModel]="newCompraPieza()"
+              (ngModelChange)="newCompraPieza.set($event)"
+              name="pieza" />
+          </div>
+
+          <div class="edit-field">
+            <label for="compra-gramos">Peso (g)</label>
+            <input
+              id="compra-gramos"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0"
+              [ngModel]="newCompraGramos()"
+              (ngModelChange)="newCompraGramos.set($event)"
+              name="gramos" />
+          </div>
+
+          <div class="edit-field">
+            <label for="compra-precio">Precio total invertido (€)</label>
+            <input
+              id="compra-precio"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0"
+              [ngModel]="newCompraPrecio()"
+              (ngModelChange)="newCompraPrecio.set($event)"
+              name="precio" />
+          </div>
+
+          <footer class="edit-dialog__footer">
+            <button type="button" class="ghost-button" (click)="closeCompraDialog()" [disabled]="saving()">Cancelar</button>
+            <button type="submit" class="primary-button" [disabled]="!canSubmitCompra() || saving()">
+              @if (saving()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              <span>Guardar</span>
+            </button>
+          </footer>
+        </form>
+      </div>
+    </div>
+  }
+</div>

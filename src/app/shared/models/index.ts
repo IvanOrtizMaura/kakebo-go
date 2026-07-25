@@ -151,6 +151,15 @@ export interface InversionOro {
   precio_compra: number;
   fechaCompra?: Date;
   created_at: string;
+  formato?: 'Lingote' | 'Moneda' | 'Joyería';
+  pieza?: string;
+}
+
+export interface GoldPriceSnapshot {
+  price: number;
+  fetchedAt: string;
+  month: number;
+  year: number;
 }
 
 export interface BudgetItem {  id: string;
