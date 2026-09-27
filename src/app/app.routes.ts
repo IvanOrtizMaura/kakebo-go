@@ -18,8 +18,12 @@ export const routes: Routes = [
     canActivate: [authGuard, onboardingGuard],
     children: [
       { path: 'm/:year/:month', loadComponent: () => import('./features/month/month-view/month-view.component').then(m => m.MonthViewComponent) },
-      { path: 'settings', loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent) },
     ]
+  },
+  {
+    path: 'settings',
+    loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent),
+    canActivate: [authGuard, onboardingGuard]
   },
   {
     path: 'home',

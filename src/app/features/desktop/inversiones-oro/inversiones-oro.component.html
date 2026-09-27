@@ -17,6 +17,10 @@
           <span class="nav-name">Oro</span>
           <span class="gold-dot"></span>
         </li>
+        <li class="nav-row nav-row--disabled">
+          <span class="nav-name">Pensiones</span>
+          <span class="nav-soon">Próximamente</span>
+        </li>
       </ul>
     </div>
 
@@ -256,9 +260,12 @@
               <th>Pieza</th>
               <th class="align-right">Peso</th>
               <th class="align-right">Precio / g</th>
+              <th class="align-right">Spot compra</th>
+              <th class="align-right">Prima</th>
               <th class="align-right">Invertido</th>
               <th class="align-right">Valor hoy</th>
               <th class="align-right">Resultado</th>
+              <th class="th-actions"></th>
             </tr>
           </thead>
           <tbody>
@@ -271,6 +278,23 @@
                 <td>{{ row.pieza }}</td>
                 <td class="align-right">{{ row.peso | number:'1.2-2':'es' }} g</td>
                 <td class="align-right">{{ row.precioG | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                <td class="align-right">
+                  @if (row.spotCompra !== null) {
+                    {{ row.spotCompra | currency:'EUR':'symbol':'1.2-2':'es' }}/g
+                  } @else {
+                    <span class="muted">—</span>
+                  }
+                </td>
+                <td class="align-right">
+                  @if (row.prima !== null && row.primaPercent !== null) {
+                    <span class="prima-cell" [class.prima-positive]="row.prima >= 0" [class.prima-negative]="row.prima < 0">
+                      {{ row.prima >= 0 ? '+' : '' }}{{ row.prima | number:'1.2-2':'es' }}€/g
+                      ({{ row.primaPercent >= 0 ? '+' : '' }}{{ row.primaPercent | number:'1.1-1':'es' }}%)
+                    </span>
+                  } @else {
+                    <span class="muted">—</span>
+                  }
+                </td>
                 <td class="align-right">{{ row.invertido | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
                 <td class="align-right">
                   @if (spotPrice() !== null) {
@@ -289,10 +313,31 @@
                     —
                   }
                 </td>
+                <td class="row-actions">
+                  <button
+                    type="button"
+                    class="row-action-btn row-action-btn--edit"
+                    title="Editar"
+                    (click)="openEditDialog(row)">
+                    <i class="pi pi-pencil"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="row-action-btn row-action-btn--delete"
+                    title="Eliminar"
+                    [disabled]="deletingId() === row.id"
+                    (click)="deleteCompra(row.id)">
+                    @if (deletingId() === row.id) {
+                      <i class="pi pi-spin pi-spinner"></i>
+                    } @else {
+                      <i class="pi pi-trash"></i>
+                    }
+                  </button>
+                </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="8" class="empty-cell">Todavía no has registrado compras de oro.</td>
+                <td colspan="11" class="empty-cell">Todavía no has registrado compras de oro.</td>
               </tr>
             }
           </tbody>
@@ -305,7 +350,7 @@
     <div class="edit-overlay" (click)="closeCompraDialog()">
       <div class="edit-dialog" (click)="$event.stopPropagation()">
         <header class="edit-dialog__header">
-          <h3 class="edit-dialog__title">Registrar compra</h3>
+          <h3 class="edit-dialog__title">{{ editingId() ? 'Editar compra' : 'Registrar compra' }}</h3>
           <button type="button" class="edit-dialog__close" aria-label="Cerrar" (click)="closeCompraDialog()">
             <i class="pi pi-times"></i>
           </button>
@@ -330,6 +375,19 @@
               name="formato">
               @for (option of formatoOptions; track option) {
                 <option [value]="option">{{ option }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="edit-field">
+            <label for="compra-quilates">Quilates</label>
+            <select
+              id="compra-quilates"
+              [ngModel]="newCompraPureza()"
+              (ngModelChange)="newCompraPureza.set(+$event)"
+              name="quilates">
+              @for (opt of quilatesOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
               }
             </select>
           </div>

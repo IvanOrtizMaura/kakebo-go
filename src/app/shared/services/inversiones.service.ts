@@ -6,6 +6,7 @@ import {
   collectionData,
   doc,
   addDoc,
+  updateDoc,
   deleteDoc,
   query,
   orderBy
@@ -39,6 +40,12 @@ export class InversionesService {
 
   async add(item: Omit<InversionOro, 'id'>): Promise<void> {
     await addDoc(this.inversionesCol(), item);
+  }
+
+  async update(id: string, changes: Partial<Omit<InversionOro, 'id'>>): Promise<void> {
+    const inversionRef = doc(this.firestore, 'users', this.uid, 'inversiones', id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateDoc(inversionRef, changes as any);
   }
 
   async remove(id: string): Promise<void> {

@@ -1,5 +1,5 @@
 import { Component, signal, computed, inject, OnDestroy } from '@angular/core';
-import { CurrencyPipe, Location } from '@angular/common';
+import { CurrencyPipe, DecimalPipe, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Dialog } from 'primeng/dialog';
@@ -11,17 +11,23 @@ import { IngresosService } from '../../shared/services/ingresos.service';
 import { FacturasService } from '../../shared/services/facturas.service';
 import { SectionService } from '../../shared/services/section.service';
 import { FondosAhorroService } from '../../shared/services/fondos-ahorro.service';
+import { InversionesService } from '../../shared/services/inversiones.service';
+import { DeudasInformalesService, DeudaInformal } from '../../shared/services/deudas-informales.service';
+import { DashboardLayoutService } from '../../shared/services/dashboard-layout.service';
 import {
   Ingreso,
   Factura,
   Gasto,
   Ahorro,
   Pareja,
-  DeudaSection,
   FondoAhorro,
-  FondoAhorroMonthly
+  FondoAhorroMonthly,
+  InversionOro,
+  DashboardBlockKey,
+  DashboardCategoryKey
 } from '../../shared/models';
 import { MONTH_NAMES } from '../../shared/constants/months';
+import { MasonryGridDirective } from '../../shared/directives/masonry-grid.directive';
 
 interface SidebarMonth {
   index: number;
@@ -72,6 +78,17 @@ interface DonutCategory {
   value: number;
 }
 
+/** Una fila del dashboard: o un bloque a ancho completo, o hasta 3 compactos. */
+interface DashboardRow {
+  id: string;
+  compact: boolean;
+  blocks: DashboardBlockKey[];
+}
+
+/** Bloques que comparten fila cuando quedan contiguos tras reordenar/ocultar. */
+const COMPACT_BLOCKS = new Set<DashboardBlockKey>(['distribucion', 'resumen', 'objetivo']);
+const COMPACT_ROW_SIZE = 3;
+
 const DONUT_RADIUS = 45;
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
 const DONUT_CX = 93;
@@ -99,7 +116,7 @@ interface DestinationOption {
   value: DestinationTable;
 }
 
-type EditDialogType = 'ingreso' | 'factura' | 'gasto' | 'ahorro' | 'pareja' | 'deuda';
+type EditDialogType = 'ingreso' | 'factura' | 'gasto' | 'ahorro' | 'pareja';
 
 interface EditDialogState {
   type: EditDialogType;
@@ -109,7 +126,7 @@ interface EditDialogState {
 @Component({
   selector: 'app-desktop',
   standalone: true,
-  imports: [CurrencyPipe, FormsModule, Dialog, Select],
+  imports: [CurrencyPipe, DecimalPipe, FormsModule, Dialog, Select, MasonryGridDirective],
   templateUrl: './desktop.component.html',
   styleUrl: './desktop.component.scss'
 })
@@ -123,6 +140,9 @@ export class DesktopComponent implements OnDestroy {
   private readonly facturasService = inject(FacturasService);
   private readonly sectionService = inject(SectionService);
   private readonly fondosAhorroService = inject(FondosAhorroService);
+  private readonly inversionesService = inject(InversionesService);
+  private readonly deudasInformalesService = inject(DeudasInformalesService);
+  private readonly dashboardLayoutService = inject(DashboardLayoutService);
 
   readonly donutCX = DONUT_CX;
   readonly donutCY = DONUT_CY;
@@ -143,15 +163,18 @@ export class DesktopComponent implements OnDestroy {
 
   private readonly monthDataPresence = signal<Record<number, boolean>>({});
   private subs: Subscription[] = [];
+  private inversionesSubscription: Subscription | null = null;
+  private deudasSubscription: Subscription | null = null;
 
   private readonly ingresosData = signal<Ingreso[]>([]);
   private readonly facturasData = signal<Factura[]>([]);
   private readonly gastosData = signal<Gasto[]>([]);
   private readonly ahorrosData = signal<Ahorro[]>([]);
   private readonly parejaData = signal<Pareja[]>([]);
-  private readonly deudasData = signal<DeudaSection[]>([]);
+  private readonly deudasData = signal<DeudaInformal[]>([]);
   private readonly fondosActive = signal<FondoAhorro[]>([]);
   private readonly fondosMonthly = signal<FondoAhorroMonthly[]>([]);
+  private readonly inversionesAll = signal<InversionOro[]>([]);
   private readonly resolvedMonthId = signal<string | null>(null);
   readonly monthExists = signal<boolean>(false);
   readonly monthLoading = signal<boolean>(false);
@@ -159,6 +182,33 @@ export class DesktopComponent implements OnDestroy {
   readonly copyMessage = signal<{ text: string; type: 'success' | 'error' } | null>(null);
 
   readonly currentMonthName = computed(() => MONTH_NAMES[this.selectedMonthIndex()]);
+
+  /** Layout configurable desde Configuración › Editar grid. */
+  readonly dashboardLayout = this.dashboardLayoutService.layout;
+
+  readonly visibleCategoryKeys = computed<DashboardCategoryKey[]>(() =>
+    this.dashboardLayout().categories.filter(entry => entry.visible).map(entry => entry.key)
+  );
+
+  /**
+   * Agrupa los bloques visibles en filas: los compactos contiguos comparten
+   * fila (hasta 3), el resto ocupa el ancho completo. Así ocultar o reordenar
+   * nunca deja media fila vacía.
+   */
+  readonly dashboardRows = computed<DashboardRow[]>(() => {
+    const rows: DashboardRow[] = [];
+    for (const entry of this.dashboardLayout().blocks) {
+      if (!entry.visible) continue;
+      const compact = COMPACT_BLOCKS.has(entry.key);
+      const last = rows[rows.length - 1];
+      if (compact && last?.compact && last.blocks.length < COMPACT_ROW_SIZE) {
+        last.blocks.push(entry.key);
+      } else {
+        rows.push({ id: entry.key, compact, blocks: [entry.key] });
+      }
+    }
+    return rows;
+  });
 
   readonly sidebarMonths = computed<SidebarMonth[]>(() => {
     const activeIndex = this.selectedMonthIndex();
@@ -211,9 +261,35 @@ export class DesktopComponent implements OnDestroy {
     this.parejaData().reduce((sum, item) => sum + (item.presupuestado || 0), 0)
   );
 
+  // Only count valid deuda records (presupuestado > 0)
   readonly totalDeudasReal = computed(() =>
-    this.deudasData().reduce((sum, item) => sum + (item.real || 0), 0)
+    this.deudasData().filter(i => i.presupuestado > 0).reduce((sum, item) => sum + (item.real || 0), 0)
   );
+
+  readonly totalDeudasPresupuestado = computed(() =>
+    this.deudasData().filter(i => i.presupuestado > 0).reduce((sum, item) => sum + (item.presupuestado || 0), 0)
+  );
+
+  readonly deudasCards = computed(() =>
+    this.deudasData()
+      .filter(item => item.presupuestado > 0)
+      .map(item => {
+        const pct = item.presupuestado > 0
+          ? Math.min(100, (item.real / item.presupuestado) * 100)
+          : 0;
+        return {
+          ...item,
+          total: item.presupuestado,
+          pct,
+          done: pct >= 100
+        };
+      })
+  );
+
+  readonly deudaDialogVisible = signal(false);
+  readonly deudaDialogItem = signal<DeudaInformal | null>(null);
+  readonly deudaPaymentAmount = signal<number | null>(null);
+  readonly deudaSaving = signal(false);
 
   readonly fondosCombined = computed<CategoryRow[]>(() => {
     const monthly = this.fondosMonthly();
@@ -244,8 +320,8 @@ export class DesktopComponent implements OnDestroy {
     this.totalGastosSectionReal() +
     this.totalAhorrosReal() +
     this.totalParejaReal() +
-    this.totalFondosReal() +
-    this.totalDeudasReal()
+    this.totalFondosReal()
+    // Deuda payments are already included as gastos entries in the month
   );
 
   readonly quedaPorGastar = computed(() => {
@@ -274,16 +350,23 @@ export class DesktopComponent implements OnDestroy {
     const referenceYear = this.selectedYear();
     const referenceMonth = this.selectedMonthIndex();
     const now = new Date();
-    let closestDays: number | null = null;
-    for (const item of pending) {
-      const day = Number(item.dia_de_paga);
-      if (Number.isNaN(day) || day <= 0) continue;
-      const payDate = new Date(referenceYear, referenceMonth, day);
-      const diff = Math.ceil((payDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      if (diff < 0) continue;
-      if (closestDays === null || diff < closestDays) closestDays = diff;
+    now.setHours(0, 0, 0, 0);
+
+    // Pick the entry with the highest expected amount (the main salary)
+    const main = [...pending].sort((a, b) => (b.esperado ?? 0) - (a.esperado ?? 0))[0];
+
+    const raw = main.dia_de_paga ?? '';
+    let payDate: Date;
+    if (raw.includes('-')) {
+      payDate = new Date(raw + 'T00:00:00');
+    } else {
+      const day = Number(raw);
+      if (Number.isNaN(day) || day <= 0) return null;
+      payDate = new Date(referenceYear, referenceMonth, day);
     }
-    return closestDays;
+    if (isNaN(payDate.getTime())) return null;
+    const diff = Math.ceil((payDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return diff >= 0 ? diff : null;
   });
 
   readonly kpiCards = computed<KpiCard[]>(() => {
@@ -334,11 +417,12 @@ export class DesktopComponent implements OnDestroy {
   });
 
   readonly ahorroObjetivo = computed(() => {
-    const presupuestado = this.totalAhorrosPresupuestado() + this.totalFondosPresupuestado();
+    // Target = 20% of expected income
+    const objetivo = Math.round(this.totalIngresosEsperado() * 0.20);
     const real = this.totalAhorrosReal() + this.totalFondosReal();
-    const percentage = presupuestado > 0 ? Math.min(100, Math.round((real / presupuestado) * 100)) : 0;
+    const percentage = objetivo > 0 ? Math.min(100, Math.round((real / objetivo) * 100)) : 0;
     const dashOffset = RING_CIRCUMFERENCE - (percentage / 100) * RING_CIRCUMFERENCE;
-    return { presupuestado, real, percentage, dashOffset };
+    return { presupuestado: objetivo, real, percentage, dashOffset };
   });
 
   readonly resumenPresupuesto = computed(() => {
@@ -348,13 +432,13 @@ export class DesktopComponent implements OnDestroy {
       { fuente: 'Ahorros', presupuestado: this.totalAhorrosPresupuestado(), real: this.totalAhorrosReal() },
       { fuente: 'Pareja', presupuestado: this.totalParejaPresupuestado(), real: this.totalParejaReal() },
       { fuente: 'Fondos', presupuestado: this.totalFondosPresupuestado(), real: this.totalFondosReal() }
-    ];
+    ].filter(row => row.presupuestado > 0 || row.real > 0);
     const totalPresupuestado = rows.reduce((sum, row) => sum + row.presupuestado, 0);
     const totalReal = rows.reduce((sum, row) => sum + row.real, 0);
     return { rows, totalPresupuestado, totalReal };
   });
 
-  readonly categoryTables = computed<CategoryTable[]>(() => [
+  private readonly allCategoryTables = computed<CategoryTable[]>(() => [
     this.buildCategoryTable('facturas', 'Facturas', this.facturasData().map(f => ({
       id: f.id,
       name: f.name,
@@ -385,6 +469,13 @@ export class DesktopComponent implements OnDestroy {
     }))),
     this.buildCategoryTable('fondos', 'Fondos de ahorro', this.fondosCombined())
   ]);
+
+  readonly categoryTables = computed<CategoryTable[]>(() => {
+    const byKey = new Map(this.allCategoryTables().map(table => [table.key, table]));
+    return this.visibleCategoryKeys()
+      .map(key => byKey.get(key))
+      .filter((table): table is CategoryTable => !!table);
+  });
 
   private buildCategoryTable(key: string, title: string, rows: CategoryRow[]): CategoryTable {
     const palette = CATEGORY_COLORS[key];
@@ -439,11 +530,23 @@ export class DesktopComponent implements OnDestroy {
     if (user) {
       this.loadMonthData(user.uid, this.selectedYear(), this.selectedMonthIndex() + 1);
       this.loadYearPresence(user.uid, this.selectedYear());
+      // Vuelve a leerlo en cada entrada: puede haberse editado en Configuración.
+      this.dashboardLayoutService.load(user.uid, true).catch(error =>
+        console.error('Error cargando el layout del dashboard:', error)
+      );
     }
+    this.inversionesSubscription = this.inversionesService
+      .getAll()
+      .subscribe(items => this.inversionesAll.set(items));
+    this.deudasSubscription = this.deudasInformalesService
+      .getAll()
+      .subscribe(items => this.deudasData.set(items));
   }
 
   ngOnDestroy(): void {
     this.subs.forEach(subscription => subscription.unsubscribe());
+    this.inversionesSubscription?.unsubscribe();
+    this.deudasSubscription?.unsubscribe();
   }
 
   private readInitialMonthIndex(): number {
@@ -479,7 +582,6 @@ export class DesktopComponent implements OnDestroy {
     this.gastosData.set([]);
     this.ahorrosData.set([]);
     this.parejaData.set([]);
-    this.deudasData.set([]);
     this.fondosMonthly.set([]);
     this.resolvedMonthId.set(null);
     this.monthLoading.set(true);
@@ -495,8 +597,7 @@ export class DesktopComponent implements OnDestroy {
         this.facturasService.getAll(monthId).subscribe(items => this.facturasData.set(items)),
         this.sectionService.gastos.getAll(monthId).subscribe(items => this.gastosData.set(items as unknown as Gasto[])),
         this.sectionService.ahorros.getAll(monthId).subscribe(items => this.ahorrosData.set(items as unknown as Ahorro[])),
-        this.sectionService.pareja.getAll(monthId).subscribe(items => this.parejaData.set(items as unknown as Pareja[])),
-        this.sectionService.deudas.getAll(monthId).subscribe(items => this.deudasData.set(items as unknown as DeudaSection[]))
+        this.sectionService.pareja.getAll(monthId).subscribe(items => this.parejaData.set(items as unknown as Pareja[]))
       );
 
       const [fondosActive, fondosMonthly] = await Promise.all([
@@ -541,8 +642,44 @@ export class DesktopComponent implements OnDestroy {
     this.gastosData().length > 0 ||
     this.ahorrosData().length > 0 ||
     this.parejaData().length > 0 ||
-    this.fondosActive().length > 0
+    // fondosActive is a global list of fund definitions, not month data — using
+    // it here made every month look populated and hid the empty state.
+    this.fondosMonthly().length > 0
   );
+
+  readonly inversionesMes = computed(() => {
+    const year = this.selectedYear();
+    const monthIndex = this.selectedMonthIndex();
+    return this.inversionesAll().filter(inv => {
+      const fecha = this.parseFechaInversion(inv.fechaCompra, inv.created_at);
+      return fecha.getFullYear() === year && fecha.getMonth() === monthIndex;
+    });
+  });
+
+  readonly totalInvertidoMes = computed(() =>
+    this.inversionesMes().reduce((sum, inv) => sum + (inv.precio_compra || 0), 0)
+  );
+
+  private parseFechaInversion(fechaCompra: Date | undefined, createdAt: string): Date {
+    if (fechaCompra) {
+      if (fechaCompra instanceof Date) return fechaCompra;
+      const anyDate = fechaCompra as unknown as { seconds?: number; toDate?: () => Date };
+      if (typeof anyDate.toDate === 'function') return anyDate.toDate();
+      if (typeof anyDate.seconds === 'number') return new Date(anyDate.seconds * 1000);
+      const parsed = new Date(fechaCompra as unknown as string);
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+    return new Date(createdAt);
+  }
+
+  formatoBadgeMini(formato: string): string {
+    switch (formato) {
+      case 'Lingote': return 'formato-mini--lingote';
+      case 'Moneda': return 'formato-mini--moneda';
+      case 'Joyería': return 'formato-mini--joyeria';
+      default: return 'formato-mini--lingote';
+    }
+  }
 
   openAddMovementDialog(): void {
     this.newMovementDestination.set(null);
@@ -569,7 +706,7 @@ export class DesktopComponent implements OnDestroy {
     const amount = this.newMovementAmount() as number;
     const isPlan = this.newMovementMode() === 'plan';
     const realVal = isPlan ? 0 : amount;
-    const presupuestoVal = amount;
+    const presupuestoVal = isPlan ? amount : 0;
 
     try {
       switch (destination) {
@@ -647,6 +784,17 @@ export class DesktopComponent implements OnDestroy {
           break;
         }
       }
+
+      if (!isPlan && (destination === 'gastos' || destination === 'ahorros' || destination === 'pareja')) {
+        await this.deudasInformalesService.add({
+          user_id: user.uid,
+          name: description,
+          presupuestado: amount,
+          real: 0,
+          created_at: new Date().toISOString()
+        });
+      }
+
       this.closeAddMovementDialog();
     } catch (error) {
       console.error('Error añadiendo movimiento:', error);
@@ -693,10 +841,10 @@ export class DesktopComponent implements OnDestroy {
       );
 
       await Promise.all([
+        this.copyFacturasFromPrevious(previousMonth.id, currentMonth.id, user.uid),
         this.copySectionFromPrevious('gastos', previousMonth.id, currentMonth.id, user.uid),
         this.copySectionFromPrevious('ahorros', previousMonth.id, currentMonth.id, user.uid),
-        this.copySectionFromPrevious('pareja', previousMonth.id, currentMonth.id, user.uid),
-        this.copySectionFromPrevious('deudas', previousMonth.id, currentMonth.id, user.uid)
+        this.copySectionFromPrevious('pareja', previousMonth.id, currentMonth.id, user.uid)
       ]);
 
       await this.loadMonthData(user.uid, this.selectedYear(), this.selectedMonthIndex() + 1);
@@ -709,8 +857,28 @@ export class DesktopComponent implements OnDestroy {
     }
   }
 
+  private async copyFacturasFromPrevious(
+    previousMonthId: string,
+    currentMonthId: string,
+    userId: string
+  ): Promise<void> {
+    const previousRows = await this.facturasService.getByMonth(previousMonthId);
+    const currentRows = await this.facturasService.getByMonth(currentMonthId);
+    const currentNames = new Set(currentRows.map(r => r.name));
+    for (const row of previousRows) {
+      if (currentNames.has(row.name)) continue;
+      const { id: _id, ...copy } = row;
+      await this.facturasService.add({
+        ...copy,
+        month_id: currentMonthId,
+        user_id: userId,
+        real: 0,
+      });
+    }
+  }
+
   private async copySectionFromPrevious(
-    section: 'gastos' | 'ahorros' | 'pareja' | 'deudas',
+    section: 'gastos' | 'ahorros' | 'pareja',
     previousMonthId: string,
     currentMonthId: string,
     userId: string
@@ -860,7 +1028,6 @@ export class DesktopComponent implements OnDestroy {
         };
       case 'ahorro':
       case 'pareja':
-      case 'deuda':
       default:
         return {
           name: (row['name'] as string) ?? '',
@@ -902,9 +1069,6 @@ export class DesktopComponent implements OnDestroy {
           break;
         case 'pareja':
           await this.sectionService.pareja.update(rowId, changes, monthId);
-          break;
-        case 'deuda':
-          await this.sectionService.deudas.update(rowId, changes, monthId);
           break;
       }
       await this.loadMonthData(user.uid, this.selectedYear(), this.selectedMonthIndex() + 1);
@@ -953,13 +1117,58 @@ export class DesktopComponent implements OnDestroy {
         };
       case 'ahorro':
       case 'pareja':
-      case 'deuda':
       default:
         return {
           name: String(values['name'] ?? ''),
           presupuestado: numberOrZero(values['presupuestado']),
           real: numberOrZero(values['real'])
         };
+    }
+  }
+
+  openDeudaDialog(item: DeudaInformal): void {
+    this.deudaDialogItem.set(item);
+    this.deudaPaymentAmount.set(null);
+    this.deudaDialogVisible.set(true);
+  }
+
+  async deleteDeuda(id: string): Promise<void> {
+    try {
+      await this.deudasInformalesService.remove(id);
+    } catch (error) {
+      console.error('Error eliminando deuda:', error);
+    }
+  }
+
+  async submitDeudaPayment(): Promise<void> {
+    const item = this.deudaDialogItem();
+    const amount = this.deudaPaymentAmount();
+    const monthId = this.resolvedMonthId();
+    const user = this.authService.currentUser;
+    if (!item || !amount || amount <= 0 || !monthId || !user) return;
+
+    this.deudaSaving.set(true);
+    try {
+      // Update debt progress
+      const newReal = Math.min((item.real || 0) + amount, item.presupuestado);
+      await this.deudasInformalesService.update(item.id, { real: newReal });
+
+      // Also record as a gasto in the current month so balance reflects correctly
+      await this.sectionService.gastos.add({
+        month_id: monthId,
+        user_id: user.uid,
+        name: `Pago deuda: ${item.name}`,
+        presupuestado: 0,
+        real: amount,
+        tipo: 'variables',
+        order_index: this.gastosData().length
+      });
+
+      this.deudaDialogVisible.set(false);
+    } catch (error) {
+      console.error('Error registrando pago de deuda:', error);
+    } finally {
+      this.deudaSaving.set(false);
     }
   }
 

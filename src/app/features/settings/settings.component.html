@@ -1,422 +1,872 @@
-<div class="settings-page">
-  <h1 class="page-title">Configuración</h1>
+<div class="settings-root" [class.settings-root--dimmed]="showResetConfirm()">
+<div class="settings-shell" [class.settings-shell--source]="showSourceSidebar()">
+  @if (showSourceSidebar()) {
+    <!-- Sidebar "source list" (desktop, sub-vistas): mismo patrón que Inversiones/Oro -->
+    <aside class="src-sidebar">
+      <div class="src-brand">
+        <div class="src-brand-tile">
+          <img src="/kakebogo-mark.svg" alt="" class="src-brand-logo">
+        </div>
+        <div class="src-brand-copy">
+          <span class="src-brand-title">KakeboGo</span>
+          <span class="src-brand-subtitle">Presupuesto doméstico</span>
+        </div>
+      </div>
 
-  <!-- ── Ingresos Fijos ─────────────────────────────────────── -->
-  <section class="settings-section">
-    <div class="section-header">
-      <h2 class="section-title">Ingresos Fijos</h2>
-      <p class="section-desc">Configura tus fuentes de ingreso recurrentes. Se copiarán automáticamente al abrir cada mes nuevo.</p>
-    </div>
+      <nav class="src-section" aria-label="Configuración">
+        <button type="button" class="src-section-label" title="Volver a Configuración" (click)="backToHub()">Configuración</button>
+        <ul class="src-nav-list">
+          @for (card of configCards(); track card.view) {
+            <li>
+              <button
+                type="button"
+                class="src-nav-row"
+                [class.active]="activeView() === card.view"
+                [attr.aria-current]="activeView() === card.view ? 'page' : null"
+                [disabled]="card.disabled"
+                (click)="openView(card.view)">
+                <span class="src-nav-name">{{ card.title }}</span>
+                @if (card.pill) {
+                  <span class="src-nav-pill">{{ card.pill }}</span>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      </nav>
 
-    <div class="items-list">
-      @for (t of templates(); track t.id) {
-        <div class="list-item">
-          @if (editingTemplateId() === t.id) {
-            <div class="edit-row">
-              <input class="inp" [(ngModel)]="editTplFuente" placeholder="Fuente" />
-              <input class="inp w-sm" type="number" [(ngModel)]="editTplEsperado" placeholder="Importe €" min="0" />
-              <button class="btn-save" (click)="saveTemplate(t.id)">Guardar</button>
-              <button class="btn-cancel" (click)="cancelEditTemplate()">✕</button>
-            </div>
-          } @else {
-            <div class="item-info">
-              <span class="item-name">{{ t.fuente }}</span>
-              <span class="item-meta">
-                {{ t.esperado | currency:'EUR':'symbol':'1.0-0':'es' }}
+      <div class="src-sidebar-footer">
+        <button type="button" class="src-footer-row" (click)="goBack()">
+          <i class="pi pi-arrow-left" aria-hidden="true"></i>
+          <span>Volver al dashboard</span>
+        </button>
+      </div>
+    </aside>
+  } @else {
+    <aside class="settings-sidebar">
+      <div class="brand-block">
+        <img src="/kakebogo-mark.svg" alt="KakeboGo" class="brand-logo">
+        <span class="brand-title">KakeboGo</span>
+      </div>
+      <nav class="sidebar-nav">
+        <button type="button" class="nav-row" (click)="goBack()">
+          <i class="pi pi-arrow-left"></i>
+          <span>Volver</span>
+        </button>
+      </nav>
+    </aside>
+  }
+
+  <main class="settings-main" [class.settings-main--source]="showSourceSidebar()">
+  @if (showSourceSidebar()) {
+    <header class="topbar">
+      <div class="topbar-title">
+        <span class="topbar-caption">{{ activeViewCaption() }}</span>
+        <h1 class="topbar-heading">{{ activeViewTitle() }}</h1>
+      </div>
+    </header>
+  }
+<div class="settings-page" [class.settings-page--source]="showSourceSidebar()">
+
+  <!-- ── Header / Breadcrumb ────────────────────────────────── -->
+  @if (activeView() === 'hub') {
+    <header class="page-header">
+      <h1 class="page-title">Configuración</h1>
+      <p class="page-subtitle">Define una vez tus fondos de ahorro y deudas. Se aplicarán automáticamente cada mes.</p>
+    </header>
+  } @else if (!showSourceSidebar()) {
+    <header class="page-header">
+      <nav class="breadcrumb">
+        <button type="button" class="breadcrumb-link" (click)="backToHub()">Configuración</button>
+        <span class="breadcrumb-separator">›</span>
+        <span class="breadcrumb-current">{{ activeViewTitle() }}</span>
+      </nav>
+      <div class="breadcrumb-heading">
+        <button type="button" class="btn-back" pTooltip="Volver a Configuración" tooltipPosition="right" (click)="backToHub()">
+          <i class="pi pi-arrow-left"></i>
+        </button>
+        <h1 class="page-title">{{ activeViewTitle() }}</h1>
+      </div>
+    </header>
+  }
+
+  <!-- ── Config Hub ─────────────────────────────────────────── -->
+  @if (activeView() === 'hub') {
+    <div class="config-hub">
+      <div class="cards-grid">
+        @for (card of configCards(); track card.view) {
+          <button
+            type="button"
+            class="config-card"
+            [class.config-card--soon]="card.disabled"
+            [disabled]="card.disabled"
+            [attr.aria-disabled]="card.disabled || null"
+            [title]="card.disabled ? 'Disponible próximamente' : null"
+            (click)="openView(card.view)">
+            <span class="config-card-icon" [class]="card.accentClass">{{ card.initial }}</span>
+            <span class="config-card-body">
+              <span class="config-card-heading">
+                <span class="config-card-title">{{ card.title }}</span>
+                @if (card.pill) {
+                  <span class="config-card-pill" [class.config-card-pill--soon]="card.disabled">{{ card.pill }}</span>
+                }
               </span>
-            </div>
-            <div class="item-actions">
-              <button class="btn-icon" title="Editar" (click)="startEditTemplate(t)">
-                <i class="pi pi-pencil"></i>
-              </button>
-              <button class="btn-icon danger" title="Eliminar" (click)="removeTemplate(t.id)">
-                <i class="pi pi-trash"></i>
-              </button>
-            </div>
-          }
-        </div>
-      }
-      @if (templates().length === 0) {
-        <p class="empty-hint">Sin ingresos fijos. Añade uno abajo.</p>
-      }
-    </div>
-
-    <div class="add-form">
-      <h3 class="add-title">Nuevo ingreso fijo</h3>
-      <div class="form-row">
-        <input class="inp" [(ngModel)]="newTplFuente" placeholder="Fuente (ej: Nómina)" />
-        <input class="inp w-sm" type="number" [(ngModel)]="newTplEsperado" placeholder="Importe esperado €" min="0" />
-        <button class="btn-add" (click)="addTemplate()" [disabled]="!newTplFuente.trim()">
-          <i class="pi pi-plus"></i> Añadir
-        </button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── Deudas ─────────────────────────────────────────────── -->
-  <section class="settings-section">
-    <div class="section-header">
-      <h2 class="section-title">Deudas</h2>
-      <p class="section-desc">Configura todas tus deudas. Se mostrarán automáticamente en todos los meses.</p>
-    </div>
-
-    <!-- Active debts list -->
-    <div class="items-list">
-      @for (d of deudas(); track d.id) {
-        <div class="list-item deuda-list-item">
-          @if (editingDeudaId() === d.id) {
-            <div class="edit-row">
-              <input class="inp" [(ngModel)]="editDeudaNombre" placeholder="Nombre" />
-              <input class="inp w-sm" type="number" [(ngModel)]="editDeudaCuota" placeholder="Cuota mensual €" min="0" step="0.01" />
-              <input class="inp w-xs" type="number" [(ngModel)]="editDeudaMeses" placeholder="Nº meses" min="1" title="Dejar vacío = indefinida" />
-              <button class="btn-save" (click)="saveDeuda(d.id)">Guardar</button>
-              <button class="btn-cancel" (click)="cancelEditDeuda()">✕</button>
-            </div>
-          } @else {
-            <div class="item-info">
-              <div class="deuda-badges-row">
-                <span class="item-name">{{ d.name }}</span>
-                <span class="badge" [class.badge-bank]="d.type==='bank'" [class.badge-savings]="d.type==='savings'">
-                  {{ d.type === 'bank' ? 'Banco' : 'Ahorros' }}
-                </span>
-                @if (d.interest_rate > 0) {
-                  <span class="badge badge-interest">{{ d.interest_rate }}% TIN</span>
-                }
-              </div>
-              <span class="item-meta">
-                Capital: {{ d.principal_amount | currency:'EUR':'symbol':'1.2-2':'es' }}
-                · Total: {{ d.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }}
-                · Cuota: {{ d.monthly_payment | currency:'EUR':'symbol':'1.2-2':'es' }}/mes
-                @if (d.num_months) { · {{ d.num_months }} meses }
-                @else { · Indefinida }
-                @if (d.start_year && d.start_month) {
-                  · Inicio: {{ meses[d.start_month - 1] }} {{ d.start_year }}
-                }
-              </span>
-              <div class="deuda-remaining-bar">
-                <div class="remaining-fill" [style.width.%]="deudaProgress(d)"></div>
-              </div>
-              <span class="item-meta">Pendiente: {{ d.amount_remaining | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
-            </div>
-            <div class="item-actions">
-              <button class="btn-icon" title="Editar" (click)="startEditDeuda(d)">
-                <i class="pi pi-pencil"></i>
-              </button>
-              <button class="btn-icon danger" title="Archivar" (click)="archiveDeuda(d.id)">
-                <i class="pi pi-archive"></i>
-              </button>
-            </div>
-          }
-        </div>
-      }
-      @if (deudas().length === 0) {
-        <p class="empty-hint">Sin deudas activas. Añade una abajo.</p>
-      }
-      @if (deudas().length > 0) {
-        <div class="list-item deuda-total-row">
-          <span class="deuda-total-label">Total pendiente</span>
-          <span class="deuda-total-amount">{{ totalDeudaPendiente() | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
-        </div>
-      }
-    </div>
-
-    <!-- Archived debts toggle -->
-    <div class="archived-toggle-row">
-      <button class="btn-link" (click)="toggleDeudasArchivadas()">
-        <i class="pi pi-archive"></i>
-        {{ showDeudasArchivadas() ? 'Ocultar archivadas' : 'Ver deudas archivadas (' + deudasArchivadas().length + ')' }}
-      </button>
-    </div>
-    @if (showDeudasArchivadas()) {
-      <div class="items-list">
-        @for (d of deudasArchivadas(); track d.id) {
-          <div class="list-item archived-item">
-            <div class="item-info">
-              <span class="item-name">{{ d.name }} <span class="archived-badge">✓ Pagada</span></span>
-              <span class="item-meta">{{ d.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
-            </div>
-          </div>
-        }
-        @if (deudasArchivadas().length === 0) {
-          <p class="empty-hint">Sin deudas archivadas.</p>
+              <span class="config-card-desc">{{ card.description }}</span>
+            </span>
+            @if (!card.disabled) {
+              <span class="config-card-arrow">›</span>
+            }
+          </button>
         }
       </div>
-    }
-
-    <!-- Add form -->
-    <div class="add-form">
-      <h3 class="add-title">Nueva deuda</h3>
-      <div class="form-grid">
-        <div class="form-field">
-          <label>Nombre</label>
-          <input class="inp" [(ngModel)]="newDeudaNombre" placeholder="Ej: Préstamo coche" />
-        </div>
-        <div class="form-field">
-          <label>Tipo</label>
-          <select class="inp" [ngModel]="newDeudaTipo" (ngModelChange)="newDeudaTipo=$event; recalcCuota()">
-            <option value="bank">Préstamo banco</option>
-            <option value="savings">De mis ahorros</option>
-          </select>
-        </div>
-        <div class="form-field">
-          <label>Capital prestado (€)</label>
-          <input class="inp" type="number"
-            [ngModel]="newDeudaCapital" (ngModelChange)="newDeudaCapital=$event; recalcCuota()"
-            placeholder="0.00" min="0" step="0.01" />
-        </div>
-        <div class="form-field">
-          <label>TIN anual (%)</label>
-          @if (newDeudaTipo === 'savings') {
-            <div class="penalty-box">
-              <span class="penalty-rate">5%</span>
-              <span class="penalty-label">⚠️ Castigo por usar ahorros (fijo)</span>
-            </div>
-          } @else {
-            <input class="inp" type="number"
-              [ngModel]="newDeudaInteres" (ngModelChange)="newDeudaInteres=$event; recalcCuota()"
-              placeholder="Ej: 5.5" min="0" step="0.01" />
-          }
-        </div>
-        <div class="form-field">
-          <label>Nº de meses <span class="field-hint">(vacío = indefinida)</span></label>
-          <input class="inp" type="number"
-            [ngModel]="newDeudaMeses" (ngModelChange)="newDeudaMeses=$event; recalcCuota()"
-            placeholder="Ej: 60" min="1" step="1" />
-        </div>
-        <div class="form-field">
-          <label>Cuota mensual (€) <span class="field-hint">edita si no coincide</span></label>
-          <input class="inp" type="number" [(ngModel)]="newDeudaCuotaFinal" placeholder="0.00" min="0" step="0.01" />
-        </div>
-        @if (newDeudaMeses) {
-          <div class="form-field form-field-full">
-            <label>Mes de inicio</label>
-            <div class="month-start-row">
-              <select class="inp" [(ngModel)]="newDeudaStartMonth">
-                @for (m of meses; track $index) {
-                  <option [value]="$index + 1">{{ m }}</option>
-                }
-              </select>
-              <input class="inp year-input" type="number" [(ngModel)]="newDeudaStartYear" placeholder="Año" />
-            </div>
-          </div>
-        }
-      </div>
-      @if (newDeudaCapital > 0 && newDeudaCuotaFinal > 0) {
-        <div class="calc-preview">
-          <span>Total estimado: <strong>{{ (newDeudaMeses ? newDeudaCuotaFinal * newDeudaMeses : newDeudaCapital) | currency:'EUR':'symbol':'1.2-2':'es' }}</strong></span>
-          <span>Cuota registrada: <strong>{{ newDeudaCuotaFinal | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
-        </div>
-      }
-      <div class="form-action-row">
-        <button class="btn-add" (click)="addDeuda()" [disabled]="!newDeudaNombre.trim() || newDeudaCapital <= 0">
-          <i class="pi pi-plus"></i> Añadir deuda
-        </button>
-      </div>
     </div>
-  </section>
-
-  <!-- ── Ahorros ─────────────────────────────────────────────── -->
-  <section class="settings-section">
-    <div class="section-header">
-      <h2 class="section-title">Ahorros</h2>
-      <p class="section-desc">Configura tus categorías de ahorro. Se copiarán automáticamente al abrir cada mes nuevo.</p>
-    </div>
-
-    <div class="items-list">
-      @for (a of ahorroTemplates(); track a.id) {
-        <div class="list-item">
-          @if (editingAhorroId() === a.id) {
-            <div class="edit-row">
-              <input class="inp" [(ngModel)]="editAhorroNombre" placeholder="Nombre" />
-              <input class="inp w-sm" type="number" [(ngModel)]="editAhorroPresupuestado" placeholder="Presupuesto €" min="0" step="0.01" />
-              <button class="btn-save" (click)="saveAhorroTemplate(a.id)">Guardar</button>
-              <button class="btn-cancel" (click)="cancelEditAhorro()">✕</button>
-            </div>
-          } @else {
-            <div class="item-info">
-              <span class="item-name">{{ a.name }}</span>
-              <span class="item-meta">{{ a.presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}/mes</span>
-            </div>
-            <div class="item-actions">
-              <button class="btn-icon" title="Editar" (click)="startEditAhorro(a)">
-                <i class="pi pi-pencil"></i>
-              </button>
-              <button class="btn-icon danger" title="Eliminar" (click)="removeAhorroTemplate(a.id)">
-                <i class="pi pi-trash"></i>
-              </button>
-            </div>
-          }
-        </div>
-      }
-      @if (ahorroTemplates().length === 0) {
-        <p class="empty-hint">Sin categorías de ahorro. Añade una abajo.</p>
-      }
-    </div>
-
-    <div class="add-form">
-      <h3 class="add-title">Nueva categoría de ahorro</h3>
-      <div class="form-row">
-        <input class="inp" [(ngModel)]="newAhorroNombre" placeholder="Ej: Fondo emergencias" />
-        <input class="inp w-sm" type="number" [(ngModel)]="newAhorroPresupuestado" placeholder="Presupuesto mensual €" min="0" step="0.01" />
-        <button class="btn-add" (click)="addAhorroTemplate()" [disabled]="!newAhorroNombre.trim()">
-          <i class="pi pi-plus"></i> Añadir
-        </button>
-      </div>
-    </div>
-  </section>
+  }
 
   <!-- ── Fondos de Ahorro ───────────────────────────────────── -->
-  <section class="settings-section">
-    <div class="section-header">
-      <h2 class="section-title">Fondos de Ahorro</h2>
-      <p class="section-desc">Gastos grandes divididos en cuotas mensuales. Configúralos una vez y aparecerán automáticamente cada mes.</p>
-    </div>
+  @if (activeView() === 'fondos') {
+    <div class="detail-layout">
 
-    <div class="items-list">
-      @for (f of fondos(); track f.id) {
-        <div class="list-item">
-          @if (editingFondoId() === f.id) {
-            <div class="edit-row">
-              <input class="inp" [(ngModel)]="editFondoNombre" placeholder="Nombre" />
-              <input class="inp w-sm" type="number" [(ngModel)]="editFondoTotal" placeholder="Total €" min="0" step="0.01"
-                (ngModelChange)="editFondoMonthly = editFondoTotal / (editFondoMeses || 11)" />
-              <input class="inp w-xs" type="number" [(ngModel)]="editFondoMeses" placeholder="Meses" min="1"
-                (ngModelChange)="editFondoMonthly = editFondoTotal / (editFondoMeses || 11)" />
-              <button class="btn-save" (click)="saveFondo(f.id)">Guardar</button>
-              <button class="btn-cancel" (click)="cancelEditFondo()">✕</button>
-            </div>
+      <div class="detail-main">
+        <!-- KPI strip -->
+        <div class="settings-card kpi-strip">
+          <div class="kpi-item">
+            <span class="kpi-label">Fondos activos</span>
+            <span class="kpi-value">{{ fondosSummary().count }}</span>
+          </div>
+          <div class="kpi-item">
+            <span class="kpi-label">Cuota mensual</span>
+            <span class="kpi-value">{{ fondosSummary().cuota | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+          </div>
+          <div class="kpi-item">
+            <span class="kpi-label">Objetivo total</span>
+            <span class="kpi-value kpi-value-orange">{{ fondosSummary().objetivo | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+          </div>
+        </div>
+
+        <!-- Tabla de fondos -->
+        <div class="settings-card">
+          <div class="card-header">
+            <h2 class="card-title">Fondos activos</h2>
+            <p class="card-desc">Gastos grandes divididos en cuotas mensuales. Aparecerán automáticamente cada mes.</p>
+          </div>
+
+          @if (fondosTableRows().length === 0) {
+            <p class="empty-hint">Sin fondos de ahorro. Crea el primero en el formulario de la derecha.</p>
           } @else {
-            <div class="item-info">
-              <span class="item-name">{{ f.name }}</span>
-              <span class="item-meta">
-                {{ f.monthly_amount | currency:'EUR':'symbol':'1.2-2':'es' }}/mes
-                · Total: {{ f.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }}
-                · {{ f.num_months }} meses
-              </span>
-            </div>
-            <div class="item-actions">
-              <button class="btn-icon" title="Editar" (click)="startEditFondo(f)">
-                <i class="pi pi-pencil"></i>
-              </button>
-              <button class="btn-icon" title="Archivar" (click)="archiveFondo(f.id)">
-                <i class="pi pi-archive"></i>
-              </button>
-              <button class="btn-icon danger" title="Eliminar" (click)="deleteFondo(f.id)">
-                <i class="pi pi-trash"></i>
-              </button>
+            <div class="table-scroll">
+              <table class="settings-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th class="col-num">Cuota</th>
+                    <th class="col-num">Objetivo</th>
+                    <th class="col-num">Ahorrado</th>
+                    <th class="col-progress">Progreso</th>
+                    <th class="col-num">Meses</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of fondosTableRows(); track row.id) {
+                    <tr>
+                      <td class="cell-name">{{ row.name }}</td>
+                      <td class="col-num">{{ row.monthlyAmount | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                      <td class="col-num">{{ row.totalAmount | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                      <td class="col-num col-editable">
+                        @if (editingSavedId() === row.id) {
+                          <div class="inline-edit">
+                            <p-inputNumber [(ngModel)]="editingSavedAmount" mode="currency" currency="EUR"
+                              locale="es-ES" [min]="0" [max]="row.totalAmount" styleClass="inline-input"
+                              (keydown.enter)="saveEditSaved(row.id)"
+                              (keydown.escape)="cancelEditSaved()" />
+                            <button type="button" class="btn-inline-save" (click)="saveEditSaved(row.id)">✓</button>
+                            <button type="button" class="btn-inline-cancel" (click)="cancelEditSaved()">✕</button>
+                          </div>
+                        } @else {
+                          <span class="editable-value" (click)="startEditSaved(row)" title="Clic para editar">
+                            {{ row.savedAmount | currency:'EUR':'symbol':'1.0-0':'es' }}
+                            <i class="pi pi-pencil edit-hint"></i>
+                          </span>
+                        }
+                      </td>
+                      <td class="col-progress">
+                        <div class="fondo-bar-wrap">
+                          <div class="fondo-bar-fill" [style.width.%]="row.progressPercentage"></div>
+                        </div>
+                        <span class="fondo-bar-value">{{ row.progressPercentage }}%</span>
+                      </td>
+                      <td class="col-num">{{ row.numMonths }}</td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr class="table-total-row">
+                    <td>Total</td>
+                    <td class="col-num">{{ fondosSummary().cuota | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                    <td class="col-num">{{ fondosSummary().objetivo | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                    <td class="col-num">{{ fondosSummary().ahorrado | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                    <td class="col-progress"></td>
+                    <td class="col-num">{{ fondosSummary().count }}</td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           }
         </div>
-      }
-      @if (fondos().length === 0) {
-        <p class="empty-hint">Sin fondos de ahorro. Añade uno abajo.</p>
-      }
-    </div>
+      </div>
 
-    <!-- Archived fondos toggle -->
-    <div class="archived-toggle-row">
-      <button class="btn-link" (click)="toggleFondosArchivados()">
-        <i class="pi pi-archive"></i>
-        {{ showFondosArchivados() ? 'Ocultar archivados' : 'Ver fondos archivados (' + fondosArchivados().length + ')' }}
-      </button>
-    </div>
-    @if (showFondosArchivados()) {
-      <div class="items-list">
-        @for (f of fondosArchivados(); track f.id) {
-          <div class="list-item archived-item">
-            <div class="item-info">
-              <span class="item-name">{{ f.name }}</span>
-              <span class="item-meta">{{ f.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }} · {{ f.num_months }} meses</span>
+      <div class="detail-aside">
+        <!-- Nuevo fondo -->
+        <div class="settings-card new-fondo-form">
+          <div class="card-header">
+            <h2 class="card-title">Nuevo fondo de ahorro</h2>
+          </div>
+
+          <div class="card-body">
+            <div class="form-field">
+              <label for="fondoNombre">Nombre</label>
+              <input id="fondoNombre" pInputText [(ngModel)]="newFondoNombre" placeholder="Ej: Seguro del coche" class="field-control" />
+            </div>
+
+            <div class="form-field">
+              <label for="fondoTotal">Importe total</label>
+              <p-inputNumber inputId="fondoTotal" [(ngModel)]="newFondoTotal" mode="currency" currency="EUR"
+                locale="es-ES" [min]="0" styleClass="field-control" />
+            </div>
+
+            <div class="form-field">
+              <label for="fondoMeses">Número de meses</label>
+              <p-inputNumber inputId="fondoMeses" [(ngModel)]="newFondoMeses" [min]="1" [max]="120"
+                [useGrouping]="false" styleClass="field-control" />
+            </div>
+
+            @if (newFondoMonthly > 0) {
+              <div class="cuota-highlight">
+                <span class="cuota-highlight-label">Cuota mensual</span>
+                <span class="cuota-highlight-value">{{ newFondoMonthly | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+                <span class="cuota-highlight-meta">durante {{ newFondoMeses || 11 }} meses</span>
+              </div>
+            }
+
+            <div class="form-actions">
+              <button type="button" class="btn-cancel-wide" (click)="resetNewFondoForm()">Cancelar</button>
+              <button type="button" class="btn-add" (click)="addFondo()" [disabled]="!newFondoNombre.trim() || newFondoTotal <= 0">
+                <i class="pi pi-plus"></i> Crear fondo
+              </button>
             </div>
           </div>
-        }
-        @if (fondosArchivados().length === 0) {
-          <p class="empty-hint">Sin fondos archivados.</p>
-        }
-      </div>
-    }
+        </div>
 
-    <!-- Add form -->
-    <div class="add-form">
-      <h3 class="add-title">Nuevo fondo de ahorro</h3>
-      <div class="form-grid">
-        <div class="form-field">
-          <label>Nombre del fondo</label>
-          <input class="inp" [(ngModel)]="newFondoNombre" placeholder="Ej: Seguro del coche" />
-        </div>
-        <div class="form-field">
-          <label>Importe total (€)</label>
-          <input class="inp" type="number" [(ngModel)]="newFondoTotal" placeholder="Ej: 500" min="0" step="0.01"
-            (ngModelChange)="newFondoMonthly = newFondoTotal / (newFondoMeses || 11)" />
-        </div>
-        <div class="form-field">
-          <label>Nº de meses <span class="field-hint">(por defecto 11)</span></label>
-          <input class="inp" type="number" [(ngModel)]="newFondoMeses" placeholder="11" min="1"
-            (ngModelChange)="newFondoMonthly = newFondoTotal / (newFondoMeses || 11)" />
-        </div>
-      </div>
-      @if (newFondoTotal > 0) {
-        <div class="calc-preview">
-          <span>Cuota mensual: <strong>{{ (newFondoTotal / (newFondoMeses || 11)) | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
-          <span>Durante <strong>{{ newFondoMeses || 11 }} meses</strong></span>
-        </div>
-      }
-      <div class="form-action-row">
-        <button class="btn-add" (click)="addFondo()" [disabled]="!newFondoNombre.trim() || newFondoTotal <= 0">
-          <i class="pi pi-plus"></i> Añadir fondo
-        </button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── Ingreso Oficial / Pareja ───────────────────────────── -->
-  @if (profile()?.has_partner) {
-    <section class="settings-section">
-      <div class="section-header">
-        <h2 class="section-title">Pareja</h2>
-        <p class="section-desc">Las aportaciones se calculan automáticamente a partir de tus Ingresos Fijos configurados arriba.</p>
-      </div>
-
-      <!-- Read-only list of ingresos fijos -->
-      <div class="items-list">
-        @for (t of templates(); track t.id) {
-          <div class="list-item pareja-ingreso-item">
-            <span class="item-name">{{ t.fuente }}</span>
-            <span class="item-meta pareja-ingreso-amount">{{ t.esperado | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+        <!-- Lista de fondos activos -->
+        <div class="settings-card">
+          <div class="card-header">
+            <h2 class="card-title">Gestionar fondos</h2>
           </div>
-        }
-        @if (templates().length === 0) {
-          <p class="empty-hint">Sin ingresos fijos configurados. Añádelos en la sección de arriba.</p>
-        }
-        <div class="list-item pareja-total-row">
-          <span class="pareja-total-label">Total base</span>
-          <span class="pareja-total-amount">{{ totalIngresosFijos() | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
-        </div>
-      </div>
 
-      <div class="add-form">
-        <div class="form-grid">
-          <div class="form-field">
-            <label>% Ahorro pareja</label>
-            <input class="inp" type="number" [(ngModel)]="profileAhorroPct" placeholder="10" min="0" max="100" step="0.5" />
+          <div class="items-list">
+            @for (f of fondos(); track f.id) {
+              <div class="list-item">
+                @if (editingFondoId() === f.id) {
+                  <div class="edit-stack">
+                    <input pInputText [(ngModel)]="editFondoNombre" placeholder="Nombre" class="field-control" />
+                    <div class="edit-stack-row">
+                      <p-inputNumber [(ngModel)]="editFondoTotal" mode="currency" currency="EUR" locale="es-ES"
+                        [min]="0" styleClass="field-control" />
+                      <p-inputNumber [(ngModel)]="editFondoMeses" [min]="1" [max]="120" [useGrouping]="false"
+                        styleClass="field-control field-control-narrow" />
+                    </div>
+                    <span class="edit-stack-hint">Cuota: {{ editFondoMonthly | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</span>
+                    <div class="edit-stack-row">
+                      <button type="button" class="btn-save" (click)="saveFondo(f.id)">Guardar</button>
+                      <button type="button" class="btn-cancel" (click)="cancelEditFondo()">✕</button>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="item-info">
+                    <span class="item-name">{{ f.name }}</span>
+                    <span class="item-meta">
+                      {{ f.monthly_amount | currency:'EUR':'symbol':'1.2-2':'es' }}/mes
+                      · {{ f.num_months }} meses
+                    </span>
+                  </div>
+                  <div class="item-actions">
+                    <button type="button" class="btn-icon" pTooltip="Editar" (click)="startEditFondo(f)">
+                      <i class="pi pi-pencil"></i>
+                    </button>
+                    <button type="button" class="btn-icon" pTooltip="Archivar" (click)="archiveFondo(f.id)">
+                      <i class="pi pi-archive"></i>
+                    </button>
+                    <button type="button" class="btn-icon danger" pTooltip="Eliminar" (click)="deleteFondo(f.id)">
+                      <i class="pi pi-trash"></i>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+            @if (fondos().length === 0) {
+              <p class="empty-hint">Sin fondos activos.</p>
+            }
           </div>
-          <div class="form-field">
-            <label>% Gastos pareja</label>
-            <input class="inp" type="number" [(ngModel)]="profileGastosPct" placeholder="5" min="0" max="100" step="0.5" />
-          </div>
-          <div class="form-field form-field-align-end">
-            <button class="btn-add" (click)="saveProfilePareja()" [disabled]="savingProfile()">
-              <i class="pi pi-save"></i> Guardar
+
+          <div class="archived-toggle-row">
+            <button type="button" class="btn-link" (click)="toggleFondosArchivados()">
+              <i class="pi pi-archive"></i>
+              {{ showFondosArchivados() ? 'Ocultar archivados' : 'Ver fondos archivados (' + fondosArchivados().length + ')' }}
             </button>
           </div>
+          @if (showFondosArchivados()) {
+            <div class="items-list">
+              @for (f of fondosArchivados(); track f.id) {
+                <div class="list-item archived-item">
+                  <div class="item-info">
+                    <span class="item-name">{{ f.name }}</span>
+                    <span class="item-meta">{{ f.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }} · {{ f.num_months }} meses</span>
+                  </div>
+                </div>
+              }
+              @if (fondosArchivados().length === 0) {
+                <p class="empty-hint">Sin fondos archivados.</p>
+              }
+            </div>
+          }
         </div>
-        @if (totalIngresosFijos() > 0) {
-          <div class="calc-preview">
-            <span>Ahorro pareja: <strong>{{ (totalIngresosFijos() * profileAhorroPct / 100) | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
-            <span>Gastos pareja: <strong>{{ (totalIngresosFijos() * profileGastosPct / 100) | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
+      </div>
+    </div>
+  }
+
+  <!-- ── Deudas ─────────────────────────────────────────────── -->
+  @if (activeView() === 'deudas') {
+
+    <!-- Sub-sección 1: Deudas informales -->
+    <section class="settings-card deudas-section">
+      <div class="card-header">
+        <h2 class="card-title">Deudas del mes</h2>
+        <p class="card-desc">Partidas de gasto creadas automáticamente al añadir movimientos.</p>
+      </div>
+
+      @if (deudasInformales().length === 0) {
+        <p class="empty-hint">Sin deudas informales este periodo.</p>
+      } @else {
+        <div class="table-scroll">
+          <table class="settings-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th class="col-num">Presupuestado</th>
+                <th class="col-num">Pagado</th>
+                <th class="col-progress">Progreso</th>
+                <th class="col-action"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (d of deudasInformales(); track d.id) {
+                <tr>
+                  <td class="cell-name">{{ d.name }}</td>
+                  <td class="col-num">{{ d.presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                  <td class="col-num col-editable">
+                    @if (editingDeudaInformalId() === d.id) {
+                      <div class="inline-edit">
+                        <p-inputNumber [(ngModel)]="editDeudaInformalReal" mode="currency" currency="EUR"
+                          locale="es-ES" [min]="0" styleClass="inline-input"
+                          (keydown.enter)="saveDeudaInformalReal(d)"
+                          (keydown.escape)="cancelEditDeudaInformal()" />
+                        <button type="button" class="btn-inline-save" (click)="saveDeudaInformalReal(d)">✓</button>
+                        <button type="button" class="btn-inline-cancel" (click)="cancelEditDeudaInformal()">✕</button>
+                      </div>
+                    } @else {
+                      <span class="editable-value" (click)="startEditDeudaInformal(d)" title="Clic para editar">
+                        {{ d.real | currency:'EUR':'symbol':'1.0-0':'es' }}
+                        <i class="pi pi-pencil edit-hint"></i>
+                      </span>
+                    }
+                  </td>
+                  <td class="col-progress">
+                    <div class="fondo-bar-wrap">
+                      <div class="fondo-bar-fill fondo-bar-fill-red" [style.width.%]="deudaInformalProgress(d)"></div>
+                    </div>
+                    <span class="fondo-bar-value">{{ deudaInformalProgress(d) }}%</span>
+                  </td>
+                  <td class="col-action">
+                    <button type="button" class="btn-icon danger" pTooltip="Eliminar" (click)="deleteDeudaInformal(d.id)">
+                      <i class="pi pi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <!-- Sub-sección 2: Préstamos bancarios -->
+    <section class="settings-card deudas-section">
+      <div class="card-header">
+        <h2 class="card-title">Préstamos bancarios</h2>
+        <p class="card-desc">Hipotecas y préstamos activos. Se muestran automáticamente en todos los meses.</p>
+      </div>
+
+      <div class="items-list">
+        @for (d of deudas(); track d.id) {
+          <div class="list-item deuda-list-item">
+            @if (editingDeudaId() === d.id) {
+              <div class="edit-row">
+                <input pInputText [(ngModel)]="editDeudaNombre" placeholder="Nombre" class="field-control" />
+                <p-inputNumber [(ngModel)]="editDeudaCuota" mode="currency" currency="EUR" locale="es-ES"
+                  [min]="0" styleClass="field-control field-control-narrow" />
+                <p-inputNumber [(ngModel)]="editDeudaMeses" [min]="1" [useGrouping]="false"
+                  pTooltip="Dejar vacío = indefinida" styleClass="field-control field-control-narrow" />
+                <button type="button" class="btn-save" (click)="saveDeuda(d.id)">Guardar</button>
+                <button type="button" class="btn-cancel" (click)="cancelEditDeuda()">✕</button>
+              </div>
+            } @else {
+              <div class="item-info">
+                <div class="deuda-badges-row">
+                  <span class="item-name">{{ d.name }}</span>
+                  <span class="badge" [class.badge-bank]="d.type==='bank'" [class.badge-savings]="d.type==='savings'">
+                    {{ d.type === 'bank' ? 'Banco' : 'Ahorros' }}
+                  </span>
+                  @if (d.interest_rate > 0) {
+                    <span class="badge badge-interest">{{ d.interest_rate }}% TIN</span>
+                  }
+                </div>
+                <span class="item-meta">
+                  Capital: {{ d.principal_amount | currency:'EUR':'symbol':'1.2-2':'es' }}
+                  · Total: {{ d.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }}
+                  · Cuota: {{ d.monthly_payment | currency:'EUR':'symbol':'1.2-2':'es' }}/mes
+                  @if (d.num_months) { · {{ d.num_months }} meses }
+                  @else { · Indefinida }
+                  @if (d.start_year && d.start_month) {
+                    · Inicio: {{ meses[d.start_month - 1] }} {{ d.start_year }}
+                  }
+                </span>
+                <div class="fondo-bar-wrap">
+                  <div class="fondo-bar-fill fondo-bar-fill-red" [style.width.%]="deudaProgress(d)"></div>
+                </div>
+                <span class="item-meta">Pendiente: {{ d.amount_remaining | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+              </div>
+              <div class="item-actions">
+                <button type="button" class="btn-icon" pTooltip="Editar" (click)="startEditDeuda(d)">
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button type="button" class="btn-icon danger" pTooltip="Archivar" (click)="archiveDeuda(d.id)">
+                  <i class="pi pi-archive"></i>
+                </button>
+              </div>
+            }
           </div>
         }
+        @if (deudas().length === 0) {
+          <p class="empty-hint">Sin préstamos activos. Añade uno abajo.</p>
+        }
+      </div>
+
+      <div class="archived-toggle-row">
+        <button type="button" class="btn-link" (click)="toggleDeudasArchivadas()">
+          <i class="pi pi-archive"></i>
+          {{ showDeudasArchivadas() ? 'Ocultar archivadas' : 'Ver deudas archivadas (' + deudasArchivadas().length + ')' }}
+        </button>
+      </div>
+      @if (showDeudasArchivadas()) {
+        <div class="items-list">
+          @for (d of deudasArchivadas(); track d.id) {
+            <div class="list-item archived-item">
+              <div class="item-info">
+                <span class="item-name">{{ d.name }} <span class="archived-badge">✓ Pagada</span></span>
+                <span class="item-meta">{{ d.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+              </div>
+            </div>
+          }
+          @if (deudasArchivadas().length === 0) {
+            <p class="empty-hint">Sin deudas archivadas.</p>
+          }
+        </div>
+      }
+
+      <div class="add-form">
+        <h3 class="add-title">Nueva deuda</h3>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="deudaNombre">Nombre</label>
+            <input id="deudaNombre" pInputText [(ngModel)]="newDeudaNombre" placeholder="Ej: Préstamo coche" class="field-control" />
+          </div>
+          <div class="form-field">
+            <label for="deudaTipo">Tipo</label>
+            <select id="deudaTipo" class="inp" [ngModel]="newDeudaTipo" (ngModelChange)="newDeudaTipo=$event; recalcCuota()">
+              <option value="bank">Préstamo banco</option>
+              <option value="savings">De mis ahorros</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="deudaCapital">Capital prestado</label>
+            <p-inputNumber inputId="deudaCapital" mode="currency" currency="EUR" locale="es-ES" [min]="0"
+              [ngModel]="newDeudaCapital" (ngModelChange)="newDeudaCapital=$event; recalcCuota()"
+              styleClass="field-control" />
+          </div>
+          <div class="form-field">
+            <label for="deudaInteres">TIN anual (%)</label>
+            @if (newDeudaTipo === 'savings') {
+              <div class="penalty-box">
+                <span class="penalty-rate">5%</span>
+                <span class="penalty-label">⚠️ Castigo por usar ahorros (fijo)</span>
+              </div>
+            } @else {
+              <p-inputNumber inputId="deudaInteres" [minFractionDigits]="0" [maxFractionDigits]="2" [min]="0"
+                [ngModel]="newDeudaInteres" (ngModelChange)="newDeudaInteres=$event; recalcCuota()"
+                placeholder="Ej: 5.5" styleClass="field-control" />
+            }
+          </div>
+          <div class="form-field">
+            <label for="deudaMeses">Nº de meses <span class="field-hint">(vacío = indefinida)</span></label>
+            <p-inputNumber inputId="deudaMeses" [min]="1" [useGrouping]="false"
+              [ngModel]="newDeudaMeses" (ngModelChange)="newDeudaMeses=$event; recalcCuota()"
+              placeholder="Ej: 60" styleClass="field-control" />
+          </div>
+          <div class="form-field">
+            <label for="deudaCuota">Cuota mensual <span class="field-hint">edita si no coincide</span></label>
+            <p-inputNumber inputId="deudaCuota" [(ngModel)]="newDeudaCuotaFinal" mode="currency" currency="EUR"
+              locale="es-ES" [min]="0" styleClass="field-control" />
+          </div>
+          @if (newDeudaMeses) {
+            <div class="form-field form-field-full">
+              <label for="deudaStartMonth">Mes de inicio</label>
+              <div class="month-start-row">
+                <select id="deudaStartMonth" class="inp" [(ngModel)]="newDeudaStartMonth">
+                  @for (m of meses; track $index) {
+                    <option [value]="$index + 1">{{ m }}</option>
+                  }
+                </select>
+                <p-inputNumber [(ngModel)]="newDeudaStartYear" [useGrouping]="false" [min]="2000" [max]="2100"
+                  styleClass="field-control field-control-narrow" />
+              </div>
+            </div>
+          }
+        </div>
+        @if (newDeudaCapital > 0 && newDeudaCuotaFinal > 0) {
+          <div class="calc-preview">
+            <span>Total estimado: <strong>{{ (newDeudaMeses ? newDeudaCuotaFinal * newDeudaMeses : newDeudaCapital) | currency:'EUR':'symbol':'1.2-2':'es' }}</strong></span>
+            <span>Cuota registrada: <strong>{{ newDeudaCuotaFinal | currency:'EUR':'symbol':'1.2-2':'es' }}/mes</strong></span>
+          </div>
+        }
+        <div class="form-action-row">
+          <button type="button" class="btn-add" (click)="addDeuda()" [disabled]="!newDeudaNombre.trim() || newDeudaCapital <= 0">
+            <i class="pi pi-plus"></i> Añadir deuda
+          </button>
+        </div>
       </div>
     </section>
   }
+
+
+  <!-- ── Editar grid ────────────────────────────────────────── -->
+  @if (activeView() === 'grid') {
+    <div class="grid-editor">
+
+      <p class="grid-intro">
+        Así se pinta el dashboard de <strong>cada mes</strong>, de arriba abajo. Arrastra por el asa
+        <i class="pi pi-bars"></i> (o usa las flechas) para reordenar, y el ojo para mostrar u ocultar.
+        Los bloques marcados como <span class="grid-tag">compacto</span> comparten fila cuando quedan
+        uno al lado de otro.
+      </p>
+
+      <div class="grid-editor-columns">
+
+        <section class="settings-card grid-panel">
+          <div class="card-header">
+            <h2 class="card-title">Bloques del dashboard</h2>
+            <p class="card-desc">{{ gridVisibleBlocks() }} de {{ gridBlocks().length }} visibles</p>
+          </div>
+        <ul class="grid-list">
+          @for (row of gridBlocks(); track row.key; let i = $index, first = $first, last = $last) {
+            <li
+              class="grid-row"
+              [class.grid-row--hidden]="!row.visible"
+              [class.grid-row--dragging]="isDragSource('blocks', i)"
+              [class.grid-row--over]="isDragTarget('blocks', i)"
+              pDraggable="grid-blocks"
+              dragHandle=".grid-handle"
+              (onDragStart)="onGridDragStart('blocks', i)"
+              (onDragEnd)="onGridDragEnd()"
+              pDroppable="grid-blocks"
+              (onDragEnter)="onGridDragEnter('blocks', i)"
+              (onDrop)="onGridDrop('blocks', i)">
+              <span class="grid-handle" pTooltip="Arrastra para reordenar" tooltipPosition="left">
+                <i class="pi pi-bars"></i>
+              </span>
+              <span class="grid-order">{{ i + 1 }}</span>
+              <span class="grid-row-body">
+                <span class="grid-row-title">{{ row.label }}
+              @if (row.compact) {
+                <span class="grid-tag" pTooltip="Comparte fila con los otros bloques compactos que queden a su lado" tooltipPosition="top">compacto</span>
+              }
+                </span>
+                <span class="grid-row-desc">{{ row.description }}</span>
+              </span>
+              <span class="grid-row-actions">
+                <button type="button" class="grid-move" [disabled]="first"
+                  aria-label="Subir" pTooltip="Subir" (click)="moveGridRow('blocks', i, -1)">
+                  <i class="pi pi-chevron-up"></i>
+                </button>
+                <button type="button" class="grid-move" [disabled]="last"
+                  aria-label="Bajar" pTooltip="Bajar" (click)="moveGridRow('blocks', i, 1)">
+                  <i class="pi pi-chevron-down"></i>
+                </button>
+                <button type="button" class="grid-eye" [class.is-off]="!row.visible"
+                  [attr.aria-pressed]="row.visible"
+                  [attr.aria-label]="row.visible ? 'Ocultar ' + row.label : 'Mostrar ' + row.label"
+                  [pTooltip]="row.visible ? 'Ocultar del dashboard' : 'Mostrar en el dashboard'"
+                  (click)="toggleGridRow('blocks', i)">
+                  <i class="pi" [class.pi-eye]="row.visible" [class.pi-eye-slash]="!row.visible"></i>
+                </button>
+              </span>
+            </li>
+          }
+        </ul>
+
+          @if (gridVisibleBlocks() === 0) {
+            <p class="grid-warning">Has ocultado todos los bloques: el dashboard quedará vacío.</p>
+          }
+        </section>
+
+        <section class="settings-card grid-panel">
+          <div class="card-header">
+            <h2 class="card-title">Tarjetas de categoría</h2>
+            <p class="card-desc">Dentro del bloque «Categorías» · {{ gridVisibleCategories() }} de {{ gridCategories().length }} visibles</p>
+          </div>
+        <ul class="grid-list">
+          @for (row of gridCategories(); track row.key; let i = $index, first = $first, last = $last) {
+            <li
+              class="grid-row"
+              [class.grid-row--hidden]="!row.visible"
+              [class.grid-row--dragging]="isDragSource('categories', i)"
+              [class.grid-row--over]="isDragTarget('categories', i)"
+              pDraggable="grid-categories"
+              dragHandle=".grid-handle"
+              (onDragStart)="onGridDragStart('categories', i)"
+              (onDragEnd)="onGridDragEnd()"
+              pDroppable="grid-categories"
+              (onDragEnter)="onGridDragEnter('categories', i)"
+              (onDrop)="onGridDrop('categories', i)">
+              <span class="grid-handle" pTooltip="Arrastra para reordenar" tooltipPosition="left">
+                <i class="pi pi-bars"></i>
+              </span>
+              <span class="grid-order">{{ i + 1 }}</span>
+            <span class="grid-dot" [style.background]="row.color"></span>
+              <span class="grid-row-body">
+                <span class="grid-row-title">{{ row.label }}
+                </span>
+                <span class="grid-row-desc">{{ row.description }}</span>
+              </span>
+              <span class="grid-row-actions">
+                <button type="button" class="grid-move" [disabled]="first"
+                  aria-label="Subir" pTooltip="Subir" (click)="moveGridRow('categories', i, -1)">
+                  <i class="pi pi-chevron-up"></i>
+                </button>
+                <button type="button" class="grid-move" [disabled]="last"
+                  aria-label="Bajar" pTooltip="Bajar" (click)="moveGridRow('categories', i, 1)">
+                  <i class="pi pi-chevron-down"></i>
+                </button>
+                <button type="button" class="grid-eye" [class.is-off]="!row.visible"
+                  [attr.aria-pressed]="row.visible"
+                  [attr.aria-label]="row.visible ? 'Ocultar ' + row.label : 'Mostrar ' + row.label"
+                  [pTooltip]="row.visible ? 'Ocultar del dashboard' : 'Mostrar en el dashboard'"
+                  (click)="toggleGridRow('categories', i)">
+                  <i class="pi" [class.pi-eye]="row.visible" [class.pi-eye-slash]="!row.visible"></i>
+                </button>
+              </span>
+            </li>
+          }
+        </ul>
+
+          <p class="grid-note">
+            Ocultar una categoría solo quita su tarjeta. Sus importes siguen contando en los
+            indicadores, el donut y el resumen del presupuesto.
+          </p>
+        </section>
+
+      </div>
+
+      <div class="grid-actions-bar">
+        <div class="grid-actions-status">
+          @if (gridMessage(); as message) {
+            <span class="grid-message" [class.grid-message--error]="message.type === 'error'">{{ message.text }}</span>
+          } @else if (gridDirty()) {
+            <span class="grid-message grid-message--dirty">Tienes cambios sin guardar.</span>
+          }
+        </div>
+        <div class="grid-actions-buttons">
+          <button type="button" class="btn-link" (click)="resetGridLayout()">Restablecer por defecto</button>
+          <button type="button" class="btn-cancel-wide" [disabled]="!gridDirty() || gridSaving()" (click)="discardGridChanges()">Descartar</button>
+          <button type="button" class="btn-add" [disabled]="!gridDirty() || gridSaving()" (click)="saveGridLayout()">
+            @if (gridSaving()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            } @else {
+              <i class="pi pi-check"></i>
+            }
+            Guardar grid
+          </button>
+        </div>
+      </div>
+
+    </div>
+  }
+
+  <!-- ── Herramientas ─────────────────────────────────────────── -->
+  @if (activeView() === 'herramientas') {
+    <section class="tools-card" aria-labelledby="reset-card-title">
+      <div class="tools-card-header">
+        <h2 id="reset-card-title" class="tools-card-title">Resetear mes</h2>
+        <p class="tools-card-desc">Pone a cero los importes reales del mes elegido. Los presupuestos y las plantillas no cambian. Útil para simulacros.</p>
+      </div>
+
+      <div class="tools-card-body">
+        <div class="tools-picker">
+          <div class="tools-field tools-field--month">
+            <label for="reset-month">Mes</label>
+            <select id="reset-month" class="tools-control" [(ngModel)]="resetMonth" [disabled]="resetting()">
+              @for (m of meses; track $index) {
+                <option [ngValue]="$index + 1">{{ m }}</option>
+              }
+            </select>
+          </div>
+          <div class="tools-field tools-field--year">
+            <label for="reset-year">Año</label>
+            <input id="reset-year" type="number" class="tools-control" inputmode="numeric"
+              min="2020" max="2100" [(ngModel)]="resetYear" [disabled]="resetting()">
+          </div>
+        </div>
+
+        @if (resetResult(); as result) {
+          <!-- Éxito con Deshacer: permanece hasta que se cierre o se cambie de vista -->
+          <div class="tools-status" role="status">
+            <i class="pi pi-check-circle tools-status-icon" aria-hidden="true"></i>
+            <div class="tools-status-copy">
+              <span class="tools-status-title">{{ result.label }} reseteado</span>
+              <span class="tools-status-detail">
+                {{ result.count }} {{ result.count === 1 ? 'registro' : 'registros' }} a 0 · {{ result.amount | currency:'EUR':'symbol':'1.2-2':'es' }}. Los presupuestos se han conservado.
+              </span>
+            </div>
+            <button type="button" class="tools-undo" (click)="undoResetMonth()" [disabled]="resetUndoing()">
+              @if (resetUndoing()) {
+                <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+              }
+              <span>Deshacer</span>
+            </button>
+            <button type="button" class="tools-dismiss" aria-label="Cerrar aviso" (click)="dismissResetResult()">
+              <i class="pi pi-times" aria-hidden="true"></i>
+            </button>
+          </div>
+        } @else if (resetUndone()) {
+          <div class="tools-status tools-status--neutral" role="status">
+            <i class="pi pi-check-circle tools-status-icon" aria-hidden="true"></i>
+            <span class="tools-status-title">Reset deshecho</span>
+          </div>
+        } @else {
+          <div class="tools-info">
+            <i class="pi pi-calendar" aria-hidden="true"></i>
+            <span>Se reseteará</span>
+            <strong>{{ resetMonthLabel }}</strong>
+          </div>
+        }
+
+        @if (resetError(); as error) {
+          <p class="tools-error" role="alert">
+            <i class="pi pi-info-circle" aria-hidden="true"></i>
+            <span>{{ error }}</span>
+          </p>
+        }
+      </div>
+
+      <div class="tools-card-footer">
+        <button type="button" class="btn-destructive" (click)="openResetConfirm()" [disabled]="loadingPreview() || resetting()">
+          @if (loadingPreview()) {
+            <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+            <span>Preparando vista previa…</span>
+          } @else {
+            <i class="pi pi-refresh" aria-hidden="true"></i>
+            <span>Resetear {{ resetMonthLabel }}…</span>
+          }
+        </button>
+      </div>
+    </section>
+  }
+
+</div>
+  </main>
+</div>
+
+<!-- ── Modal de confirmación del reset (fuera del shell: el fondo se empuja atrás) ── -->
+@if (showResetConfirm()) {
+  <div class="reset-scrim" (click)="closeResetConfirm()">
+    <div
+      class="reset-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reset-dlg-title"
+      aria-describedby="reset-dlg-desc"
+      (click)="$event.stopPropagation()">
+
+      <div class="reset-dialog-head">
+        <h2 id="reset-dlg-title" class="reset-dialog-title">¿Resetear {{ resetMonthLabel }}?</h2>
+        <p id="reset-dlg-desc" class="reset-dialog-desc">Estos importes reales pasarán a 0. Los presupuestos se conservan.</p>
+      </div>
+
+      @if (resetPreviewTotalCount() === 0) {
+        <div class="reset-preview reset-preview--empty">
+          <i class="pi pi-info-circle" aria-hidden="true"></i>
+          <span>No hay importes reales en {{ resetMonthLabel }}</span>
+        </div>
+      } @else {
+        <div class="reset-preview" role="table" aria-label="Vista previa del reset">
+          <div class="reset-preview-row reset-preview-head" role="row">
+            <span role="columnheader">Sección</span>
+            <span role="columnheader" class="num">Registros</span>
+            <span role="columnheader" class="num">Real → 0</span>
+          </div>
+          @for (row of resetPreviewVisibleRows(); track row.key) {
+            <div class="reset-preview-row" role="row">
+              <div class="reset-preview-label" role="cell">
+                <span>{{ row.label }}</span>
+                @if (row.note) {
+                  <span class="reset-preview-note">{{ row.note }}</span>
+                }
+              </div>
+              <span class="num reset-preview-count" role="cell">{{ row.count }}</span>
+              <span class="num reset-preview-amount" role="cell">{{ row.total | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+            </div>
+          }
+          <div class="reset-preview-row reset-preview-total" role="row">
+            <span role="cell">Total</span>
+            <span class="num" role="cell">{{ resetPreviewTotalCount() }}</span>
+            <span class="num" role="cell">{{ resetPreviewTotalAmount() | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+          </div>
+        </div>
+      }
+
+      <p class="reset-dialog-note">
+        <i class="pi pi-info-circle" aria-hidden="true"></i>
+        <span>Esta acción no se puede deshacer una vez cerrado el aviso de éxito.</span>
+      </p>
+
+      @if (resetError(); as error) {
+        <p class="tools-error reset-dialog-error" role="alert">
+          <i class="pi pi-info-circle" aria-hidden="true"></i>
+          <span>{{ error }}</span>
+        </p>
+      }
+
+      <div class="reset-dialog-actions">
+        <button #resetCancelBtn type="button" class="btn-neutral" (click)="closeResetConfirm()" [disabled]="resetting()">Cancelar</button>
+        <button type="button" class="btn-destructive" (click)="executeResetMonth()"
+          [disabled]="resetting() || resetPreviewTotalCount() === 0">
+          @if (resetting()) {
+            <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+            <span>Reseteando…</span>
+          } @else {
+            <span>Resetear {{ resetPreviewTotalCount() }} {{ resetPreviewTotalCount() === 1 ? 'registro' : 'registros' }}</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
 </div>

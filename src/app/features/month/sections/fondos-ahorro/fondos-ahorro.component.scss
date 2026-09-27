@@ -138,6 +138,23 @@
   border-color: var(--kakebo-indigo) !important;
 }
 
+.preview-box {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--kakebo-fondo);
+  border: 1px solid var(--kakebo-borde);
+  border-radius: 8px;
+  padding: .6rem .875rem;
+  font-size: .875rem;
+  color: var(--kakebo-texto-secundario);
+
+  strong {
+    color: var(--kakebo-indigo);
+    font-size: 1rem;
+  }
+}
+
 .dialog-form {
   display: flex;
   flex-direction: column;

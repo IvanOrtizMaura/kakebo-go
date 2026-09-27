@@ -10,7 +10,6 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
   serverTimestamp,
   setDoc,
   getCountFromServer
@@ -37,13 +36,13 @@ export class FondosAhorroService {
   }
 
   async getActive(userId: string): Promise<FondoAhorro[]> {
-    const q = query(this.fondosCol(), where('is_active', '==', true), orderBy('createdAt'));
+    const q = query(this.fondosCol(), where('is_active', '==', true));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as FondoAhorro));
   }
 
   async getArchived(userId: string): Promise<FondoAhorro[]> {
-    const q = query(this.fondosCol(), where('is_active', '==', false), orderBy('createdAt'));
+    const q = query(this.fondosCol(), where('is_active', '==', false));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as FondoAhorro));
   }
@@ -56,6 +55,11 @@ export class FondosAhorroService {
   async update(id: string, patch: Partial<Pick<FondoAhorro, 'name' | 'total_amount' | 'monthly_amount' | 'num_months'>>): Promise<void> {
     const ref = doc(this.firestore, 'users', this.uid, 'fondos_ahorro', id);
     await updateDoc(ref, patch as any);
+  }
+
+  async updateSavedAmount(id: string, saved_amount: number): Promise<void> {
+    const ref = doc(this.firestore, 'users', this.uid, 'fondos_ahorro', id);
+    await updateDoc(ref, { saved_amount });
   }
 
   async archive(id: string): Promise<void> {

@@ -1,3 +1,36 @@
+/** Bloques de primer nivel del dashboard mensual, en su orden por defecto. */
+export type DashboardBlockKey =
+  | 'kpis'
+  | 'distribucion'
+  | 'resumen'
+  | 'objetivo'
+  | 'ingresos'
+  | 'categorias'
+  | 'deudas'
+  | 'oro';
+
+/** Tarjetas dentro del bloque "categorias" (la rejilla masonry). */
+export type DashboardCategoryKey =
+  | 'facturas'
+  | 'gastos'
+  | 'ahorros'
+  | 'pareja'
+  | 'fondos';
+
+export interface DashboardLayoutEntry<K extends string> {
+  key: K;
+  visible: boolean;
+}
+
+/**
+ * Configuración del grid del dashboard de cada mes. El orden del array ES el
+ * orden de pintado; `visible: false` oculta el bloque sin perder su posición.
+ */
+export interface DashboardLayout {
+  blocks: DashboardLayoutEntry<DashboardBlockKey>[];
+  categories: DashboardLayoutEntry<DashboardCategoryKey>[];
+}
+
 export interface UserProfile {
   id: string;
   monthly_net_income: number;
@@ -9,6 +42,8 @@ export interface UserProfile {
   ingreso_oficial: number;
   pareja_ahorro_pct: number;
   pareja_gastos_pct: number;
+  /** Ausente = el usuario nunca lo ha tocado: se usa el layout por defecto. */
+  dashboard_layout?: DashboardLayout;
 }
 
 export interface Month {
@@ -96,6 +131,9 @@ export interface FondoAhorro {
   num_months: number;
   start_year: number;
   start_month: number;
+  target_year?: number;
+  target_month?: number;
+  saved_amount?: number;
   is_active: boolean;
 }
 
@@ -153,6 +191,7 @@ export interface InversionOro {
   created_at: string;
   formato?: 'Lingote' | 'Moneda' | 'Joyería';
   pieza?: string;
+  spotPrecioCompra?: number;
 }
 
 export interface GoldPriceSnapshot {

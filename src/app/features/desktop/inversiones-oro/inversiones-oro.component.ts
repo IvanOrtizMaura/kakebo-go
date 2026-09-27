@@ -43,6 +43,9 @@ interface TableRow {
   invertido: number;
   valorHoy: number;
   resultado: number;
+  spotCompra: number | null;
+  prima: number | null;
+  primaPercent: number | null;
 }
 
 const CHART_WIDTH = 640;
@@ -52,13 +55,24 @@ const CHART_PADDING_RIGHT = 20;
 const CHART_PADDING_TOP = 20;
 const CHART_PADDING_BOTTOM = 32;
 
+/* Presentation-only palette, harmonised with the Apple-style tokens in the SCSS. */
 const FORMATO_COLORS: Record<FormatoOro, string> = {
-  Lingote: 'rgb(247, 148, 29)',
-  Moneda: 'rgb(0, 107, 170)',
-  'Joyería': 'rgb(152, 113, 187)'
+  Lingote: '#c5881b',
+  Moneda: '#006baa',
+  'Joyería': '#8c64b2'
 };
 
 const FORMATO_OPTIONS: readonly FormatoOro[] = ['Lingote', 'Moneda', 'Joyería'];
+
+interface QuilatesOption { label: string; value: number; }
+const QUILATES_OPTIONS: readonly QuilatesOption[] = [
+  { label: '24k (999)', value: 999.9 },
+  { label: '22k (916)', value: 916.7 },
+  { label: '21k (875)', value: 875 },
+  { label: '18k (750)', value: 750 },
+  { label: '14k (585)', value: 585.4 },
+  { label: '9k (375)',  value: 375 },
+];
 
 const MONTH_SHORT_LABELS: readonly string[] = [
   'ene', 'feb', 'mar', 'abr', 'may', 'jun',
@@ -84,6 +98,7 @@ export class InversionesOroComponent implements OnDestroy {
   readonly chartWidth = CHART_WIDTH;
   readonly chartHeight = CHART_HEIGHT;
   readonly formatoOptions = FORMATO_OPTIONS;
+  readonly quilatesOptions = QUILATES_OPTIONS;
 
   readonly inversiones = signal<InversionOro[]>([]);
   readonly spotPrice = signal<number | null>(null);
@@ -94,12 +109,15 @@ export class InversionesOroComponent implements OnDestroy {
   readonly searchTerm = signal('');
   readonly dialogVisible = signal(false);
   readonly saving = signal(false);
+  readonly editingId = signal<string | null>(null);
+  readonly deletingId = signal<string | null>(null);
 
   readonly newCompraFecha = signal<string>(this.toDateInputValue(new Date()));
   readonly newCompraFormato = signal<FormatoOro>('Lingote');
   readonly newCompraPieza = signal<string>('');
   readonly newCompraGramos = signal<number | null>(null);
   readonly newCompraPrecio = signal<number | null>(null);
+  readonly newCompraPureza = signal<number>(999.9);
 
   readonly totalGrams = computed(() =>
     this.inversiones().reduce((sum, item) => sum + (item.gramos || 0), 0)
@@ -119,7 +137,11 @@ export class InversionesOroComponent implements OnDestroy {
   readonly valorActual = computed<number | null>(() => {
     const price = this.spotPrice();
     if (price === null) return null;
-    return this.totalGrams() * price;
+    // Each piece valued at spot24k × (pureza/999.9)
+    return this.inversiones().reduce((sum, item) => {
+      const pureza = item.pureza ?? 999.9;
+      return sum + (item.gramos || 0) * price * (pureza / 999.9);
+    }, 0);
   });
 
   readonly gananciaLatente = computed<number | null>(() => {
@@ -180,7 +202,16 @@ export class InversionesOroComponent implements OnDestroy {
       const invertido = item.precio_compra || 0;
       const peso = item.gramos || 0;
       const precioG = peso > 0 ? invertido / peso : 0;
-      const valorHoy = peso * price;
+      const pureza = item.pureza ?? 999.9;
+      const valorHoy = peso * price * (pureza / 999.9);
+      // spotPrecioCompra stores 24k price — adjust for karat to display and calculate prima
+      const spot24k = typeof item.spotPrecioCompra === 'number' && item.spotPrecioCompra > 0
+        ? item.spotPrecioCompra : null;
+      const spotCompra = spot24k !== null ? spot24k * (pureza / 999.9) : null;
+      const prima = spotCompra !== null && precioG > 0 ? precioG - spotCompra : null;
+      const primaPercent = prima !== null && spotCompra !== null && spotCompra > 0
+        ? (prima / spotCompra) * 100
+        : null;
       return {
         id: item.id,
         fechaLabel: this.formatFecha(fechaDate),
@@ -191,7 +222,10 @@ export class InversionesOroComponent implements OnDestroy {
         precioG,
         invertido,
         valorHoy,
-        resultado: valorHoy - invertido
+        resultado: valorHoy - invertido,
+        spotCompra,
+        prima,
+        primaPercent
       };
     });
 
@@ -209,7 +243,8 @@ export class InversionesOroComponent implements OnDestroy {
     const price = this.spotPrice() ?? 0;
     return this.inversiones().reduce((sum, item) => {
       const peso = item.gramos || 0;
-      const valorHoy = peso * price;
+      const pureza = item.pureza ?? 999.9;
+      const valorHoy = peso * price * (pureza / 999.9);
       return sum + (valorHoy - (item.precio_compra || 0));
     }, 0);
   });
@@ -324,22 +359,14 @@ export class InversionesOroComponent implements OnDestroy {
 
   private async loadGoldPrice(): Promise<void> {
     this.loadingSpot.set(true);
-    const before = this.goldPriceService.getLastUpdated();
     try {
       const price = await this.goldPriceService.getGoldPriceEurPerGram();
       if (price !== null) {
         this.spotPrice.set(price);
-        const after = this.goldPriceService.getLastUpdated();
-        if (after) {
-          this.spotUpdatedAt.set(after.date);
-          const isNewFetch = !before || after.date.getTime() !== before.date.getTime();
-          const user = this.authService.currentUser;
-          if (isNewFetch && user) {
-            await this.goldPriceHistoryService.savePriceSnapshot(user.uid, price);
-            await this.loadPriceHistory();
-          }
-        }
+        const updated = this.goldPriceService.getLastUpdated();
+        if (updated) this.spotUpdatedAt.set(updated.date);
       }
+      await this.loadPriceHistory();
     } catch (error) {
       console.error('Error obteniendo precio del oro:', error);
     } finally {
@@ -351,10 +378,9 @@ export class InversionesOroComponent implements OnDestroy {
     const user = this.authService.currentUser;
     if (!user) return;
     try {
-      const history = await this.goldPriceHistoryService.getLast12Months(user.uid);
-      this.priceHistory.set(history);
+      this.priceHistory.set(await this.goldPriceHistoryService.getLast12Months(user.uid));
     } catch (error) {
-      console.error('Error cargando historial de oro:', error);
+      console.error('Error cargando histórico del oro:', error);
     }
   }
 
@@ -393,16 +419,33 @@ export class InversionesOroComponent implements OnDestroy {
   }
 
   openCompraDialog(): void {
+    this.editingId.set(null);
     this.newCompraFecha.set(this.toDateInputValue(new Date()));
     this.newCompraFormato.set('Lingote');
     this.newCompraPieza.set('');
     this.newCompraGramos.set(null);
     this.newCompraPrecio.set(null);
+    this.newCompraPureza.set(999.9);
+    this.dialogVisible.set(true);
+  }
+
+  openEditDialog(row: TableRow): void {
+    this.editingId.set(row.id);
+    const raw = this.inversiones().find(i => i.id === row.id);
+    if (!raw) return;
+    const fechaDate = this.parseFecha(raw.fechaCompra, raw.created_at);
+    this.newCompraFecha.set(this.toDateInputValue(fechaDate));
+    this.newCompraFormato.set(row.formato);
+    this.newCompraPieza.set(row.pieza);
+    this.newCompraGramos.set(row.peso);
+    this.newCompraPrecio.set(row.invertido);
+    this.newCompraPureza.set(raw.pureza ?? 999.9);
     this.dialogVisible.set(true);
   }
 
   closeCompraDialog(): void {
     this.dialogVisible.set(false);
+    this.editingId.set(null);
   }
 
   async submitCompra(): Promise<void> {
@@ -415,26 +458,47 @@ export class InversionesOroComponent implements OnDestroy {
     const pieza = this.newCompraPieza().trim();
     const gramos = this.newCompraGramos() as number;
     const precio = this.newCompraPrecio() as number;
+    const pureza = this.newCompraPureza();
+    const fechaCompra = fechaValue ? new Date(`${fechaValue}T00:00:00`) : new Date();
 
     this.saving.set(true);
     try {
-      const fechaCompra = fechaValue ? new Date(`${fechaValue}T00:00:00`) : new Date();
-      await this.inversionesService.add({
-        user_id: user.uid,
-        name: pieza,
-        gramos,
-        pureza: 999.9,
-        precio_compra: precio,
-        fechaCompra,
-        created_at: new Date().toISOString(),
-        formato,
-        pieza
-      });
+      // Fetch spot price for the purchase date and karat — happens at save time
+      const spotPrecioCompra = await this.goldPriceService.getSpot24kForDate(fechaValue) ?? undefined;
+
+      const editId = this.editingId();
+      if (editId) {
+        const changes: Parameters<typeof this.inversionesService.update>[1] = {
+          name: pieza, gramos, precio_compra: precio, fechaCompra, formato, pieza, pureza
+        };
+        if (spotPrecioCompra !== undefined) changes.spotPrecioCompra = spotPrecioCompra;
+        await this.inversionesService.update(editId, changes);
+      } else {
+        const newItem: Parameters<typeof this.inversionesService.add>[0] = {
+          user_id: user.uid, name: pieza, gramos, pureza,
+          precio_compra: precio, fechaCompra,
+          created_at: new Date().toISOString(), formato, pieza
+        };
+        if (spotPrecioCompra !== undefined) newItem.spotPrecioCompra = spotPrecioCompra;
+        await this.inversionesService.add(newItem);
+      }
       this.closeCompraDialog();
     } catch (error) {
-      console.error('Error registrando compra de oro:', error);
+      console.error('Error guardando compra de oro:', error);
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  async deleteCompra(id: string): Promise<void> {
+    if (this.deletingId()) return;
+    this.deletingId.set(id);
+    try {
+      await this.inversionesService.remove(id);
+    } catch (error) {
+      console.error('Error eliminando compra:', error);
+    } finally {
+      this.deletingId.set(null);
     }
   }
 

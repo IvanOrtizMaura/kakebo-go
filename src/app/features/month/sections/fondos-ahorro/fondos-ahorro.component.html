@@ -3,7 +3,7 @@
     <div style="display:flex;align-items:center;gap:.5rem">
       <h2>Fondos de Ahorro</h2>
       <i class="pi pi-info-circle" style="color:var(--kakebo-texto-secundario);font-size:.85rem"
-         title="Ahorros programados a 11 meses para gastos puntuales: seguro del coche, vacaciones, navidades... Divides el total entre 11 meses para que no duela cuando llegue."></i>
+         title="Ahorros programados para un gasto futuro: navidades, vacaciones, seguro del coche... Defines el importe total y la fecha objetivo, y la app calcula cuánto apartar cada mes."></i>
     </div>
     <button class="add-btn-inline" (click)="showCreateDialog.set(true)">
       <i class="pi pi-plus"></i> Nuevo fondo
@@ -25,21 +25,21 @@
             }
           </span>
           <span class="fondo-amounts">
-            {{ f.monthly_amount | currency:'EUR':'symbol':'1.2-2':'es' }}/mes
-            · Total: {{ f.total_amount | currency:'EUR':'symbol':'1.2-2':'es' }}
+            {{ f.monthly_amount | currency:'EUR':'symbol':'1.0-0':'es' }}/mes
+            · Objetivo: {{ f.total_amount | currency:'EUR':'symbol':'1.0-0':'es' }}
+            · {{ targetLabel(f) }}
           </span>
         </div>
         <div class="fondo-real">
-          <span class="fondo-months">Mes {{ f.completedMonths }}/11</span>
-          <span [class]="'fondo-pct ' + (f.progress >= 100 ? 'done' : '')">{{ f.progress | number:'1.0-0' }}%</span>
+          <span class="fondo-months">{{ f.completedMonths }}/{{ f.totalMonths }} meses</span>
+          <span [class]="'fondo-pct ' + (f.progress >= 100 ? 'done' : '')">{{ f.progress }}%</span>
         </div>
       </div>
-      <p-progressBar [value]="f.progress" [showValue]="false"
-        styleClass="fondo-progress" />
+      <p-progressBar [value]="f.progress" [showValue]="false" styleClass="fondo-progress" />
       @if (f.progress >= 100) {
         <div class="fondo-complete-row">
           <span class="complete-badge">¡Objetivo alcanzado! 🎉</span>
-          <button class="icon-btn-sm" (click)="onFondoComplete(f)">Renovar fondo</button>
+          <button class="icon-btn-sm" (click)="$event.stopPropagation(); onFondoComplete(f)">Renovar</button>
         </div>
       }
     </div>
@@ -51,22 +51,33 @@
     <div class="dialog-form">
       <div class="field">
         <label>Nombre del fondo</label>
-        <input pInputText [(ngModel)]="newFondo.name" placeholder="Ej: Seguro del coche" class="w-full" />
+        <input pInputText [(ngModel)]="newFondo.name" placeholder="Ej: Navidades 2026" class="w-full" />
       </div>
       <div class="field">
         <label>Importe total a ahorrar (€)</label>
         <p-inputNumber [(ngModel)]="newFondo.total_amount" mode="currency" currency="EUR"
-          locale="es-ES" styleClass="w-full" (ngModelChange)="calcMonthly()" />
+          locale="es-ES" styleClass="w-full" />
       </div>
       <div class="field">
-        <label>Cuota mensual (total ÷ 11)</label>
-        <p-inputNumber [(ngModel)]="newFondo.monthly_amount" mode="currency" currency="EUR"
-          locale="es-ES" styleClass="w-full" [readonly]="true" />
+        <label>Fecha objetivo</label>
+        <div style="display:flex;gap:.5rem">
+          <p-select [(ngModel)]="newFondo.target_month" [options]="monthOptions"
+            optionLabel="label" optionValue="value" placeholder="Mes" styleClass="flex-1" />
+          <p-select [(ngModel)]="newFondo.target_year" [options]="yearOptions"
+            optionLabel="label" optionValue="value" styleClass="w-5rem" />
+        </div>
       </div>
+      @if (newFondo.total_amount > 0 && newFondo.target_month > 0) {
+        <div class="field preview-box">
+          <span>Cuota mensual estimada:</span>
+          <strong>{{ newMonthly | currency:'EUR':'symbol':'1.0-0':'es' }}/mes</strong>
+        </div>
+      }
     </div>
     <ng-template #footer>
       <p-button label="Cancelar" styleClass="p-button-text" (onClick)="showCreateDialog.set(false)" />
-      <p-button label="Crear fondo" styleClass="btn-primary" [loading]="saving()" (onClick)="createFondo()" />
+      <p-button label="Crear fondo" styleClass="btn-primary" [loading]="saving()" (onClick)="createFondo()"
+        [disabled]="!newFondo.name || !newFondo.total_amount || !newFondo.target_month" />
     </ng-template>
   </p-dialog>
 
@@ -80,13 +91,11 @@
     <div class="field">
       <label>Nuevo importe total (€)</label>
       <p-inputNumber [(ngModel)]="renewAmount" mode="currency" currency="EUR"
-        locale="es-ES" styleClass="w-full" (ngModelChange)="renewMonthly = renewAmount / 11" />
+        locale="es-ES" styleClass="w-full" />
     </div>
     <ng-template #footer>
       <p-button label="No, archivar" styleClass="p-button-text" (onClick)="archiveFondo()" />
       <p-button label="Crear nuevo ciclo" styleClass="btn-primary" [loading]="saving()" (onClick)="renewFondo()" />
     </ng-template>
   </p-dialog>
-
-  <p-confirmDialog />
 </div>

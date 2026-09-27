@@ -1,0 +1,18 @@
+app = "kakebo-go-bot"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+
+# No http_service — this is a polling bot, not a web server
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[deploy]
+  # Only 1 machine — polling mode must not run in parallel
+  max_unavailable = 0.0
