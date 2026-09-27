@@ -1,37 +1,53 @@
-<nav class="bottom-nav">
+<nav class="bottom-nav" aria-label="Principal">
   <a
-    routerLink="/home"
+    routerLink="/desktop"
     routerLinkActive="bottom-nav__item--active"
+    [routerLinkActiveOptions]="resumenActiveOptions"
+    ariaCurrentWhenActive="page"
     class="bottom-nav__item"
   >
-    <i class="pi pi-home"></i>
+    <i class="pi pi-home" aria-hidden="true"></i>
     <span>Resumen</span>
   </a>
 
   <a
-    routerLink="/ingresos"
+    [routerLink]="inversionesRoute"
     routerLinkActive="bottom-nav__item--active"
+    ariaCurrentWhenActive="page"
     class="bottom-nav__item"
   >
-    <i class="pi pi-arrow-up-right"></i>
-    <span>Ingresos</span>
+    <i class="pi pi-chart-line" aria-hidden="true"></i>
+    <span>Inversiones</span>
   </a>
 
+  <div class="bottom-nav__slot">
+    <button
+      type="button"
+      class="bottom-nav__add"
+      aria-label="Añadir movimiento"
+      (click)="onAdd()"
+    >
+      <i class="pi pi-plus" aria-hidden="true"></i>
+    </button>
+  </div>
+
   <a
-    routerLink="/gastos"
+    routerLink="/settings"
     routerLinkActive="bottom-nav__item--active"
+    ariaCurrentWhenActive="page"
     class="bottom-nav__item"
   >
-    <i class="pi pi-shopping-cart"></i>
-    <span>Gastos</span>
+    <i class="pi pi-cog" aria-hidden="true"></i>
+    <span>Configuración</span>
   </a>
 
   <a
     routerLink="/mas"
     routerLinkActive="bottom-nav__item--active"
+    ariaCurrentWhenActive="page"
     class="bottom-nav__item"
   >
-    <i class="pi pi-ellipsis-h"></i>
+    <i class="pi pi-ellipsis-h" aria-hidden="true"></i>
     <span>Más</span>
   </a>
 </nav>

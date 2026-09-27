@@ -1,58 +1,147 @@
+/* Tab bar móvil — material translúcido, safe area inferior, «+» central elevado */
+
 .bottom-nav {
+  --nav-accent: #006baa;
+  --nav-accent-pressed: #005a90;
+  --nav-label: rgba(60, 60, 67, 0.62);
+  --nav-chrome: rgba(250, 250, 252, 0.72);
+  --nav-chrome-solid: #fafafc;
+  --nav-separator: rgba(60, 60, 67, 0.11);
+  /* Halo del «+»: el color del fondo de página, para que "recorte" la barra */
+  --nav-halo: #f2f2f7;
+
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: 100;
-  display: flex;
-  align-items: stretch;
-  background: #ffffff;
-  border-top: 1px solid #e2e8f0;
-  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
-  padding-bottom: 0;
-
-  &::before {
-    content: '';
-    position: absolute;
-    bottom: 100%;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: #e2e8f0;
-  }
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: end;
+  padding: 6px 8px calc(4px + env(safe-area-inset-bottom, 0px));
+  background: var(--nav-chrome);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: inset 0 0.5px 0 var(--nav-separator);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter',
+    'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
 }
 
 .bottom-nav__item {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 10px 4px 12px;
-  color: #94a3b8;
+  gap: 3px;
+  min-height: 48px;
+  padding: 4px 0;
+  border-radius: 10px;
+  color: var(--nav-label);
   font-size: 10px;
-  font-family: 'DM Sans', system-ui, sans-serif;
   font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
   text-decoration: none;
-  letter-spacing: 0.02em;
   cursor: pointer;
-  transition: color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition:
+    color 120ms ease-out,
+    transform 100ms ease-out;
 
   .pi {
-    font-size: 20px;
+    font-size: 21px;
   }
 
+  /* Respuesta al apoyar el dedo (pointer-down), no al soltar */
   &:active {
-    color: #22c55e;
+    transform: scale(0.97);
+    transition: transform 100ms ease-out;
   }
 
   &--active {
-    color: #22c55e;
+    color: var(--nav-accent);
+    font-weight: 600;
+  }
+}
 
-    .pi {
-      color: #22c55e;
-    }
+/* Columna central: solo aloja el botón; no compite con las pestañas */
+.bottom-nav__slot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 48px;
+}
+
+.bottom-nav__add {
+  width: 52px;
+  height: 52px;
+  margin-top: -22px;
+  border: none;
+  border-radius: 50%;
+  background: var(--nav-accent);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  box-shadow:
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.35),
+    0 6px 16px -4px rgba(0, 107, 170, 0.55),
+    0 0 0 4px var(--nav-halo);
+  transition:
+    transform 100ms ease-out,
+    background 120ms ease-out;
+
+  .pi {
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  &:active {
+    transform: scale(0.97);
+    background: var(--nav-accent-pressed);
+    transition: transform 100ms ease-out;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--nav-accent);
+    outline-offset: 6px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bottom-nav__item:hover {
+    color: #1d1d1f;
+  }
+
+  .bottom-nav__item--active:hover {
+    color: var(--nav-accent);
+  }
+
+  .bottom-nav__add:hover {
+    background: var(--nav-accent-pressed);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .bottom-nav {
+    background: var(--nav-chrome-solid);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav__item:active,
+  .bottom-nav__add:active {
+    transform: none;
   }
 }

@@ -1,4 +1,4 @@
-<div class="desktop-shell">
+<div class="desktop-shell" [class.search-open]="mobileSearchOpen()">
   <aside class="sidebar">
     <div class="brand-block">
       <div class="brand-tile">
@@ -49,16 +49,46 @@
         <div class="search-field">
           <i class="pi pi-search"></i>
           <input
-            type="text"
+            type="search"
             placeholder="Buscar movimiento"
+            enterkeyhint="search"
+            autocomplete="off"
             [ngModel]="searchTerm()"
             (ngModelChange)="searchTerm.set($event)" />
         </div>
-        <button type="button" class="primary-button" (click)="openAddMovementDialog()">
+        <button type="button" class="primary-button desktop-only" (click)="openAddMovementDialog()">
           <i class="pi pi-plus"></i>
           <span>Añadir movimiento</span>
         </button>
+        @if (isMobile()) {
+          <button
+            type="button"
+            class="icon-button"
+            [class.icon-button--on]="mobileSearchOpen()"
+            aria-label="Buscar movimiento"
+            [attr.aria-expanded]="mobileSearchOpen()"
+            (click)="toggleMobileSearch()">
+            <i class="pi pi-search"></i>
+          </button>
+        }
       </div>
+
+      @if (isMobile()) {
+        <div class="month-chips" [attr.aria-label]="'Meses de ' + selectedYear()">
+          @for (month of sidebarMonths(); track month.index) {
+            <button
+              type="button"
+              class="month-chip"
+              [class.active]="month.isActive"
+              [attr.aria-current]="month.isActive ? 'true' : null"
+              [attr.aria-label]="month.name"
+              (click)="selectMonth(month.index)">
+              <span class="month-chip__label">{{ month.name.slice(0, 3) }}</span>
+              <span class="chip-dot" [class.filled]="month.hasData"></span>
+            </button>
+          }
+        </div>
+      }
     </header>
 
     <section class="content">
@@ -74,39 +104,45 @@
                         <h2 class="card-title">Distribución del presupuesto</h2>
                       </header>
                       @if (donutSegments().length > 0) {
-                        <div class="donut-wrapper">
-                          <svg viewBox="0 0 186 186" class="donut-svg" aria-label="Distribución del presupuesto">
-                            <circle
-                              [attr.cx]="donutCX"
-                              [attr.cy]="donutCY"
-                              [attr.r]="donutR"
-                              fill="transparent"
-                              stroke="rgb(240,242,244)"
-                              [attr.stroke-width]="donutStrokeWidth"></circle>
-                            <g [attr.transform]="'rotate(-90 ' + donutCX + ' ' + donutCY + ')'">
-                              @for (segment of donutSegments(); track segment.label) {
-                                <circle
-                                  [attr.cx]="donutCX"
-                                  [attr.cy]="donutCY"
-                                  [attr.r]="donutR"
-                                  fill="transparent"
-                                  [attr.stroke]="segment.color"
-                                  [attr.stroke-width]="donutStrokeWidth"
-                                  [attr.stroke-dasharray]="segment.strokeDasharray"
-                                  [attr.stroke-dashoffset]="segment.strokeDashoffset"></circle>
+                        <div class="donut-body">
+                          <div class="donut-wrapper">
+                            <svg viewBox="0 0 186 186" class="donut-svg" aria-label="Distribución del presupuesto">
+                              <circle
+                                [attr.cx]="donutCX"
+                                [attr.cy]="donutCY"
+                                [attr.r]="donutR()"
+                                fill="transparent"
+                                stroke="rgb(240,242,244)"
+                                [attr.stroke-width]="donutStrokeWidth()"></circle>
+                              <g [attr.transform]="'rotate(-90 ' + donutCX + ' ' + donutCY + ')'">
+                                @for (segment of donutSegments(); track segment.label) {
+                                  <circle
+                                    [attr.cx]="donutCX"
+                                    [attr.cy]="donutCY"
+                                    [attr.r]="donutR()"
+                                    fill="transparent"
+                                    [attr.stroke]="segment.color"
+                                    [attr.stroke-width]="donutStrokeWidth()"
+                                    [attr.stroke-dasharray]="segment.strokeDasharray"
+                                    [attr.stroke-dashoffset]="segment.strokeDashoffset"></circle>
+                                }
+                              </g>
+                              @if (isMobile()) {
+                                <text [attr.x]="donutCX" [attr.y]="donutCY - 4" text-anchor="middle" class="donut-center-value">{{ totalGastos() | currency:'EUR':'symbol':'1.0-0':'es' }}</text>
+                                <text [attr.x]="donutCX" [attr.y]="donutCY + 18" text-anchor="middle" class="donut-center-caption">gastado</text>
                               }
-                            </g>
-                          </svg>
+                            </svg>
+                          </div>
+                          <ul class="donut-legend">
+                            @for (segment of donutSegments(); track segment.label) {
+                              <li class="legend-item">
+                                <span class="legend-dot" [style.background]="segment.color"></span>
+                                <span class="legend-label">{{ segment.label }}</span>
+                                <span class="legend-value">{{ segment.value | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                              </li>
+                            }
+                          </ul>
                         </div>
-                        <ul class="donut-legend">
-                          @for (segment of donutSegments(); track segment.label) {
-                            <li class="legend-item">
-                              <span class="legend-dot" [style.background]="segment.color"></span>
-                              <span class="legend-label">{{ segment.label }}</span>
-                              <span class="legend-value">{{ segment.value | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
-                            </li>
-                          }
-                        </ul>
                       } @else {
                         <p class="empty-inline">Todavía sin distribución</p>
                       }
@@ -121,7 +157,7 @@
                         <thead>
                           <tr>
                             <th>Fuente</th>
-                            <th class="align-right">Presupuesto</th>
+                            <th class="align-right"><span class="desktop-only">Presupuesto</span><span class="mobile-only">Presup.</span></th>
                             <th class="align-right">Real</th>
                           </tr>
                         </thead>
@@ -143,53 +179,113 @@
                     </article>
                   }
                   @case ('objetivo') {
-                    <article class="dashboard-card">
-                      <header class="card-header">
-                        <h2 class="card-title">Objetivo de ahorro</h2>
-                      </header>
-                      <div class="ring-wrapper">
-                        <svg viewBox="0 0 150 150" class="ring-svg" aria-label="Progreso de ahorro">
-                          <circle
-                            [attr.cx]="ringCX"
-                            [attr.cy]="ringCY"
-                            [attr.r]="ringR"
-                            fill="transparent"
-                            stroke="rgb(240,242,244)"
-                            stroke-width="10"></circle>
-                          <circle
-                            [attr.cx]="ringCX"
-                            [attr.cy]="ringCY"
-                            [attr.r]="ringR"
-                            fill="transparent"
-                            stroke="rgb(96,168,68)"
-                            stroke-width="10"
-                            stroke-linecap="round"
-                            [attr.stroke-dasharray]="ringCircumference"
-                            [attr.stroke-dashoffset]="ahorroObjetivo().dashOffset"
-                            [attr.transform]="'rotate(-90 ' + ringCX + ' ' + ringCY + ')'"></circle>
-                          <text
-                            [attr.x]="ringCX"
-                            [attr.y]="ringCY - 2"
-                            text-anchor="middle"
-                            class="ring-percentage">{{ ahorroObjetivo().percentage }}%</text>
-                          <text
-                            [attr.x]="ringCX"
-                            [attr.y]="ringCY + 16"
-                            text-anchor="middle"
-                            class="ring-caption">completado</text>
-                        </svg>
-                      </div>
-                      <div class="ring-footer">
-                        <div class="ring-metric">
-                          <span class="metric-label">Ahorrado</span>
-                          <span class="metric-value">{{ ahorroObjetivo().real | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                    @if (isMobile()) {
+                      <article class="dashboard-card goal-card" [class.expanded]="objetivoExpanded()">
+                        <button
+                          type="button"
+                          class="goal-row"
+                          [attr.aria-expanded]="objetivoExpanded()"
+                          aria-controls="goal-detail"
+                          (click)="objetivoExpanded.set(!objetivoExpanded())">
+                          <svg viewBox="0 0 150 150" class="goal-ring" aria-hidden="true">
+                            <circle
+                              [attr.cx]="ringCX"
+                              [attr.cy]="ringCY"
+                              [attr.r]="ringR"
+                              fill="transparent"
+                              stroke-width="18"></circle>
+                            <circle
+                              [attr.cx]="ringCX"
+                              [attr.cy]="ringCY"
+                              [attr.r]="ringR"
+                              fill="transparent"
+                              stroke-width="18"
+                              stroke-linecap="round"
+                              [attr.stroke-dasharray]="ringCircumference"
+                              [attr.stroke-dashoffset]="ahorroObjetivo().dashOffset"
+                              [attr.transform]="'rotate(-90 ' + ringCX + ' ' + ringCY + ')'"></circle>
+                            <text
+                              [attr.x]="ringCX"
+                              [attr.y]="ringCY + 12"
+                              text-anchor="middle"
+                              class="goal-ring__label">{{ ahorroObjetivo().percentage }}%</text>
+                          </svg>
+                          <span class="list-row__main">
+                            <span class="card-title">Objetivo de ahorro</span>
+                            <span class="list-row__sub">
+                              {{ ahorroObjetivo().real | currency:'EUR':'symbol':'1.0-0':'es' }}
+                              de {{ ahorroObjetivo().presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}
+                              · 20 % de los ingresos
+                            </span>
+                          </span>
+                          <i class="pi pi-angle-right row-chevron row-chevron--rotates"></i>
+                        </button>
+                        @if (objetivoExpanded()) {
+                          <div class="ring-footer goal-detail" id="goal-detail">
+                            <div class="ring-metric">
+                              <span class="metric-label">Ahorrado</span>
+                              <span class="metric-value">{{ ahorroObjetivo().real | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                            </div>
+                            <div class="ring-metric">
+                              <span class="metric-label">Objetivo (20%)</span>
+                              <span class="metric-value">{{ ahorroObjetivo().presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                            </div>
+                            <div class="ring-metric">
+                              <span class="metric-label">Completado</span>
+                              <span class="metric-value">{{ ahorroObjetivo().percentage }}%</span>
+                            </div>
+                          </div>
+                        }
+                      </article>
+                    } @else {
+                      <article class="dashboard-card">
+                        <header class="card-header">
+                          <h2 class="card-title">Objetivo de ahorro</h2>
+                        </header>
+                        <div class="ring-wrapper">
+                          <svg viewBox="0 0 150 150" class="ring-svg" aria-label="Progreso de ahorro">
+                            <circle
+                              [attr.cx]="ringCX"
+                              [attr.cy]="ringCY"
+                              [attr.r]="ringR"
+                              fill="transparent"
+                              stroke="rgb(240,242,244)"
+                              stroke-width="10"></circle>
+                            <circle
+                              [attr.cx]="ringCX"
+                              [attr.cy]="ringCY"
+                              [attr.r]="ringR"
+                              fill="transparent"
+                              stroke="rgb(96,168,68)"
+                              stroke-width="10"
+                              stroke-linecap="round"
+                              [attr.stroke-dasharray]="ringCircumference"
+                              [attr.stroke-dashoffset]="ahorroObjetivo().dashOffset"
+                              [attr.transform]="'rotate(-90 ' + ringCX + ' ' + ringCY + ')'"></circle>
+                            <text
+                              [attr.x]="ringCX"
+                              [attr.y]="ringCY - 2"
+                              text-anchor="middle"
+                              class="ring-percentage">{{ ahorroObjetivo().percentage }}%</text>
+                            <text
+                              [attr.x]="ringCX"
+                              [attr.y]="ringCY + 16"
+                              text-anchor="middle"
+                              class="ring-caption">completado</text>
+                          </svg>
                         </div>
-                        <div class="ring-metric">
-                          <span class="metric-label">Objetivo (20%)</span>
-                          <span class="metric-value">{{ ahorroObjetivo().presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                        <div class="ring-footer">
+                          <div class="ring-metric">
+                            <span class="metric-label">Ahorrado</span>
+                            <span class="metric-value">{{ ahorroObjetivo().real | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                          </div>
+                          <div class="ring-metric">
+                            <span class="metric-label">Objetivo (20%)</span>
+                            <span class="metric-value">{{ ahorroObjetivo().presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                          </div>
                         </div>
-                      </div>
-                    </article>
+                      </article>
+                    }
                   }
                 }
               }
@@ -197,259 +293,424 @@
           } @else {
             @switch (row.blocks[0]) {
               @case ('kpis') {
-                <section class="kpi-row">
-                  @for (kpi of kpiCards(); track kpi.label) {
-                    <article class="kpi-card" [class.accent]="kpi.variant === 'accent'">
-                      <p class="kpi-label">{{ kpi.label }}</p>
-                      @if (kpi.isCurrency) {
-                        <p class="kpi-value">{{ kpi.value | currency:'EUR':'symbol':'1.0-0':'es' }}</p>
-                      } @else {
-                        <p class="kpi-value">
-                          {{ diasParaCobrar() === null ? '—' : diasParaCobrar() }}
-                          @if (diasParaCobrar() !== null) {
-                            <span class="kpi-suffix">{{ kpi.suffix }}</span>
+                @if (isMobile()) {
+                  <section class="kpi-carousel-block" aria-label="Indicadores">
+                    <div class="kpi-carousel" (scroll)="onKpiScroll($event)">
+                      @for (kpi of mobileKpiCards(); track kpi.label) {
+                        <article class="kpi-card" [class.accent]="kpi.variant === 'accent'">
+                          <p class="kpi-label">{{ kpi.label }}</p>
+                          @if (kpi.isCurrency) {
+                            <p class="kpi-value">{{ kpi.value | currency:'EUR':'symbol':'1.0-0':'es' }}</p>
+                          } @else {
+                            <p class="kpi-value">
+                              {{ diasParaCobrar() === null ? '—' : diasParaCobrar() }}
+                              @if (diasParaCobrar() !== null) {
+                                <span class="kpi-suffix">{{ kpi.suffix }}</span>
+                              }
+                            </p>
                           }
-                        </p>
+                          @if (kpi.caption) {
+                            <p class="kpi-caption">{{ kpi.caption }}</p>
+                          }
+                        </article>
                       }
-                    </article>
-                  }
-                </section>
-
+                    </div>
+                    <div class="kpi-dots" aria-hidden="true">
+                      @for (kpi of mobileKpiCards(); track kpi.label; let i = $index) {
+                        <span class="kpi-dot" [class.kpi-dot--on]="i === kpiPage()"></span>
+                      }
+                    </div>
+                  </section>
+                } @else {
+                  <section class="kpi-row">
+                    @for (kpi of kpiCards(); track kpi.label) {
+                      <article class="kpi-card" [class.accent]="kpi.variant === 'accent'">
+                        <p class="kpi-label">{{ kpi.label }}</p>
+                        @if (kpi.isCurrency) {
+                          <p class="kpi-value">{{ kpi.value | currency:'EUR':'symbol':'1.0-0':'es' }}</p>
+                        } @else {
+                          <p class="kpi-value">
+                            {{ diasParaCobrar() === null ? '—' : diasParaCobrar() }}
+                            @if (diasParaCobrar() !== null) {
+                              <span class="kpi-suffix">{{ kpi.suffix }}</span>
+                            }
+                          </p>
+                        }
+                      </article>
+                    }
+                  </section>
+                }
               }
               @case ('ingresos') {
-                <section class="dashboard-card full-width">
-                  <header class="card-header">
-                    <h2 class="card-title">Ingresos</h2>
-                  </header>
-                  <table class="ingresos-table">
-                    <thead>
-                      <tr>
-                        <th>Fuente</th>
-                        <th>Día de paga</th>
-                        <th class="align-right">Esperado</th>
-                        <th class="align-right">Real</th>
-                        <th class="align-right">Depositado</th>
-                        <th class="align-right action-col"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (ingreso of filteredIngresos(); track ingreso.id) {
-                        <tr
-                          class="table-row"
-                          style="cursor:pointer"
-                          (click)="openEditDialog('ingreso', ingreso)">
-                          <td>{{ ingreso.fuente }}</td>
-                          <td>{{ ingreso.dia_de_paga || '—' }}</td>
-                          <td class="align-right">{{ ingreso.esperado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
-                          <td class="align-right">{{ ingreso.real | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
-                          <td class="align-right">
-                            <span class="deposit-pill" [class.deposited]="ingreso.depositado">
-                              {{ ingreso.depositado ? 'Sí' : 'Pendiente' }}
-                            </span>
-                          </td>
-                          <td class="align-right action-col">
-                            <button
-                              type="button"
-                              class="delete-btn"
-                              aria-label="Eliminar ingreso"
-                              (click)="deleteIngreso(ingreso.id); $event.stopPropagation()">
-                              <i class="pi pi-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      } @empty {
+                @if (isMobile()) {
+                  <section class="dashboard-card list-card">
+                    <header class="list-card__header">
+                      <h2 class="card-title">Ingresos</h2>
+                      <span class="list-card__meta">
+                        {{ totalIngresos() | currency:'EUR':'symbol':'1.0-0':'es' }}
+                        de {{ totalIngresosEsperado() | currency:'EUR':'symbol':'1.0-0':'es' }}
+                      </span>
+                    </header>
+                    @for (ingreso of filteredIngresos(); track ingreso.id) {
+                      <button type="button" class="list-row" (click)="openEditDialog('ingreso', ingreso)">
+                        <span class="list-row__main">
+                          <span class="list-row__title">{{ ingreso.fuente }}</span>
+                          <span class="list-row__sub">
+                            @if (diaPagaLabel(ingreso.dia_de_paga); as dia) {
+                              Día {{ dia }} ·
+                            }
+                            esperado {{ ingreso.esperado | currency:'EUR':'symbol':'1.0-0':'es' }}
+                          </span>
+                        </span>
+                        <span class="list-row__aside">
+                          <span class="list-row__amount">{{ ingreso.real | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                          <span class="deposit-pill" [class.deposited]="ingreso.depositado">
+                            {{ ingreso.depositado ? 'Depositado' : 'Pendiente' }}
+                          </span>
+                        </span>
+                        <i class="pi pi-angle-right row-chevron"></i>
+                      </button>
+                    } @empty {
+                      <p class="list-empty">No hay ingresos registrados</p>
+                    }
+                  </section>
+                } @else {
+                  <section class="dashboard-card full-width">
+                    <header class="card-header">
+                      <h2 class="card-title">Ingresos</h2>
+                    </header>
+                    <table class="ingresos-table">
+                      <thead>
                         <tr>
-                          <td colspan="6" class="empty-cell">No hay ingresos registrados</td>
+                          <th>Fuente</th>
+                          <th>Día de paga</th>
+                          <th class="align-right">Esperado</th>
+                          <th class="align-right">Real</th>
+                          <th class="align-right">Depositado</th>
+                          <th class="align-right action-col"></th>
                         </tr>
-                      }
-                      <tr class="totals-row">
-                        <td>Total</td>
-                        <td></td>
-                        <td class="align-right">{{ totalIngresosEsperado() | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
-                        <td class="align-right">{{ totalIngresos() | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
-                        <td></td>
-                        <td></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </section>
+                      </thead>
+                      <tbody>
+                        @for (ingreso of filteredIngresos(); track ingreso.id) {
+                          <tr
+                            class="table-row"
+                            style="cursor:pointer"
+                            (click)="openEditDialog('ingreso', ingreso)">
+                            <td>{{ ingreso.fuente }}</td>
+                            <td>{{ ingreso.dia_de_paga || '—' }}</td>
+                            <td class="align-right">{{ ingreso.esperado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                            <td class="align-right">{{ ingreso.real | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                            <td class="align-right">
+                              <span class="deposit-pill" [class.deposited]="ingreso.depositado">
+                                {{ ingreso.depositado ? 'Sí' : 'Pendiente' }}
+                              </span>
+                            </td>
+                            <td class="align-right action-col">
+                              <button
+                                type="button"
+                                class="delete-btn"
+                                aria-label="Eliminar ingreso"
+                                (click)="deleteIngreso(ingreso.id); $event.stopPropagation()">
+                                <i class="pi pi-trash"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="6" class="empty-cell">No hay ingresos registrados</td>
+                          </tr>
+                        }
+                        <tr class="totals-row">
+                          <td>Total</td>
+                          <td></td>
+                          <td class="align-right">{{ totalIngresosEsperado() | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                          <td class="align-right">{{ totalIngresos() | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                          <td></td>
+                          <td></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </section>
+                }
               }
               @case ('categorias') {
-                <section class="category-grid" masonryGrid>
-                  @for (table of categoryTables(); track table.key) {
-                    <article class="dashboard-card category-card">
-                      <header class="category-header">
-                        <div class="category-title-block">
+                @if (isMobile()) {
+                  <section class="category-stack">
+                    @for (table of categoryTables(); track table.key; let i = $index) {
+                      <article class="dashboard-card cat-card" [class.expanded]="isCategoryExpanded(table.key, i)">
+                        <button
+                          type="button"
+                          class="cat-toggle"
+                          [attr.aria-expanded]="isCategoryExpanded(table.key, i)"
+                          [attr.aria-controls]="'cat-body-' + table.key"
+                          (click)="toggleCategory(table.key, i)">
                           <span class="category-dot" [style.background]="table.color"></span>
-                          <h3 class="category-title">{{ table.title }}</h3>
-                        </div>
-                        <span class="category-total">{{ table.totalReal | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
-                      </header>
-                      <table class="category-table">
-                        <thead>
-                          <tr>
-                            <th>Descripción</th>
-                            <th class="align-right">Presup.</th>
-                            <th class="align-right">Real</th>
-                            <th class="align-right">Dif.</th>
-                            @if (isDeletableCategory(table.key)) {
-                              <th class="align-right action-col"></th>
+                          <h2 class="card-title cat-title">{{ table.title }}</h2>
+                          <span class="cat-total">{{ table.totalReal | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                          <i class="pi pi-angle-right row-chevron row-chevron--rotates"></i>
+                        </button>
+                        @if (isCategoryExpanded(table.key, i)) {
+                          <div class="cat-body" [id]="'cat-body-' + table.key">
+                            <div class="cat-grid cat-grid--head" aria-hidden="true">
+                              <span>Descripción</span>
+                              <span>Presup.</span>
+                              <span>Real</span>
+                              <span>Dif.</span>
+                            </div>
+                            @for (row of table.rows; track row.id) {
+                              @if (isEditableCategory(table.key)) {
+                                <button type="button" class="cat-grid cat-row" (click)="onCategoryRowClick(table.key, row)">
+                                  <span class="cat-row__name">{{ row.name }}</span>
+                                  <span class="cat-row__plan">{{ row.presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                                  <span class="cat-row__real">{{ row.real | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                                  <span class="cat-row__diff" [class.positive]="row.diferencia > 0" [class.negative]="row.diferencia < 0">
+                                    {{ row.diferencia > 0 ? '+' : '' }}{{ row.diferencia | currency:'EUR':'symbol':'1.0-0':'es' }}
+                                  </span>
+                                </button>
+                              } @else {
+                                <div class="cat-grid cat-row cat-row--static">
+                                  <span class="cat-row__name">{{ row.name }}</span>
+                                  <span class="cat-row__plan">{{ row.presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                                  <span class="cat-row__real">{{ row.real | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                                  <span class="cat-row__diff" [class.positive]="row.diferencia > 0" [class.negative]="row.diferencia < 0">
+                                    {{ row.diferencia > 0 ? '+' : '' }}{{ row.diferencia | currency:'EUR':'symbol':'1.0-0':'es' }}
+                                  </span>
+                                </div>
+                              }
+                            } @empty {
+                              <p class="list-empty">Sin movimientos</p>
                             }
-                          </tr>
-                        </thead>
-                        <tbody>
-                          @for (row of table.rows; track row.id) {
-                            <tr
-                              class="table-row"
-                              [style.cursor]="isEditableCategory(table.key) ? 'pointer' : 'default'"
-                              (click)="onCategoryRowClick(table.key, row)">
-                              <td>{{ row.name }}</td>
-                              <td class="align-right">{{ row.presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
-                              <td class="align-right">{{ row.real | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
-                              <td
-                                class="align-right"
-                                [class.positive]="row.diferencia >= 0"
-                                [class.negative]="row.diferencia < 0">
-                                {{ row.diferencia | currency:'EUR':'symbol':'1.0-0':'es' }}
-                              </td>
+                            @if (table.rows.length > 0) {
+                              <div class="cat-grid cat-row cat-row--total" [style.background]="table.tintBackground">
+                                <span class="cat-row__name">Total</span>
+                                <span class="cat-row__plan">{{ table.totalPresupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                                <span class="cat-row__real">{{ table.totalReal | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                                <span class="cat-row__diff">{{ (table.totalPresupuestado - table.totalReal) | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </article>
+                    }
+                  </section>
+                } @else {
+                  <section class="category-grid" masonryGrid>
+                    @for (table of categoryTables(); track table.key) {
+                      <article class="dashboard-card category-card">
+                        <header class="category-header">
+                          <div class="category-title-block">
+                            <span class="category-dot" [style.background]="table.color"></span>
+                            <h3 class="category-title">{{ table.title }}</h3>
+                          </div>
+                          <span class="category-total">{{ table.totalReal | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                        </header>
+                        <table class="category-table">
+                          <thead>
+                            <tr>
+                              <th>Descripción</th>
+                              <th class="align-right">Presup.</th>
+                              <th class="align-right">Real</th>
+                              <th class="align-right">Dif.</th>
                               @if (isDeletableCategory(table.key)) {
-                                <td class="align-right action-col">
-                                  <button
-                                    type="button"
-                                    class="delete-btn"
-                                    aria-label="Eliminar fila"
-                                    (click)="deleteCategoryRow(table.key, row.id); $event.stopPropagation()">
-                                    <i class="pi pi-trash"></i>
-                                  </button>
-                                </td>
+                                <th class="align-right action-col"></th>
                               }
                             </tr>
-                          } @empty {
-                            <tr>
-                              <td [attr.colspan]="isDeletableCategory(table.key) ? 5 : 4" class="empty-cell">Sin movimientos</td>
-                            </tr>
-                          }
-                          <tr class="totals-row" [style.background]="table.tintBackground">
-                            <td>Total</td>
-                            <td class="align-right">{{ table.totalPresupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
-                            <td class="align-right">{{ table.totalReal | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
-                            <td class="align-right">{{ (table.totalPresupuestado - table.totalReal) | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
-                            @if (isDeletableCategory(table.key)) {
-                              <td></td>
+                          </thead>
+                          <tbody>
+                            @for (row of table.rows; track row.id) {
+                              <tr
+                                class="table-row"
+                                [style.cursor]="isEditableCategory(table.key) ? 'pointer' : 'default'"
+                                (click)="onCategoryRowClick(table.key, row)">
+                                <td>{{ row.name }}</td>
+                                <td class="align-right">{{ row.presupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                                <td class="align-right">{{ row.real | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                                <td
+                                  class="align-right"
+                                  [class.positive]="row.diferencia >= 0"
+                                  [class.negative]="row.diferencia < 0">
+                                  {{ row.diferencia | currency:'EUR':'symbol':'1.0-0':'es' }}
+                                </td>
+                                @if (isDeletableCategory(table.key)) {
+                                  <td class="align-right action-col">
+                                    <button
+                                      type="button"
+                                      class="delete-btn"
+                                      aria-label="Eliminar fila"
+                                      (click)="deleteCategoryRow(table.key, row.id); $event.stopPropagation()">
+                                      <i class="pi pi-trash"></i>
+                                    </button>
+                                  </td>
+                                }
+                              </tr>
+                            } @empty {
+                              <tr>
+                                <td [attr.colspan]="isDeletableCategory(table.key) ? 5 : 4" class="empty-cell">Sin movimientos</td>
+                              </tr>
                             }
-                          </tr>
-                        </tbody>
-                      </table>
-                    </article>
-                  }
-                </section>
+                            <tr class="totals-row" [style.background]="table.tintBackground">
+                              <td>Total</td>
+                              <td class="align-right">{{ table.totalPresupuestado | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                              <td class="align-right">{{ table.totalReal | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                              <td class="align-right">{{ (table.totalPresupuestado - table.totalReal) | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                              @if (isDeletableCategory(table.key)) {
+                                <td></td>
+                              }
+                            </tr>
+                          </tbody>
+                        </table>
+                      </article>
+                    }
+                  </section>
+                }
               }
               @case ('deudas') {
                 <section class="deudas-section">
-                  <article class="dashboard-card deudas-card">
-                    <header class="deudas-header">
-                      <span class="deudas-dot"></span>
-                      <h2 class="deudas-title">Deudas</h2>
-                      @if (totalDeudasReal() > 0 || totalDeudasPresupuestado() > 0) {
-                        <span class="deudas-total">
-                          {{ totalDeudasReal() | currency:'EUR':'symbol':'1.0-0':'es' }}
-                          de
-                          {{ totalDeudasPresupuestado() | currency:'EUR':'symbol':'1.0-0':'es' }}
+                  @if (isMobile()) {
+                    <button
+                      type="button"
+                      class="deudas-row"
+                      [class.expanded]="deudasExpanded()"
+                      [attr.aria-expanded]="deudasExpanded()"
+                      aria-controls="deudas-detail"
+                      (click)="deudasExpanded.set(!deudasExpanded())">
+                      <span class="list-row__main">
+                        <span class="deudas-row__title">Deudas</span>
+                        <span class="list-row__sub">
+                          @if (deudasCards().length > 0) {
+                            {{ deudasPendientes() }} {{ deudasPendientes() === 1 ? 'pendiente' : 'pendientes' }}
+                            · {{ totalDeudasReal() | currency:'EUR':'symbol':'1.0-0':'es' }}
+                            de {{ totalDeudasPresupuestado() | currency:'EUR':'symbol':'1.0-0':'es' }}
+                          } @else {
+                            Sin deudas pendientes este mes
+                          }
                         </span>
-                      }
-                    </header>
-
-                    @if (deudasCards().length > 0) {
-                      <div class="deudas-grid">
-                        @for (card of deudasCards(); track card.id) {
-                          <div class="deuda-card" [class.deuda-card--done]="card.done" (click)="openDeudaDialog(card)">
-                            <div class="deuda-card__header">
-                              <div class="deuda-card__info">
-                                <span class="deuda-card__name">{{ card.name }}</span>
-                                <span class="deuda-card__cat">Gasto no presupuestado</span>
-                              </div>
-                              <button
-                                type="button"
-                                class="deuda-card__delete"
-                                title="Eliminar deuda"
-                                (click)="$event.stopPropagation(); deleteDeuda(card.id)">
-                                <i class="pi pi-trash"></i>
-                              </button>
-                            </div>
-                            <div class="deuda-bar">
-                              <div class="deuda-bar__fill" [class.deuda-bar__fill--done]="card.done" [style.width.%]="card.pct"></div>
-                            </div>
-                            <div class="deuda-card__foot">
-                              <span class="deuda-card__amounts">{{ card.real | currency:'EUR':'symbol':'1.2-2':'es' }} de {{ card.total | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
-                              <span class="deuda-card__pct" [class.deuda-card__pct--done]="card.done">{{ card.pct | number:'1.0-0':'es' }}%</span>
-                            </div>
-                          </div>
+                      </span>
+                      <i class="pi pi-angle-right row-chevron row-chevron--red row-chevron--rotates"></i>
+                    </button>
+                  }
+                  @if (!isMobile() || deudasExpanded()) {
+                    <article class="dashboard-card deudas-card" id="deudas-detail">
+                      <header class="deudas-header">
+                        <span class="deudas-dot"></span>
+                        <h2 class="deudas-title">Deudas</h2>
+                        @if (totalDeudasReal() > 0 || totalDeudasPresupuestado() > 0) {
+                          <span class="deudas-total">
+                            {{ totalDeudasReal() | currency:'EUR':'symbol':'1.0-0':'es' }}
+                            de
+                            {{ totalDeudasPresupuestado() | currency:'EUR':'symbol':'1.0-0':'es' }}
+                          </span>
                         }
-                      </div>
-                    } @else {
-                      <p class="deudas-empty">Sin deudas pendientes este mes 🎉</p>
-                    }
+                      </header>
 
-                    <footer class="deudas-footer">
-                      No cuenta como gasto pagado este mes: pulsa una tarjeta para registrar un pago a cuenta.
-                    </footer>
-                  </article>
+                      @if (deudasCards().length > 0) {
+                        <div class="deudas-grid">
+                          @for (card of deudasCards(); track card.id) {
+                            <div class="deuda-card" [class.deuda-card--done]="card.done" (click)="openDeudaDialog(card)">
+                              <div class="deuda-card__header">
+                                <div class="deuda-card__info">
+                                  <span class="deuda-card__name">{{ card.name }}</span>
+                                  <span class="deuda-card__cat">Gasto no presupuestado</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  class="deuda-card__delete"
+                                  title="Eliminar deuda"
+                                  aria-label="Eliminar deuda"
+                                  (click)="$event.stopPropagation(); deleteDeuda(card.id)">
+                                  <i class="pi pi-trash"></i>
+                                </button>
+                              </div>
+                              <div class="deuda-bar">
+                                <div class="deuda-bar__fill" [class.deuda-bar__fill--done]="card.done" [style.width.%]="card.pct"></div>
+                              </div>
+                              <div class="deuda-card__foot">
+                                <span class="deuda-card__amounts">{{ card.real | currency:'EUR':'symbol':'1.2-2':'es' }} de {{ card.total | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+                                <span class="deuda-card__pct" [class.deuda-card__pct--done]="card.done">{{ card.pct | number:'1.0-0':'es' }}%</span>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <p class="deudas-empty">Sin deudas pendientes este mes 🎉</p>
+                      }
+
+                      <footer class="deudas-footer">
+                        No cuenta como gasto pagado este mes: pulsa una tarjeta para registrar un pago a cuenta.
+                      </footer>
+                    </article>
+                  }
                 </section>
               }
               @case ('oro') {
                 @if (inversionesMes().length > 0) {
-                  <section class="dashboard-card inversiones-mes-card">
-                    <header class="card-header">
-                      <h2 class="card-title">Compras de oro · {{ currentMonthName() }}</h2>
-                      <span class="card-total">{{ totalInvertidoMes() | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
-                    </header>
-                    <table class="inversiones-mes-table">
-                      <thead>
-                        <tr>
-                          <th>Pieza</th>
-                          <th>Formato</th>
-                          <th class="align-right">Peso</th>
-                          <th class="align-right">Invertido</th>
-                          <th class="align-right">Spot compra</th>
-                          <th class="align-right">Prima</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (inv of inversionesMes(); track inv.id) {
+                  @if (isMobile()) {
+                    <button type="button" class="dashboard-card oro-row" (click)="goToInversionesOro()">
+                      <span class="oro-icon" aria-hidden="true"><i class="pi pi-chart-line"></i></span>
+                      <span class="list-row__main">
+                        <span class="card-title">Compras de oro · {{ currentMonthName() }}</span>
+                        <span class="list-row__sub">
+                          {{ inversionesMes().length }} {{ inversionesMes().length === 1 ? 'compra' : 'compras' }}
+                          · {{ totalGramosMes() | number:'1.0-2':'es' }} g
+                          · {{ totalInvertidoMes() | currency:'EUR':'symbol':'1.0-0':'es' }}
+                        </span>
+                      </span>
+                      <i class="pi pi-angle-right row-chevron"></i>
+                    </button>
+                  } @else {
+                    <section class="dashboard-card inversiones-mes-card">
+                      <header class="card-header">
+                        <h2 class="card-title">Compras de oro · {{ currentMonthName() }}</h2>
+                        <span class="card-total">{{ totalInvertidoMes() | currency:'EUR':'symbol':'1.0-0':'es' }}</span>
+                      </header>
+                      <table class="inversiones-mes-table">
+                        <thead>
                           <tr>
-                            <td>{{ inv.pieza ?? inv.name }}</td>
-                            <td>
-                              <span class="formato-badge-mini" [class]="formatoBadgeMini(inv.formato ?? 'Lingote')">
-                                {{ inv.formato ?? 'Lingote' }}
-                              </span>
-                            </td>
-                            <td class="align-right">{{ (inv.gramos || 0) | number:'1.2-2':'es' }} g</td>
-                            <td class="align-right">{{ (inv.precio_compra || 0) | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
-                            <td class="align-right">
-                              @if (inv.spotPrecioCompra) {
-                                {{ inv.spotPrecioCompra | currency:'EUR':'symbol':'1.2-2':'es' }}/g
-                              } @else {
-                                <span class="muted">—</span>
-                              }
-                            </td>
-                            <td class="align-right">
-                              @if (inv.spotPrecioCompra && inv.gramos && inv.precio_compra) {
-                                @let precioG = inv.precio_compra / inv.gramos;
-                                @let prima = precioG - inv.spotPrecioCompra;
-                                @let primaPercent = (prima / inv.spotPrecioCompra) * 100;
-                                <span [class.prima-positive]="prima >= 0" [class.prima-negative]="prima < 0">
-                                  {{ prima >= 0 ? '+' : '' }}{{ prima | number:'1.2-2':'es' }}€/g
-                                  ({{ primaPercent >= 0 ? '+' : '' }}{{ primaPercent | number:'1.1-1':'es' }}%)
-                                </span>
-                              } @else {
-                                <span class="muted">—</span>
-                              }
-                            </td>
+                            <th>Pieza</th>
+                            <th>Formato</th>
+                            <th class="align-right">Peso</th>
+                            <th class="align-right">Invertido</th>
+                            <th class="align-right">Spot compra</th>
+                            <th class="align-right">Prima</th>
                           </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </section>
+                        </thead>
+                        <tbody>
+                          @for (inv of inversionesMes(); track inv.id) {
+                            <tr>
+                              <td>{{ inv.pieza ?? inv.name }}</td>
+                              <td>
+                                <span class="formato-badge-mini" [class]="formatoBadgeMini(inv.formato ?? 'Lingote')">
+                                  {{ inv.formato ?? 'Lingote' }}
+                                </span>
+                              </td>
+                              <td class="align-right">{{ (inv.gramos || 0) | number:'1.2-2':'es' }} g</td>
+                              <td class="align-right">{{ (inv.precio_compra || 0) | currency:'EUR':'symbol':'1.0-0':'es' }}</td>
+                              <td class="align-right">
+                                @if (inv.spotPrecioCompra) {
+                                  {{ inv.spotPrecioCompra | currency:'EUR':'symbol':'1.2-2':'es' }}/g
+                                } @else {
+                                  <span class="muted">—</span>
+                                }
+                              </td>
+                              <td class="align-right">
+                                @if (inv.spotPrecioCompra && inv.gramos && inv.precio_compra) {
+                                  @let precioG = inv.precio_compra / inv.gramos;
+                                  @let prima = precioG - inv.spotPrecioCompra;
+                                  @let primaPercent = (prima / inv.spotPrecioCompra) * 100;
+                                  <span [class.prima-positive]="prima >= 0" [class.prima-negative]="prima < 0">
+                                    {{ prima >= 0 ? '+' : '' }}{{ prima | number:'1.2-2':'es' }}€/g
+                                    ({{ primaPercent >= 0 ? '+' : '' }}{{ primaPercent | number:'1.1-1':'es' }}%)
+                                  </span>
+                                } @else {
+                                  <span class="muted">—</span>
+                                }
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </section>
+                  }
                 }
               }
             }
@@ -478,6 +739,7 @@
                     <input
                       id="deuda-pago"
                       type="number"
+                      inputmode="decimal"
                       min="0.01"
                       step="0.01"
                       placeholder="0"
@@ -530,8 +792,14 @@
           </div>
         </section>
       }
+
     </section>
   </main>
+
+  @if (isMobile()) {
+    <!-- El «+» central abre la hoja dentro del mismo gesto (iOS muestra el teclado). -->
+    <app-bottom-nav (add)="openAddMovementDialog()" />
+  }
 
   @if (editDialog(); as dialog) {
     <div class="edit-overlay" (click)="closeEditDialog()">
@@ -568,6 +836,7 @@
                 <input
                   id="edit-esperado"
                   type="number"
+                  inputmode="decimal"
                   step="0.01"
                   [ngModel]="editFormValues()['esperado']"
                   (ngModelChange)="updateEditField('esperado', $event)"
@@ -578,6 +847,7 @@
                 <input
                   id="edit-real"
                   type="number"
+                  inputmode="decimal"
                   step="0.01"
                   [ngModel]="editFormValues()['real']"
                   (ngModelChange)="updateEditField('real', $event)"
@@ -617,6 +887,7 @@
                 <input
                   id="edit-presupuestado"
                   type="number"
+                  inputmode="decimal"
                   step="0.01"
                   [ngModel]="editFormValues()['presupuestado']"
                   (ngModelChange)="updateEditField('presupuestado', $event)"
@@ -627,6 +898,7 @@
                 <input
                   id="edit-real"
                   type="number"
+                  inputmode="decimal"
                   step="0.01"
                   [ngModel]="editFormValues()['real']"
                   (ngModelChange)="updateEditField('real', $event)"
@@ -657,6 +929,7 @@
                 <input
                   id="edit-presupuestado"
                   type="number"
+                  inputmode="decimal"
                   step="0.01"
                   [ngModel]="editFormValues()['presupuestado']"
                   (ngModelChange)="updateEditField('presupuestado', $event)"
@@ -667,6 +940,7 @@
                 <input
                   id="edit-real"
                   type="number"
+                  inputmode="decimal"
                   step="0.01"
                   [ngModel]="editFormValues()['real']"
                   (ngModelChange)="updateEditField('real', $event)"
@@ -699,6 +973,7 @@
                 <input
                   id="edit-presupuestado"
                   type="number"
+                  inputmode="decimal"
                   step="0.01"
                   [ngModel]="editFormValues()['presupuestado']"
                   (ngModelChange)="updateEditField('presupuestado', $event)"
@@ -709,6 +984,7 @@
                 <input
                   id="edit-real"
                   type="number"
+                  inputmode="decimal"
                   step="0.01"
                   [ngModel]="editFormValues()['real']"
                   (ngModelChange)="updateEditField('real', $event)"
@@ -716,122 +992,265 @@
               </div>
             }
           }
-          <footer class="edit-dialog__footer">
-            <button type="button" class="ghost-button" (click)="closeEditDialog()" [disabled]="editSaving()">Cancelar</button>
-            <button type="submit" class="primary-button" [disabled]="editSaving()">
-              @if (editSaving()) {
-                <i class="pi pi-spin pi-spinner"></i>
-              }
-              <span>Guardar</span>
-            </button>
-          </footer>
+          @if (editDeleteArmed()) {
+            <!-- Borrar es irreversible: confirmación inline en dos pasos. Guardar no la necesita. -->
+            <footer class="edit-dialog__footer edit-dialog__footer--confirm" role="group" aria-label="Confirmar eliminación">
+              <p class="edit-confirm__text">¿Eliminar «{{ editRowLabel() }}»?</p>
+              <div class="edit-confirm__actions">
+                <button type="button" class="ghost-button" (click)="disarmDelete()" [disabled]="editSaving()">Cancelar</button>
+                <button type="button" class="primary-button primary-button--danger" (click)="deleteFromEditDialog()" [disabled]="editSaving()">
+                  @if (editSaving()) {
+                    <i class="pi pi-spin pi-spinner"></i>
+                  }
+                  <span>Sí, eliminar</span>
+                </button>
+              </div>
+            </footer>
+          } @else {
+            <footer class="edit-dialog__footer">
+              <button type="button" class="ghost-button ghost-button--danger" (click)="armDelete()" [disabled]="editSaving()">Eliminar</button>
+              <button type="button" class="ghost-button" (click)="closeEditDialog()" [disabled]="editSaving()">Cancelar</button>
+              <button type="submit" class="primary-button" [disabled]="editSaving()">
+                @if (editSaving()) {
+                  <i class="pi pi-spin pi-spinner"></i>
+                }
+                <span>Guardar</span>
+              </button>
+            </footer>
+          }
         </form>
       </div>
     </div>
   }
 </div>
 
-<p-dialog
-  [visible]="addMovementDialogVisible()"
-  (visibleChange)="addMovementDialogVisible.set($event)"
-  [modal]="true"
-  [style]="{ width: '460px' }"
-  [dismissableMask]="true"
-  [closable]="true"
-  [showHeader]="false"
-  styleClass="movement-dialog">
-  <div class="dialog-body">
-    <header class="dialog-header">
-      <h2 class="dialog-title">Añadir movimiento</h2>
-      <div class="dialog-mode-toggle">
-        <button
-          type="button"
-          class="mode-btn"
-          [class.mode-btn--active]="newMovementMode() === 'real'"
-          (click)="newMovementMode.set('real')">
-          ✅ Registrar real
-        </button>
-        <button
-          type="button"
-          class="mode-btn"
-          [class.mode-btn--active]="newMovementMode() === 'plan'"
-          (click)="newMovementMode.set('plan')">
-          📋 Planificar
-        </button>
-      </div>
-      <p class="dialog-subtitle">
-        @if (newMovementMode() === 'real') {
-          Registra algo que ya ha ocurrido — se guarda como gasto/ingreso real.
-        } @else {
-          Planifica el mes — se guarda como presupuesto previsto, sin marcar como realizado.
-        }
-      </p>
+@if (isMobile()) {
+  <!-- Hoja inferior: siempre en el DOM para poder enfocar el importe dentro del gesto de apertura. -->
+  <div
+    class="sheet-scrim"
+    [class.sheet-scrim--open]="addMovementDialogVisible()"
+    aria-hidden="true"
+    (click)="closeAddMovementDialog()"></div>
+  <section
+    class="sheet"
+    [class.sheet--open]="addMovementDialogVisible()"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="sheet-title"
+    [attr.inert]="addMovementDialogVisible() ? null : ''"
+    [attr.aria-hidden]="addMovementDialogVisible() ? null : 'true'">
+    <div class="sheet__grabber" aria-hidden="true"></div>
+
+    <header class="sheet__header">
+      <h2 id="sheet-title" class="sheet__title">Añadir movimiento</h2>
+      <button type="button" class="sheet__close" aria-label="Cerrar" (click)="closeAddMovementDialog()">
+        <i class="pi pi-times"></i>
+      </button>
     </header>
 
-    <div class="dialog-field">
-      <label for="destination">Tabla de destino</label>
-      <p-select
-        inputId="destination"
-        [options]="destinationOptions"
-        optionLabel="label"
-        optionValue="value"
-        placeholder="Selecciona una tabla"
-        [ngModel]="newMovementDestination()"
-        (ngModelChange)="newMovementDestination.set($event)"
-        appendTo="body"
-        styleClass="dialog-select"></p-select>
-    </div>
-
-    @if (newMovementDestination() === 'fondos') {
-      <div class="dialog-field">
-        <label>Fondo de ahorro</label>
-        @if (activeFondoOptions().length === 0) {
-          <p class="dialog-hint">⚠️ No tienes fondos activos. Créalos en <strong>Configuración</strong>.</p>
-        } @else {
-          <p-select
-            [options]="activeFondoOptions()"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Selecciona un fondo"
-            [ngModel]="newMovementFondoId()"
-            (ngModelChange)="newMovementFondoId.set($event)"
-            appendTo="body"
-            styleClass="dialog-select"></p-select>
-        }
+    <div class="sheet__body">
+      <div class="segmented" role="radiogroup" aria-label="Tipo de importe">
+        <button
+          type="button"
+          role="radio"
+          class="segmented__btn"
+          [class.segmented__btn--on]="newMovementMode() === 'real'"
+          [attr.aria-checked]="newMovementMode() === 'real'"
+          (click)="newMovementMode.set('real')">
+          Real
+        </button>
+        <button
+          type="button"
+          role="radio"
+          class="segmented__btn"
+          [class.segmented__btn--on]="newMovementMode() === 'plan'"
+          [attr.aria-checked]="newMovementMode() === 'plan'"
+          (click)="newMovementMode.set('plan')">
+          Presupuesto
+        </button>
       </div>
-    } @else {
-      <div class="dialog-field">
-        <label for="description">Descripción</label>
-        <input
-          id="description"
-          type="text"
-          placeholder="Ej. Nómina, Alquiler, Supermercado"
-          [ngModel]="newMovementDescription()"
-          (ngModelChange)="newMovementDescription.set($event)" />
+
+      <div class="sheet-field">
+        <label for="sheet-amount">{{ newMovementMode() === 'plan' ? 'Presupuesto' : 'Importe' }}</label>
+        <div class="amount-box">
+          <input
+            id="sheet-amount"
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            enterkeyhint="next"
+            placeholder="0,00"
+            [ngModel]="mobileAmountRaw()"
+            (ngModelChange)="setMobileAmount($event)"
+            name="sheet-amount" />
+          <span class="amount-box__unit" aria-hidden="true">€</span>
+        </div>
       </div>
-    }
 
-    <div class="dialog-field">
-      <label for="amount">{{ newMovementMode() === 'plan' ? 'Presupuesto (€)' : 'Cantidad real (€)' }}</label>
-      <input
-        id="amount"
-        type="number"
-        min="0"
-        step="0.01"
-        placeholder="0,00"
-        [ngModel]="newMovementAmount()"
-        (ngModelChange)="newMovementAmount.set($event)" />
-    </div>
+      <div class="sheet-field">
+        <label for="sheet-destination">Sección</label>
+        <select
+          id="sheet-destination"
+          class="sheet-select"
+          [ngModel]="newMovementDestination()"
+          (ngModelChange)="newMovementDestination.set($event)"
+          name="sheet-destination">
+          @for (option of destinationOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
 
-    <footer class="dialog-footer">
-      <button type="button" class="ghost-button" (click)="closeAddMovementDialog()">Cancelar</button>
+      @if (newMovementDestination() === 'fondos') {
+        <div class="sheet-field">
+          <label for="sheet-fondo">Fondo de ahorro</label>
+          @if (activeFondoOptions().length === 0) {
+            <p class="dialog-hint">No tienes fondos activos. Créalos en <strong>Configuración</strong>.</p>
+          } @else {
+            <select
+              id="sheet-fondo"
+              class="sheet-select"
+              [ngModel]="newMovementFondoId()"
+              (ngModelChange)="newMovementFondoId.set($event)"
+              name="sheet-fondo">
+              <option [ngValue]="null" disabled>Selecciona un fondo</option>
+              @for (option of activeFondoOptions(); track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          }
+        </div>
+      } @else {
+        <div class="sheet-field">
+          <label for="sheet-description">Concepto</label>
+          <input
+            id="sheet-description"
+            type="text"
+            placeholder="Supermercado, gasolina…"
+            enterkeyhint="done"
+            autocomplete="off"
+            [ngModel]="newMovementDescription()"
+            (ngModelChange)="newMovementDescription.set($event)"
+            name="sheet-description" />
+        </div>
+      }
+
       <button
         type="button"
-        class="primary-button"
+        class="sheet__submit"
         [disabled]="!canSubmitMovement()"
         (click)="submitNewMovement()">
-        Añadir movimiento
+        @if (selectedDestinationLabel(); as label) {
+          Guardar en {{ label }}
+        } @else {
+          Guardar
+        }
       </button>
-    </footer>
-  </div>
-</p-dialog>
+    </div>
+  </section>
+} @else {
+  <p-dialog
+    [visible]="addMovementDialogVisible()"
+    (visibleChange)="addMovementDialogVisible.set($event)"
+    [modal]="true"
+    [style]="{ width: '460px' }"
+    [dismissableMask]="true"
+    [closable]="true"
+    [showHeader]="false"
+    styleClass="movement-dialog">
+    <div class="dialog-body">
+      <header class="dialog-header">
+        <h2 class="dialog-title">Añadir movimiento</h2>
+        <div class="dialog-mode-toggle">
+          <button
+            type="button"
+            class="mode-btn"
+            [class.mode-btn--active]="newMovementMode() === 'real'"
+            (click)="newMovementMode.set('real')">
+            ✅ Registrar real
+          </button>
+          <button
+            type="button"
+            class="mode-btn"
+            [class.mode-btn--active]="newMovementMode() === 'plan'"
+            (click)="newMovementMode.set('plan')">
+            📋 Planificar
+          </button>
+        </div>
+        <p class="dialog-subtitle">
+          @if (newMovementMode() === 'real') {
+            Registra algo que ya ha ocurrido — se guarda como gasto/ingreso real.
+          } @else {
+            Planifica el mes — se guarda como presupuesto previsto, sin marcar como realizado.
+          }
+        </p>
+      </header>
+
+      <div class="dialog-field">
+        <label for="destination">Tabla de destino</label>
+        <p-select
+          inputId="destination"
+          [options]="destinationOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Selecciona una tabla"
+          [ngModel]="newMovementDestination()"
+          (ngModelChange)="newMovementDestination.set($event)"
+          appendTo="body"
+          styleClass="dialog-select"></p-select>
+      </div>
+
+      @if (newMovementDestination() === 'fondos') {
+        <div class="dialog-field">
+          <label>Fondo de ahorro</label>
+          @if (activeFondoOptions().length === 0) {
+            <p class="dialog-hint">⚠️ No tienes fondos activos. Créalos en <strong>Configuración</strong>.</p>
+          } @else {
+            <p-select
+              [options]="activeFondoOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Selecciona un fondo"
+              [ngModel]="newMovementFondoId()"
+              (ngModelChange)="newMovementFondoId.set($event)"
+              appendTo="body"
+              styleClass="dialog-select"></p-select>
+          }
+        </div>
+      } @else {
+        <div class="dialog-field">
+          <label for="description">Descripción</label>
+          <input
+            id="description"
+            type="text"
+            placeholder="Ej. Nómina, Alquiler, Supermercado"
+            [ngModel]="newMovementDescription()"
+            (ngModelChange)="newMovementDescription.set($event)" />
+        </div>
+      }
+
+      <div class="dialog-field">
+        <label for="amount">{{ newMovementMode() === 'plan' ? 'Presupuesto (€)' : 'Cantidad real (€)' }}</label>
+        <input
+          id="amount"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0,00"
+          [ngModel]="newMovementAmount()"
+          (ngModelChange)="newMovementAmount.set($event)" />
+      </div>
+
+      <footer class="dialog-footer">
+        <button type="button" class="ghost-button" (click)="closeAddMovementDialog()">Cancelar</button>
+        <button
+          type="button"
+          class="primary-button"
+          [disabled]="!canSubmitMovement()"
+          (click)="submitNewMovement()">
+          Añadir movimiento
+        </button>
+      </footer>
+    </div>
+  </p-dialog>
+}

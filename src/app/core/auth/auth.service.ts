@@ -18,7 +18,7 @@ export class AuthService {
   constructor() {
     this.redirectHandled = getRedirectResult(this.auth).then(result => {
       if (result?.user) {
-        this.router.navigate(['/home']);
+        this.router.navigate(['/desktop']);
       }
     }).catch(() => {});
   }

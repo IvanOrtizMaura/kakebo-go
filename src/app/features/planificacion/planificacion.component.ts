@@ -272,7 +272,7 @@ export class PlanificacionComponent implements OnInit {
         )
       ]);
 
-      await this.router.navigate(['/home'], {
+      await this.router.navigate(['/desktop'], {
         queryParams: { year: targetYear, month: targetMonth - 1 }
       });
     } catch (error) {
@@ -284,7 +284,7 @@ export class PlanificacionComponent implements OnInit {
 
   cerrar(): void {
     const { year, month } = this.getTargetMonth();
-    this.router.navigate(['/home'], {
+    this.router.navigate(['/desktop'], {
       queryParams: { year, month: month - 1 }
     });
   }

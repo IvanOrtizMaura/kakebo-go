@@ -29,20 +29,6 @@ export class MasComponent {
     title: 'Este mes',
     items: [
       {
-        label: 'Ingresos',
-        summary: '2 fuentes · 2.450 € ingresados',
-        icon: 'pi-arrow-up-right',
-        color: '#8b5cf6',
-        route: '/ingresos'
-      },
-      {
-        label: 'Gastos',
-        summary: '4 gastos · 650 € / 600 €',
-        icon: 'pi-shopping-cart',
-        color: '#ef4444',
-        route: '/gastos'
-      },
-      {
         label: 'Facturas',
         summary: '3 facturas · 780 € / 800 €',
         icon: 'pi-file',

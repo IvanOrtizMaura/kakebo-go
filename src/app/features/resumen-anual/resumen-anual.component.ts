@@ -195,7 +195,7 @@ export class ResumenAnualComponent {
   navegarAlMes(indice: number): void {
     const year = this.anio();
     const month = indice;
-    this.router.navigate(['/home'], { queryParams: { year, month } });
+    this.router.navigate(['/desktop'], { queryParams: { year, month } });
   }
 
   calcularPorcentajeProgreso(gastado: number, presupuestado: number): number {

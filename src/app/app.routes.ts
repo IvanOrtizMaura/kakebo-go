@@ -2,8 +2,9 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { onboardingGuard } from './core/auth/onboarding.guard';
 
+/** El dashboard es responsive: una única entrada para todos los tamaños. */
 function defaultRoute(): string {
-  return window.innerWidth >= 1024 ? '/desktop' : '/home';
+  return '/desktop';
 }
 
 export const routes: Routes = [
@@ -25,21 +26,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent),
     canActivate: [authGuard, onboardingGuard]
   },
-  {
-    path: 'home',
-    loadComponent: () => import('./features/month/home/home.component').then(m => m.HomeComponent),
-    canActivate: [authGuard, onboardingGuard]
-  },
-  {
-    path: 'ingresos',
-    loadComponent: () => import('./features/month/ingresos/ingresos.component').then(m => m.IngresosComponent),
-    canActivate: [authGuard, onboardingGuard]
-  },
-  {
-    path: 'gastos',
-    loadComponent: () => import('./features/month/gastos/gastos.component').then(m => m.GastosComponent),
-    canActivate: [authGuard, onboardingGuard]
-  },
+  // Enlaces antiguos y PWA instaladas que apuntaban a la pantalla móvil retirada.
+  { path: 'home', redirectTo: '/desktop' },
+  // Las pantallas móviles de Ingresos y Gastos se retiraron: ambas secciones viven en el dashboard.
+  { path: 'ingresos', redirectTo: '/desktop' },
+  { path: 'gastos', redirectTo: '/desktop' },
   {
     path: 'mas',
     loadComponent: () => import('./features/mas/mas.component').then(m => m.MasComponent),
@@ -100,5 +91,5 @@ export const routes: Routes = [
     loadComponent: () => import('./features/inversiones/pensiones/pensiones.component').then(m => m.PensionesComponent),
     canActivate: [authGuard, onboardingGuard]
   },
-  { path: '**', redirectTo: '/home' }
+  { path: '**', redirectTo: '/desktop' }
 ];

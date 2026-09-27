@@ -115,7 +115,7 @@ export class DeudasComponent {
   }
 
   navigateToHome(): void {
-    this.router.navigate(['/home']);
+    this.router.navigate(['/desktop']);
   }
 
   navigateToPreviousMonth(): void {

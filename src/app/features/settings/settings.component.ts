@@ -259,8 +259,7 @@ export class SettingsComponent implements OnInit {
   }
 
   goBack() {
-    const isMobile = window.innerWidth < 1024;
-    this.router.navigate([isMobile ? '/home' : '/desktop']);
+    this.router.navigate(['/desktop']);
   }
 
   async ngOnInit() {

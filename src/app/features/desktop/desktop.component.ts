@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject, OnDestroy } from '@angular/core';
+import { Component, signal, computed, inject, OnDestroy, ElementRef, DestroyRef, ChangeDetectorRef, afterNextRender } from '@angular/core';
 import { CurrencyPipe, DecimalPipe, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -28,6 +28,7 @@ import {
 } from '../../shared/models';
 import { MONTH_NAMES } from '../../shared/constants/months';
 import { MasonryGridDirective } from '../../shared/directives/masonry-grid.directive';
+import { BottomNavComponent } from '../../layout/bottom-nav/bottom-nav.component';
 
 interface SidebarMonth {
   index: number;
@@ -42,6 +43,8 @@ interface KpiCard {
   variant: 'default' | 'accent';
   isCurrency: boolean;
   suffix?: string;
+  /** Línea secundaria bajo el valor (solo se muestra en móvil). */
+  caption?: string;
 }
 
 interface DonutSegment {
@@ -90,10 +93,12 @@ const COMPACT_BLOCKS = new Set<DashboardBlockKey>(['distribucion', 'resumen', 'o
 const COMPACT_ROW_SIZE = 3;
 
 const DONUT_RADIUS = 45;
-const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
 const DONUT_CX = 93;
 const DONUT_CY = 93;
 const DONUT_STROKE = 30;
+/** Móvil: anillo más grande y trazo más fino para que el importe quepa en el hueco. */
+const DONUT_RADIUS_MOBILE = 66;
+const DONUT_STROKE_MOBILE = 15;
 
 const RING_RADIUS = 65;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -123,12 +128,32 @@ interface EditDialogState {
   row: Record<string, unknown>;
 }
 
+const EDIT_TYPE_TO_CATEGORY: Record<Exclude<EditDialogType, 'ingreso'>, string> = {
+  factura: 'facturas',
+  gasto: 'gastos',
+  ahorro: 'ahorros',
+  pareja: 'pareja'
+};
+
+const MOBILE_MEDIA_QUERY = '(max-width: 1023px)';
+const KPI_CARD_GAP = 10;
+
+const EUR_FORMAT = new Intl.NumberFormat('es-ES', {
+  style: 'currency',
+  currency: 'EUR',
+  maximumFractionDigits: 0
+});
+
 @Component({
   selector: 'app-desktop',
   standalone: true,
-  imports: [CurrencyPipe, DecimalPipe, FormsModule, Dialog, Select, MasonryGridDirective],
+  imports: [CurrencyPipe, DecimalPipe, FormsModule, Dialog, Select, MasonryGridDirective, BottomNavComponent],
   templateUrl: './desktop.component.html',
-  styleUrl: './desktop.component.scss'
+  styleUrl: './desktop.component.scss',
+  host: {
+    '[class.sheet-open]': 'mobileSheetOpen()',
+    '(document:keydown.escape)': 'onEscape()'
+  }
 })
 export class DesktopComponent implements OnDestroy {
   private readonly router = inject(Router);
@@ -143,11 +168,14 @@ export class DesktopComponent implements OnDestroy {
   private readonly inversionesService = inject(InversionesService);
   private readonly deudasInformalesService = inject(DeudasInformalesService);
   private readonly dashboardLayoutService = inject(DashboardLayoutService);
+  private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly donutCX = DONUT_CX;
   readonly donutCY = DONUT_CY;
-  readonly donutR = DONUT_RADIUS;
-  readonly donutStrokeWidth = DONUT_STROKE;
+  readonly donutR = computed(() => this.isMobile() ? DONUT_RADIUS_MOBILE : DONUT_RADIUS);
+  readonly donutStrokeWidth = computed(() => this.isMobile() ? DONUT_STROKE_MOBILE : DONUT_STROKE);
 
   readonly ringCX = RING_CX;
   readonly ringCY = RING_CY;
@@ -158,7 +186,7 @@ export class DesktopComponent implements OnDestroy {
   private readonly baseYear = this.today.getFullYear();
   private readonly baseMonthIndex = this.today.getMonth();
 
-  readonly selectedYear = signal(this.baseYear);
+  readonly selectedYear = signal(this.readInitialYear());
   readonly selectedMonthIndex = signal(this.readInitialMonthIndex());
 
   private readonly monthDataPresence = signal<Record<number, boolean>>({});
@@ -344,7 +372,8 @@ export class DesktopComponent implements OnDestroy {
     return this.totalIngresosEsperado() - presupuestado;
   });
 
-  readonly diasParaCobrar = computed(() => {
+  /** Próximo ingreso pendiente con día de paga: días que faltan y de dónde viene. */
+  private readonly proximoCobro = computed<{ dias: number; fuente: string; fechaLabel: string } | null>(() => {
     const pending = this.ingresosData().filter(item => !item.depositado && item.dia_de_paga);
     if (!pending.length) return null;
     const referenceYear = this.selectedYear();
@@ -366,8 +395,11 @@ export class DesktopComponent implements OnDestroy {
     }
     if (isNaN(payDate.getTime())) return null;
     const diff = Math.ceil((payDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return diff >= 0 ? diff : null;
+    if (diff < 0) return null;
+    return { dias: diff, fuente: main.fuente, fechaLabel: `día ${payDate.getDate()}` };
   });
+
+  readonly diasParaCobrar = computed(() => this.proximoCobro()?.dias ?? null);
 
   readonly kpiCards = computed<KpiCard[]>(() => {
     const dias = this.diasParaCobrar();
@@ -386,6 +418,65 @@ export class DesktopComponent implements OnDestroy {
     ];
   });
 
+  /** Presupuesto total del mes (todas las categorías de gasto). */
+  readonly presupuestoTotal = computed(() =>
+    this.totalFacturasPresupuestado() +
+    this.totalGastosSectionPresupuestado() +
+    this.totalAhorrosPresupuestado() +
+    this.totalParejaPresupuestado() +
+    this.totalFondosPresupuestado()
+  );
+
+  /**
+   * Carrusel móvil: "Queda por gastar" va primero y en acento; cada tarjeta
+   * lleva una línea de contexto porque en móvil no se ven todas a la vez.
+   */
+  readonly mobileKpiCards = computed<KpiCard[]>(() => {
+    const presupuesto = this.presupuestoTotal();
+    const esperado = this.totalIngresosEsperado();
+    const gastos = this.totalGastos();
+    const cobro = this.proximoCobro();
+    const pct = presupuesto > 0 ? Math.round((gastos / presupuesto) * 100) : 0;
+    return [
+      {
+        label: 'Queda por gastar',
+        value: this.quedaPorGastar(),
+        variant: 'accent',
+        isCurrency: true,
+        caption: `de ${EUR_FORMAT.format(presupuesto)} presupuestados`
+      },
+      {
+        label: 'Gastos totales',
+        value: gastos,
+        variant: 'default',
+        isCurrency: true,
+        caption: `${pct} % del presupuesto`
+      },
+      {
+        label: 'Ingresos totales',
+        value: this.totalIngresos(),
+        variant: 'default',
+        isCurrency: true,
+        caption: `de ${EUR_FORMAT.format(esperado)} esperados`
+      },
+      {
+        label: 'Queda para presupuestar',
+        value: this.quedaParaPresupuestar(),
+        variant: 'default',
+        isCurrency: true,
+        caption: `sobre ${EUR_FORMAT.format(esperado)} de ingresos`
+      },
+      {
+        label: 'Días para cobrar',
+        value: cobro?.dias ?? 0,
+        variant: 'default',
+        isCurrency: false,
+        suffix: cobro === null ? '—' : cobro.dias === 1 ? 'día' : 'días',
+        caption: cobro ? `${cobro.fuente} el ${cobro.fechaLabel}` : 'Sin cobros pendientes'
+      }
+    ];
+  });
+
   readonly donutCategories = computed<DonutCategory[]>(() => [
     { key: 'facturas', label: 'Facturas', color: CATEGORY_COLORS['facturas'].color, value: this.totalFacturasReal() },
     { key: 'gastos', label: 'Gastos', color: CATEGORY_COLORS['gastos'].color, value: this.totalGastosSectionReal() },
@@ -399,17 +490,18 @@ export class DesktopComponent implements OnDestroy {
     const total = items.reduce((sum, item) => sum + item.value, 0);
     if (total === 0) return [];
 
+    const circumference = 2 * Math.PI * this.donutR();
     let cumulativeAngle = 0;
     return items.map(item => {
       const ratio = item.value / total;
-      const segmentLength = ratio * DONUT_CIRCUMFERENCE;
-      const offset = -cumulativeAngle * DONUT_CIRCUMFERENCE;
+      const segmentLength = ratio * circumference;
+      const offset = -cumulativeAngle * circumference;
       cumulativeAngle += ratio;
       return {
         label: item.label,
         value: item.value,
         color: item.color,
-        strokeDasharray: `${segmentLength.toFixed(2)} ${DONUT_CIRCUMFERENCE.toFixed(2)}`,
+        strokeDasharray: `${segmentLength.toFixed(2)} ${circumference.toFixed(2)}`,
         strokeDashoffset: offset,
         percentage: Math.round(ratio * 100)
       };
@@ -524,6 +616,45 @@ export class DesktopComponent implements OnDestroy {
   readonly editDialog = signal<EditDialogState | null>(null);
   readonly editSaving = signal(false);
   readonly editFormValues = signal<Record<string, unknown>>({});
+  /** «Eliminar» pulsado una vez: el pie del diálogo pasa a pedir confirmación. */
+  readonly editDeleteArmed = signal(false);
+  /** Texto con el que se nombra la fila en la confirmación de borrado. */
+  readonly editRowLabel = computed(() => {
+    const dialog = this.editDialog();
+    if (!dialog) return '';
+    const label = dialog.type === 'ingreso' ? dialog.row['fuente'] : dialog.row['name'];
+    return typeof label === 'string' && label.trim() ? label.trim() : 'este movimiento';
+  });
+
+  // ---- Móvil (< 1024px): mismo componente y datos, disposición distinta ----
+
+  /** Se sigue con matchMedia, no con el ancho de ventana en cada render. */
+  readonly isMobile = signal(false);
+  readonly mobileSearchOpen = signal(false);
+  readonly objetivoExpanded = signal(false);
+  readonly deudasExpanded = signal(false);
+  /** Página visible del carrusel de KPIs (indicador de puntos). */
+  readonly kpiPage = signal(0);
+  /**
+   * Categorías plegadas/desplegadas por el usuario. Si una clave no está,
+   * aplica el valor por defecto: la primera abierta, el resto plegadas.
+   */
+  readonly expandedCategories = signal<Record<string, boolean>>({});
+  /** Texto tal cual lo escribe el usuario en la hoja ("42,50"); se parsea a newMovementAmount. */
+  readonly mobileAmountRaw = signal('');
+
+  readonly mobileSheetOpen = computed(() => this.isMobile() && this.addMovementDialogVisible());
+
+  readonly deudasPendientes = computed(() => this.deudasCards().filter(card => !card.done).length);
+
+  readonly totalGramosMes = computed(() =>
+    this.inversionesMes().reduce((sum, inv) => sum + (inv.gramos || 0), 0)
+  );
+
+  readonly selectedDestinationLabel = computed(() => {
+    const destination = this.newMovementDestination();
+    return this.destinationOptions.find(option => option.value === destination)?.label ?? null;
+  });
 
   constructor() {
     const user = this.authService.currentUser;
@@ -541,12 +672,42 @@ export class DesktopComponent implements OnDestroy {
     this.deudasSubscription = this.deudasInformalesService
       .getAll()
       .subscribe(items => this.deudasData.set(items));
+
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      const media = window.matchMedia(MOBILE_MEDIA_QUERY);
+      this.isMobile.set(media.matches);
+      const onChange = (event: MediaQueryListEvent) => this.isMobile.set(event.matches);
+      media.addEventListener('change', onChange);
+      this.destroyRef.onDestroy(() => media.removeEventListener('change', onChange));
+    }
+
+    // Al entrar, el chip del mes activo debe quedar a la vista.
+    afterNextRender(() => this.scrollActiveChipIntoView('auto'));
+
+    // /desktop?add=1: el «+» de la tab bar en otra pantalla pide abrir la hoja al llegar.
+    if (this.route.snapshot.queryParams['add'] !== undefined) {
+      afterNextRender(() => {
+        // Limpia el parámetro (replace, sin entrada en el historial) para que
+        // recargar o volver atrás no reabra la hoja.
+        this.updateUrlParams();
+        this.openAddMovementDialog();
+      });
+    }
   }
 
   ngOnDestroy(): void {
     this.subs.forEach(subscription => subscription.unsubscribe());
     this.inversionesSubscription?.unsubscribe();
     this.deudasSubscription?.unsubscribe();
+  }
+
+  private readInitialYear(): number {
+    const params = this.route.snapshot.queryParams;
+    if (params['year'] !== undefined) {
+      const parsed = Number(params['year']);
+      if (Number.isInteger(parsed) && parsed >= 2000 && parsed <= 2100) return parsed;
+    }
+    return this.baseYear;
   }
 
   private readInitialMonthIndex(): number {
@@ -565,6 +726,67 @@ export class DesktopComponent implements OnDestroy {
     this.selectedMonthIndex.set(monthIndex);
     this.updateUrlParams();
     this.loadMonthData(user.uid, this.selectedYear(), monthIndex + 1);
+    if (this.isMobile()) {
+      setTimeout(() => this.scrollActiveChipIntoView('smooth'));
+    }
+  }
+
+  private scrollActiveChipIntoView(behavior: ScrollBehavior): void {
+    const chip = this.hostRef.nativeElement.querySelector<HTMLElement>('.month-chip.active');
+    if (!chip) return;
+    const reduce = typeof window !== 'undefined'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    chip.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reduce ? 'auto' : behavior });
+  }
+
+  toggleMobileSearch(): void {
+    const next = !this.mobileSearchOpen();
+    this.mobileSearchOpen.set(next);
+    if (next) {
+      this.cdr.detectChanges();
+      this.hostRef.nativeElement.querySelector<HTMLInputElement>('.search-field input')?.focus();
+    } else {
+      this.searchTerm.set('');
+    }
+  }
+
+  onKpiScroll(event: Event): void {
+    const track = event.currentTarget as HTMLElement;
+    const first = track.firstElementChild as HTMLElement | null;
+    if (!first) return;
+    const step = first.offsetWidth + KPI_CARD_GAP;
+    this.kpiPage.set(Math.max(0, Math.round(track.scrollLeft / step)));
+  }
+
+  isCategoryExpanded(key: string, index: number): boolean {
+    return this.expandedCategories()[key] ?? index === 0;
+  }
+
+  toggleCategory(key: string, index: number): void {
+    const next = !this.isCategoryExpanded(key, index);
+    this.expandedCategories.update(current => ({ ...current, [key]: next }));
+  }
+
+  /** La hoja usa un campo de texto con teclado decimal: acepta coma o punto. */
+  setMobileAmount(raw: string): void {
+    this.mobileAmountRaw.set(raw);
+    const normalized = raw.replace(/\s/g, '').replace(',', '.');
+    const parsed = Number(normalized);
+    this.newMovementAmount.set(normalized !== '' && Number.isFinite(parsed) ? parsed : null);
+  }
+
+  /** "2026-09-30" o "30" → "30"; null si no hay día de paga. */
+  diaPagaLabel(raw: string | null | undefined): string | null {
+    if (!raw) return null;
+    if (raw.includes('-')) {
+      const day = Number(raw.split('-')[2]);
+      return Number.isFinite(day) && day > 0 ? String(day) : null;
+    }
+    return raw;
+  }
+
+  onEscape(): void {
+    if (this.mobileSheetOpen()) this.closeAddMovementDialog();
   }
 
   private updateUrlParams(): void {
@@ -682,12 +904,19 @@ export class DesktopComponent implements OnDestroy {
   }
 
   openAddMovementDialog(): void {
-    this.newMovementDestination.set(null);
+    // En móvil la sección viene preseleccionada: el botón "Guardar en Gastos" necesita un destino.
+    this.newMovementDestination.set(this.isMobile() ? 'gastos' : null);
     this.newMovementDescription.set('');
     this.newMovementAmount.set(null);
+    this.mobileAmountRaw.set('');
     this.newMovementMode.set('real');
     this.newMovementFondoId.set(null);
     this.addMovementDialogVisible.set(true);
+    if (this.isMobile()) {
+      // Foco síncrono dentro del gesto del usuario: así iOS sí muestra el teclado.
+      this.cdr.detectChanges();
+      this.hostRef.nativeElement.querySelector<HTMLInputElement>('#sheet-amount')?.focus({ preventScroll: true });
+    }
   }
 
   closeAddMovementDialog(): void {
@@ -988,6 +1217,7 @@ export class DesktopComponent implements OnDestroy {
 
   openEditDialog(type: EditDialogType, row: object): void {
     const normalized = row as Record<string, unknown>;
+    this.editDeleteArmed.set(false);
     this.editDialog.set({ type, row: normalized });
     this.editFormValues.set(this.buildInitialEditValues(type, normalized));
   }
@@ -995,6 +1225,17 @@ export class DesktopComponent implements OnDestroy {
   closeEditDialog(): void {
     this.editDialog.set(null);
     this.editFormValues.set({});
+    this.editDeleteArmed.set(false);
+  }
+
+  /** Primer paso de «Eliminar»: solo arma la confirmación, no borra. */
+  armDelete(): void {
+    if (this.editSaving()) return;
+    this.editDeleteArmed.set(true);
+  }
+
+  disarmDelete(): void {
+    this.editDeleteArmed.set(false);
   }
 
   updateEditField(field: string, value: unknown): void {
@@ -1075,6 +1316,25 @@ export class DesktopComponent implements OnDestroy {
       this.closeEditDialog();
     } catch (error) {
       console.error('Error actualizando movimiento:', error);
+    } finally {
+      this.editSaving.set(false);
+    }
+  }
+
+  /** Segundo paso de «Eliminar»: borra la fila que se está editando (en móvil no hay papelera en las filas). */
+  async deleteFromEditDialog(): Promise<void> {
+    const dialogState = this.editDialog();
+    if (!dialogState || !this.editDeleteArmed()) return;
+    const rowId = dialogState.row['id'] as string;
+    if (!rowId) return;
+    this.editSaving.set(true);
+    try {
+      if (dialogState.type === 'ingreso') {
+        await this.deleteIngreso(rowId);
+      } else {
+        await this.deleteCategoryRow(EDIT_TYPE_TO_CATEGORY[dialogState.type], rowId);
+      }
+      this.closeEditDialog();
     } finally {
       this.editSaving.set(false);
     }
